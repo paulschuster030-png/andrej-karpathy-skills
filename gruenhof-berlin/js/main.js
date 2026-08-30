@@ -363,6 +363,181 @@
     }
   })();
 
+  /* ---------- Wow-Effekte ---------- */
+  (function () {
+    var reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var finePointer = matchMedia('(pointer: fine)').matches;
+
+    /* Scroll-Progress-Leiste */
+    var progressBar = document.getElementById('scroll-progress');
+    if (progressBar) {
+      var tickingProgress = false;
+      var updateProgress = function () {
+        tickingProgress = false;
+        var doc = document.documentElement;
+        var scrollable = doc.scrollHeight - doc.clientHeight;
+        var pct = scrollable > 0 ? (doc.scrollTop / scrollable) * 100 : 0;
+        progressBar.style.width = pct + '%';
+      };
+      document.addEventListener('scroll', function () {
+        if (!tickingProgress) { tickingProgress = true; requestAnimationFrame(updateProgress); }
+      }, { passive: true });
+      updateProgress();
+    }
+
+    /* Scroll-Reveal für Karten, Sections und Split-Layouts */
+    (function () {
+      var groups = [
+        '.usp-grid > .usp',
+        '.service-grid > .service-card',
+        '.product-grid > .product-card',
+        '.plan-grid > .plan',
+        '.review-grid > .review',
+        '.steps > .step',
+        '.stat-row > .stat',
+        '.staffel > .staffel__card'
+      ];
+      groups.forEach(function (sel) {
+        document.querySelectorAll(sel).forEach(function (el, i) {
+          el.classList.add('reveal');
+          el.style.transitionDelay = (Math.min(i, 5) * 0.08) + 's';
+        });
+      });
+      var singles = document.querySelectorAll(
+        '.center.stack, .split > div, .about__portrait, .about > div:last-child, ' +
+        '.popup__head, .bundle, .service-hint, .manifesto p'
+      );
+      singles.forEach(function (el) { el.classList.add('reveal'); });
+
+      var revealTargets = document.querySelectorAll('.reveal');
+
+      // The classes above just changed opacity 1 -> 0 on elements the browser
+      // already painted once. Without this, that change itself picks up the
+      // CSS transition and briefly fades every section out on load. Force it
+      // through with transitions off, then re-enable them a frame later so
+      // only the later is-visible switch (0 -> 1) actually animates.
+      revealTargets.forEach(function (el) { el.style.transition = 'none'; });
+      void document.body.offsetHeight;
+      requestAnimationFrame(function () {
+        revealTargets.forEach(function (el) { el.style.transition = ''; });
+      });
+
+      if (reduceMotion || !('IntersectionObserver' in window)) return;
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            io.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+      revealTargets.forEach(function (el) { io.observe(el); });
+    })();
+
+    /* Hochzählende Statistiken */
+    (function () {
+      var statRow = document.querySelector('.stat-row');
+      if (!statRow || reduceMotion || !('IntersectionObserver' in window)) return;
+      var animateCount = function (el) {
+        var text = el.textContent.trim();
+        var match = text.match(/^(\d+)([\s\S]*)$/);
+        if (!match) return;
+        var target = parseInt(match[1], 10);
+        var suffix = match[2];
+        var duration = 1100;
+        var start = null;
+        var step = function (ts) {
+          if (start === null) start = ts;
+          var progress = Math.min((ts - start) / duration, 1);
+          var eased = 1 - Math.pow(1 - progress, 3);
+          el.textContent = Math.round(target * eased) + suffix;
+          if (progress < 1) requestAnimationFrame(step);
+          else el.textContent = target + suffix;
+        };
+        requestAnimationFrame(step);
+      };
+      var io = new IntersectionObserver(function (entries, obs) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          entry.target.querySelectorAll('.num').forEach(animateCount);
+          obs.disconnect();
+        });
+      }, { threshold: 0.4 });
+      io.observe(statRow);
+    })();
+
+    /* Cursor-Glow (nur bei Maus/Trackpad) */
+    if (finePointer && !reduceMotion) {
+      var glow = document.getElementById('cursor-glow');
+      if (glow) {
+        var glowActive = false;
+        var glowHalf = 14;
+        document.addEventListener('pointermove', function (e) {
+          if (!glowActive) { glow.classList.add('is-active'); glowActive = true; }
+          glow.style.transform = 'translate3d(' + (e.clientX - glowHalf) + 'px,' + (e.clientY - glowHalf) + 'px,0)';
+        });
+        document.addEventListener('pointerover', function (e) {
+          var hoverable = e.target.closest('a, button, .btn, .icon-btn, summary, input, select, textarea, [role="slider"]');
+          glow.classList.toggle('is-hover', !!hoverable);
+          glowHalf = hoverable ? 28 : 14;
+        });
+        document.documentElement.addEventListener('mouseleave', function () { glow.classList.remove('is-active'); });
+      }
+    }
+
+    /* Magnetische Buttons */
+    if (finePointer && !reduceMotion) {
+      document.querySelectorAll('.btn, .icon-btn').forEach(function (btn) {
+        var rect = null;
+        btn.addEventListener('pointerenter', function () { rect = btn.getBoundingClientRect(); });
+        btn.addEventListener('pointermove', function (e) {
+          if (!rect) rect = btn.getBoundingClientRect();
+          var relX = e.clientX - (rect.left + rect.width / 2);
+          var relY = e.clientY - (rect.top + rect.height / 2);
+          btn.style.transform = 'translate(' + (relX * 0.18).toFixed(1) + 'px,' + (relY * 0.3).toFixed(1) + 'px)';
+        });
+        btn.addEventListener('pointerleave', function () { btn.style.transform = ''; rect = null; });
+      });
+    }
+
+    /* 3D-Tilt für Karten */
+    if (finePointer && !reduceMotion) {
+      var tiltSelectors = '.usp, .service-card, .product-card, .plan, .review';
+      document.querySelectorAll(tiltSelectors).forEach(function (card) {
+        card.classList.add('tilt-card');
+        var rect = null;
+        card.addEventListener('pointerenter', function () { rect = card.getBoundingClientRect(); });
+        card.addEventListener('pointermove', function (e) {
+          if (!rect) rect = card.getBoundingClientRect();
+          var px = (e.clientX - rect.left) / rect.width - 0.5;
+          var py = (e.clientY - rect.top) / rect.height - 0.5;
+          var rotX = (-py * 8).toFixed(2);
+          var rotY = (px * 10).toFixed(2);
+          card.style.transform = 'perspective(800px) rotateX(' + rotX + 'deg) rotateY(' + rotY + 'deg) translateY(-6px)';
+        });
+        card.addEventListener('pointerleave', function () { card.style.transform = ''; rect = null; });
+      });
+    }
+
+    /* Hero-Parallax beim Scrollen */
+    (function () {
+      var media = document.querySelector('.hero__media');
+      var hero = document.querySelector('.hero');
+      if (!media || !hero || reduceMotion) return;
+      var ticking = false;
+      var update = function () {
+        ticking = false;
+        var rect = hero.getBoundingClientRect();
+        if (rect.bottom < 0 || rect.top > window.innerHeight) return;
+        var offset = Math.max(-40, Math.min(40, rect.top * -0.06));
+        media.style.transform = 'translateY(' + offset.toFixed(1) + 'px)';
+      };
+      document.addEventListener('scroll', function () {
+        if (!ticking) { ticking = true; requestAnimationFrame(update); }
+      }, { passive: true });
+    })();
+  })();
+
   /* ---------- 3D-Pop-up-Garten ---------- */
   (function () {
     var sec = document.querySelector('.popup');
