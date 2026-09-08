@@ -1,0 +1,170 @@
+--!nonstrict
+--[[
+	Surface.luau — getting out, and cashing in.
+
+	These two live together because to a player they are one thought: "I am
+	full, get me up and pay me."
+
+	The streak bonus only counts trips that went past Config.DeepBankDepth.
+	Without that clause the optimal play is to hover at 10m banking single
+	rocks, which is both boring and unbeatable — a classic idle-game exploit
+	that we design out rather than patch later.
+]]
+
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Config = require(Shared.Config.Game)
+local Format = require(Shared.Format)
+local Net = require(Shared.Net)
+
+local Cargo = require(script.Parent.Cargo)
+local Data = require(script.Parent.Data)
+local Economy = require(script.Parent.Economy)
+local Feedback = require(script.Parent.Feedback)
+local Quests = require(script.Parent.Quests)
+local World = require(script.Parent.World)
+
+local Surface = {}
+
+local LIFT_CHANNEL_SECONDS = 4
+
+local function rootOf(player: Player)
+	local character = player.Character
+	return character and character:FindFirstChild("HumanoidRootPart")
+end
+
+local function atVault(player: Player): boolean
+	local root = rootOf(player)
+	if not root or not World.vaultPosition then
+		return false
+	end
+	return (root.Position - World.vaultPosition).Magnitude <= Config.BankRadius
+end
+
+function Surface.deposit(player: Player)
+	local profile = Data.get(player)
+	local session = Data.session(player)
+	if not profile or not session then
+		return
+	end
+
+	if not atVault(player) then
+		Feedback.toast(player, { title = "NOT AT THE VAULT", body = "Ride a lift up to the surface.", kind = "error" })
+		return
+	end
+
+	local cargo = Cargo.get(player)
+	if not cargo or #cargo.items == 0 then
+		Feedback.toast(player, { title = "NOTHING TO BANK", body = "Go get some rocks.", kind = "error" })
+		return
+	end
+
+	local deepEnough = (session.runDepth or 0) >= Config.DeepBankDepth
+	if deepEnough then
+		session.bankStreak = math.min((session.bankStreak or 0) + 1, math.floor(Config.BankStreakMax / Config.BankStreakStep))
+	else
+		session.bankStreak = 0
+	end
+
+	local streakBonus = math.min((session.bankStreak or 0) * Config.BankStreakStep, Config.BankStreakMax)
+	local multiplier = Economy.cashMultiplier(player)
+	local _, rawValue = Cargo.clear(player)
+	local payout = math.floor(rawValue * multiplier * (1 + streakBonus))
+
+	Economy.addCash(player, payout)
+
+	profile.stats.bankedTotal += payout
+	profile.stats.bestSingleBank = math.max(profile.stats.bestSingleBank, payout)
+	session.cleanBanks = (session.cleanBanks or 0) + 1
+	session.runDepth = 0
+	session.lastBank = os.time()
+
+	Data.push(player, {
+		stats = { bankedTotal = profile.stats.bankedTotal, bestSingleBank = profile.stats.bestSingleBank },
+		streak = session.bankStreak,
+	})
+
+	Quests.record(player, "bank", payout)
+	Quests.record(player, "bank_runs", 1)
+	Quests.record(player, "bank_single", payout, "max")
+	Quests.record(player, "clean_banks", session.cleanBanks, "set")
+
+	require(script.Parent.Leaderboards).submit(player, payout)
+
+	Feedback.effect(player, "bank", { amount = payout, streak = streakBonus })
+	Feedback.toast(player, {
+		title = "+" .. Format.short(payout),
+		body = streakBonus > 0
+			and `Banked. x{string.format("%.2f", multiplier)} multiplier, +{math.floor(streakBonus * 100)}% streak.`
+			or `Banked. x{string.format("%.2f", multiplier)} multiplier.`,
+		kind = "cash",
+	})
+end
+
+--- Ride a lift pad back to the surface. The channel time is the real cost of
+--- being deep; the Express Lift pass removes it, which is exactly the kind
+--- of thing a pass should sell — time, not power.
+function Surface.useLift(player: Player)
+	local session = Data.session(player)
+	local root = rootOf(player)
+	if not session or not root or session.lifting then
+		return
+	end
+
+	-- Must actually be standing on a pad.
+	local onPad = false
+	for _, part in ipairs(workspace:GetPartBoundsInRadius(root.Position, 12)) do
+		if part:GetAttribute("LiftPad") then
+			onPad = true
+			break
+		end
+	end
+
+	if not onPad then
+		Feedback.toast(player, { title = "NO LIFT HERE", body = "Find a green lift pad.", kind = "error" })
+		return
+	end
+
+	local instant = Economy.hasGamepass(player, "fastlift")
+	local channel = instant and 0 or LIFT_CHANNEL_SECONDS
+
+	session.lifting = true
+	Feedback.effect(player, "lift", { duration = channel })
+
+	task.delay(channel, function()
+		session.lifting = false
+		local currentRoot = rootOf(player)
+		if not currentRoot or not World.spawnPosition then
+			return
+		end
+		currentRoot.CFrame = CFrame.new(World.spawnPosition + Vector3.new(0, 3, 0))
+		session.depth = 0
+		Feedback.effect(player, "lifted", {})
+	end)
+end
+
+function Surface.start()
+	Net.on("Bank", function(player)
+		Surface.deposit(player)
+	end)
+
+	Net.on("UseLift", function(player)
+		Surface.useLift(player)
+	end)
+
+	-- Track the deepest point of the current trip for the streak rule.
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			for _, player in ipairs(Players:GetPlayers()) do
+				local session = Data.session(player)
+				if session then
+					session.runDepth = math.max(session.runDepth or 0, session.depth or 0)
+				end
+			end
+		end
+	end)
+end
+
+return Surface
