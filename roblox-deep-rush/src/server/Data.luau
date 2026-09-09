@@ -56,6 +56,9 @@ local function template()
 			alltime = {},
 		},
 		stats = {
+			-- The rarest thing this player has ever pulled, shown to everyone
+			-- who walks past them. See Cosmetics.applyNameplate.
+			bestPull = nil,
 			bestDepth = 0,
 			bankedTotal = 0,
 			bestSingleBank = 0,
@@ -76,6 +79,10 @@ local function template()
 		descent = { days = 0, lastDay = "", claimed = {} },
 
 		cosmetics = { owned = {}, equipped = {} },
+
+		-- Live-window progress. The badge itself lives in cosmetics and
+		-- survives the season; only the counter here resets.
+		season = { number = 0, cores = 0, badge = false },
 		deals = { day = "", bought = {} },
 		purchases = {},
 		createdAt = os.time(),
@@ -276,6 +283,7 @@ function Data.snapshot(player: Player)
 		contract = profile.contract,
 		descent = profile.descent,
 		cosmetics = profile.cosmetics,
+		season = profile.season,
 		deals = profile.deals,
 		cargo = { count = #session.cargo.items, value = session.cargo.value },
 		depth = session.depth,

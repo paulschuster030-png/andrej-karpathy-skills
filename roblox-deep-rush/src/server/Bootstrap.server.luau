@@ -17,6 +17,7 @@ local SERVICES = {
 	"Contracts",
 	"Quests",
 	"Rift",
+	"Season",
 	"Mining",
 	"Surface",
 	"Steal",

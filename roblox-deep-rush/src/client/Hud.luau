@@ -172,6 +172,40 @@ local function buildRiftChip(parent)
 	})
 
 	widgets.riftChip = chip
+
+	local season = Ui.frame({
+		parent = parent,
+		size = UDim2.fromOffset(210, 62),
+		position = UDim2.new(1, -16, 0, 88),
+		anchor = Vector2.new(1, 0),
+		color = theme.panel,
+		transparency = 0.15,
+		visible = false,
+	})
+	Ui.stroke(season, theme.gold, 2)
+	Ui.padding(season, 8)
+
+	widgets.seasonTitle = Ui.text({
+		parent = season,
+		size = UDim2.new(1, 0, 0, 22),
+		text = "SEASON",
+		color = theme.gold,
+		scaled = false,
+		textSize = 15,
+	})
+
+	widgets.seasonBody = Ui.text({
+		parent = season,
+		size = UDim2.new(1, 0, 0, 24),
+		position = UDim2.fromOffset(0, 22),
+		text = "",
+		color = theme.text,
+		font = Enum.Font.GothamBlack,
+		scaled = false,
+		textSize = 19,
+	})
+
+	widgets.seasonChip = season
 end
 
 local function buildCargo(parent)
@@ -550,6 +584,32 @@ function Hud.start()
 	buildReticle(gui)
 
 	findVault()
+
+	Net.listen("Season", function(state)
+		if typeof(state) ~= "table" or not widgets.seasonChip then
+			return
+		end
+
+		if state.open then
+			-- While the window is live this is the most important thing on
+			-- screen after depth, so it gets the loud colour and the count.
+			widgets.seasonChip.Visible = true
+			widgets.seasonTitle.Text = state.badge and "🏅 BADGE SECURED" or "🏅 SEASON OPEN"
+			widgets.seasonTitle.TextColor3 = state.badge and theme.green or theme.gold
+			widgets.seasonBody.Text = state.badge
+				and `{state.label or ""} · yours`
+				or `{state.cores or 0}/{state.requirement or 0} · {Format.clock(state.seconds or 0)} left`
+		elseif (state.seconds or 0) < 86400 * 2 then
+			-- Only advertise the next window when it is close enough to plan
+			-- around. A five-day countdown is noise.
+			widgets.seasonChip.Visible = true
+			widgets.seasonTitle.Text = "SEASON WINDOW IN"
+			widgets.seasonTitle.TextColor3 = theme.muted
+			widgets.seasonBody.Text = Format.clock(state.seconds or 0)
+		else
+			widgets.seasonChip.Visible = false
+		end
+	end)
 
 	Net.listen("Ad", function(payload)
 		if typeof(payload) == "table" and widgets.adButton then

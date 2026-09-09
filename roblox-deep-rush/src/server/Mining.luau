@@ -33,6 +33,8 @@ local Economy = require(script.Parent.Economy)
 local Feedback = require(script.Parent.Feedback)
 local Quests = require(script.Parent.Quests)
 local Rift = require(script.Parent.Rift)
+local Season = require(script.Parent.Season)
+local SeasonConfig = require(Shared.Config.Season)
 local World = require(script.Parent.World)
 
 local Mining = {}
@@ -101,18 +103,36 @@ local function award(player: Player, node)
 		return
 	end
 
+	if Cargo.isFull(player) then
+		-- A snatch can fill the hold mid-swing. Bail before rolling so nothing
+		-- is consumed for a rock the player cannot carry.
+		Feedback.toast(player, { title = "CARGO FULL", body = "Bank it before you dig more.", kind = "error" })
+		return
+	end
+
 	local depth = node.depth
 	local riftActive = Rift.isActiveFor(player)
 	local luck = math.min(Economy.luck(player) * Rift.luckMultiplier(player), Config.MaxLuck)
 
-	local ore, probability = Rarity.rollOre(depth, luck, rng)
-	if not ore then
-		return
+	-- The live season window overrides the roll entirely: the Season Core is
+	-- not in any drop table, it is granted by attendance.
+	local seasonEntry = Season.tryDrop(player, depth)
+
+	local ore, probability, mutation
+	if seasonEntry then
+		ore = Ores.ById[seasonEntry.oreId]
+		probability = SeasonConfig.OreChance
+	else
+		ore, probability = Rarity.rollOre(depth, luck, rng)
+		if not ore then
+			return
+		end
+		mutation = Mutations.roll(luck, riftActive, rng)
 	end
 
-	local mutation = Mutations.roll(luck, riftActive, rng)
 	local tierIndex = Ores.TierIndex[ore.tier]
-	local value = math.floor(ore.value * Layers.depthMultiplier(depth) * (mutation and mutation.multiplier or 1))
+	local value = seasonEntry and seasonEntry.value
+		or math.floor(ore.value * Layers.depthMultiplier(depth) * (mutation and mutation.multiplier or 1))
 
 	local entry = {
 		oreId = ore.id,
@@ -141,6 +161,23 @@ local function award(player: Player, node)
 	local codexCount = 0
 	for _ in pairs(profile.codex) do
 		codexCount += 1
+	end
+
+	-- Your rarest-ever pull becomes part of your identity: it is rendered on
+	-- your nameplate for everyone who walks past. Rank by tier first, then by
+	-- value, so a mutated Legendary does not outrank a plain Mythic.
+	local best = profile.stats.bestPull
+	local bestTier = best and (Ores.TierIndex[best.tier] or 0) or 0
+	if tierIndex > bestTier or (tierIndex == bestTier and value > (best and best.value or 0)) then
+		profile.stats.bestPull = {
+			oreId = ore.id,
+			tier = ore.tier,
+			mutation = entry.mutation,
+			value = value,
+			odds = probability,
+		}
+		Data.push(player, { stats = { bestPull = Data.replace(table.clone(profile.stats.bestPull)) } })
+		require(script.Parent.Cosmetics).apply(player)
 	end
 
 	Data.push(player, {

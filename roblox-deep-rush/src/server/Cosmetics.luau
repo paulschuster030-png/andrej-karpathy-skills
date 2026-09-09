@@ -18,6 +18,8 @@ local Players = game:GetService("Players")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config.Cosmetics)
 local Format = require(Shared.Format)
+local Ores = require(Shared.Config.Ores)
+local Mutations = require(Shared.Config.Mutations)
 local Net = require(Shared.Net)
 local RebirthConfig = require(Shared.Config.Rebirth)
 
@@ -115,7 +117,9 @@ local function applyNameplate(character: Model, profile, player: Player)
 
 	local plate = Instance.new("BillboardGui")
 	plate.Name = "DeepRushPlate"
-	plate.Size = UDim2.fromScale(11, 3.4)
+	-- Taller than it looks it needs to be: the rank and best-pull lines are
+	-- positioned below the plate's own box, at y = 1.0 and 1.3.
+	plate.Size = UDim2.fromScale(12, 3.4)
 	plate.StudsOffset = Vector3.new(0, 2.6, 0)
 	plate.AlwaysOnTop = false
 	plate.MaxDistance = 160
@@ -160,6 +164,33 @@ local function applyNameplate(character: Model, profile, player: Player)
 	rank.TextScaled = true
 	rank.TextStrokeTransparency = 0.5
 	rank.Parent = plate
+
+	-- The rarest thing this player has ever pulled, in that ore's own colour.
+	--
+	-- This is the cheapest strong idea in the game. Collection games run on
+	-- players being able to see what everyone else has; without that, a rare
+	-- find is a private number. With it, walking past someone wearing a
+	-- 1-in-4,300,000 pull is the reason you keep digging.
+	local best = profile.stats.bestPull
+	if best then
+		local mutationName = best.mutation and Mutations.ById[best.mutation]
+		local oreName = Ores.ById[best.oreId]
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, 0, 0.3, 0)
+		label.Position = UDim2.new(0, 0, 1.3, 0)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.GothamBold
+		label.Text = string.format(
+			"◆ %s%s · %s",
+			mutationName and (mutationName.name .. " ") or "",
+			oreName and oreName.name or best.oreId,
+			best.odds and best.odds > 0 and Format.odds(best.odds) or Format.short(best.value)
+		)
+		label.TextColor3 = Mutations.color(best.mutation) or Ores.color(best.tier)
+		label.TextScaled = true
+		label.TextStrokeTransparency = 0.4
+		label.Parent = plate
+	end
 end
 
 function Cosmetics.apply(player: Player)
