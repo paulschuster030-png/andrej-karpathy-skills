@@ -46,6 +46,33 @@ Audio.Custom = {
 	music = "", -- optional loop; left empty on purpose, see below
 }
 
+--- The nine files in `audio/`, in upload order. This is what the boot notice
+--- checks: fill every slot here and the game runs entirely on your own audio.
+--- `music` is not in the list because it is meant to stay empty (see below).
+Audio.Uploads = {
+	{ slot = "ambienceSurface", file = "audio/ambience-surface.ogg" },
+	{ slot = "ambienceShallow", file = "audio/ambience-shallow.ogg" },
+	{ slot = "ambienceDeep", file = "audio/ambience-deep.ogg" },
+	{ slot = "ambienceAbyss", file = "audio/ambience-abyss.ogg" },
+	{ slot = "zoneGas", file = "audio/zone-gas.ogg" },
+	{ slot = "zoneVent", file = "audio/zone-vent.ogg" },
+	{ slot = "liftMotor", file = "audio/lift-motor.ogg" },
+	{ slot = "pickHit", file = "audio/pick-hit.ogg" },
+	{ slot = "rareReveal", file = "audio/rare-reveal.ogg" },
+}
+
+--- Slots still waiting on an asset id, in upload order.
+function Audio.missing()
+	local out = {}
+	for _, entry in ipairs(Audio.Uploads) do
+		local id = Audio.Custom[entry.slot]
+		if not id or id == "" then
+			table.insert(out, entry)
+		end
+	end
+	return out
+end
+
 --- Which positional loop each hazard kind uses. Persistent kinds get the
 --- hiss, pulsing kinds get the rumble.
 Audio.ZoneLoops = {

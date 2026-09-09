@@ -57,3 +57,22 @@ for _, name in ipairs(SERVICES) do
 end
 
 print(string.format("[DEEP RUSH] %d services up in %.2fs", #SERVICES, os.clock() - started))
+
+-- The audio notice. Roblox will only play sound that lives on its own
+-- servers, so the nine files in `audio/` have to be uploaded from your own
+-- account — no place file can carry them and nobody can upload them for you.
+-- Until then the game runs on the built-in client sounds, which work but are
+-- much thinner. This says so once, plainly, instead of leaving you to wonder
+-- why it sounds flat.
+local missingAudio = require(game:GetService("ReplicatedStorage").Shared.Config.Audio).missing()
+if #missingAudio > 0 then
+	local lines = {
+		`[DEEP RUSH] audio: {#missingAudio} of 9 sounds are still on the built-in fallback.`,
+		"  Upload these in Studio (Home > Asset Manager > Audio > right-click > Add Audio),",
+		"  then paste each id into Shared/Config/Audio -> Audio.Custom:",
+	}
+	for _, entry in ipairs(missingAudio) do
+		table.insert(lines, `    {entry.slot} = "" -- {entry.file}`)
+	end
+	print(table.concat(lines, "\n"))
+end
