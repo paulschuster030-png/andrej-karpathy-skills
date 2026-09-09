@@ -34,6 +34,7 @@ MODULES = [
     ("Crew", "Config/Crew.luau"),
     ("Cosmetics", "Config/Cosmetics.luau"),
     ("Contracts", "Config/Contracts.luau"),
+    ("Season", "Config/Season.luau"),
     ("Products", "Config/Products.luau"),
     ("Format", "Format.luau"),
     ("Rarity", "Rarity.luau"),

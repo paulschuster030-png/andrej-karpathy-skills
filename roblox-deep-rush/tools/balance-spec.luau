@@ -499,6 +499,95 @@ check("every title cosmetic has display text", (function()
 	return true
 end)())
 
+print("\n== the live season (scarcity, kept honest) ==")
+
+local SeasonConfig = MODULES.Season
+
+check("the window is an event, not the default state", (function()
+	local openDays = 0
+	for _ in pairs(SeasonConfig.WindowDays) do
+		openDays += 1
+	end
+	print(string.format("       window is open %d of 7 days", openDays))
+	return openDays >= 1 and openDays <= 3
+end)())
+
+check("the badge is earnable in one ordinary session", (function()
+	-- Urgency a player cannot satisfy is not urgency, it is exclusion. Model
+	-- an upgraded drill at roughly 60 swings a minute inside the window.
+	local swingsPerMinute = 60
+	local minutes = SeasonConfig.BadgeRequirement / (SeasonConfig.OreChance * swingsPerMinute)
+	print(string.format("       season badge ≈ %.0f min inside the window", minutes))
+	return minutes >= 8 and minutes <= 40
+end)())
+
+check("the season ore is reachable without any rebirth", (function()
+	-- The event has to be for everyone, not just veterans. Its depth must sit
+	-- inside the layers a fresh account can survive.
+	local reachable = Layers.maxSafeDepth(0)
+	print(string.format("       season ore at %dm, rebirth-0 ceiling %dm", SeasonConfig.Ore.minDepth, reachable))
+	return SeasonConfig.Ore.minDepth < reachable
+end)())
+
+check("the season ore never appears in a normal drop table", (function()
+	for depth = 0, 2900, 50 do
+		local pool = Ores.poolAt(depth)
+		for _, list in pairs(pool) do
+			for _, ore in ipairs(list) do
+				if ore.id == SeasonConfig.Ore.id then
+					print("       leaked into the pool at depth " .. depth)
+					return false
+				end
+			end
+		end
+	end
+	return true
+end)())
+
+check("every season badge resolves to a real cosmetic", (function()
+	for index = 1, #SeasonConfig.Badges do
+		local badge = SeasonConfig.badge(index)
+		if not Cosmetics.ById[badge.title] or not Cosmetics.ById[badge.trail] then
+			print("       missing cosmetic for season " .. index)
+			return false
+		end
+	end
+	return true
+end)())
+
+check("no season reward can be bought", (function()
+	-- The moment scarcity is purchasable it stops being scarcity.
+	for _, cosmetic in ipairs(Cosmetics.List) do
+		if cosmetic.source == "season" and cosmetic.cost ~= nil then
+			return false
+		end
+	end
+	for index = 1, #SeasonConfig.Badges do
+		local badge = SeasonConfig.badge(index)
+		for _, id in ipairs({ badge.title, badge.trail }) do
+			if Cosmetics.ById[id].source ~= "season" then
+				return false
+			end
+		end
+	end
+	return true
+end)())
+
+check("season numbering advances and cycles its badges", (function()
+	local first = SeasonConfig.number(SeasonConfig.Epoch + 60)
+	local later = SeasonConfig.number(SeasonConfig.Epoch + SeasonConfig.LengthDays * 86400 * 3 + 60)
+	if first ~= 1 or later ~= 4 then
+		return false
+	end
+	-- Badge selection must stay in range however far the seasons run.
+	for n = 1, 40 do
+		if SeasonConfig.badge(n) == nil then
+			return false
+		end
+	end
+	return true
+end)())
+
 print("\n== monetisation shape ==")
 
 check("the daily deal rotation reaches every deal", (function()

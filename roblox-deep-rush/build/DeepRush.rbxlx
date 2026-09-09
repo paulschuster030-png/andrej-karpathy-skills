@@ -17,7 +17,7 @@
       <Color3 name="FogColor"><R>0.06</R><G>0.06</G><B>0.08</B></Color3>
     </Properties>
   </Item>
-  <Item class="ReplicatedStorage" referent="RBX32">
+  <Item class="ReplicatedStorage" referent="RBX33">
     <Properties>
       <string name="Name">ReplicatedStorage</string>
     </Properties>
@@ -200,6 +200,19 @@ Cosmetics.List = {
 	{ id = "title_bedrock", kind = "title", name = "BEDROCK CLUB", text = "BEDROCK CLUB", color = { 110, 230, 255 }, source = "descent" },
 	{ id = "title_pirate", kind = "title", name = "SHAFT PIRATE", text = "SHAFT PIRATE", color = { 255, 88, 120 }, source = "milestone" },
 	{ id = "title_codex", kind = "title", name = "CODEX COMPLETE", text = "CODEX COMPLETE", color = { 255, 255, 255 }, source = "milestone" },
+
+	-- Season badges. Earned only inside a live window, never sold, never
+	-- repeated. A player wearing one was demonstrably there that weekend, and
+	-- that is the entire value.
+	{ id = "season_1", kind = "title", name = "S1 · FIRST DESCENT", text = "S1 · FIRST DESCENT", color = { 255, 205, 90 }, source = "season" },
+	{ id = "season_2", kind = "title", name = "S2 · COLD SEAM", text = "S2 · COLD SEAM", color = { 150, 220, 255 }, source = "season" },
+	{ id = "season_3", kind = "title", name = "S3 · HOLLOW SEASON", text = "S3 · HOLLOW SEASON", color = { 190, 110, 255 }, source = "season" },
+	{ id = "season_4", kind = "title", name = "S4 · PRESSURE SEASON", text = "S4 · PRESSURE SEASON", color = { 255, 88, 120 }, source = "season" },
+
+	{ id = "trail_season_1", kind = "trail", name = "S1 Trail", color = { 255, 205, 90 }, source = "season" },
+	{ id = "trail_season_2", kind = "trail", name = "S2 Trail", color = { 150, 220, 255 }, source = "season" },
+	{ id = "trail_season_3", kind = "trail", name = "S3 Trail", color = { 190, 110, 255 }, source = "season" },
+	{ id = "trail_season_4", kind = "trail", name = "S4 Trail", color = { 255, 88, 120 }, source = "season" },
 }
 
 Cosmetics.ById = {}
@@ -841,6 +854,11 @@ Ores.List = {
 	-- The Singularity -------------------------------------------------------
 	{ id = "fragment", name = "Singularity Fragment", tier = "Singularity", value = 4200000, minDepth = 2000, maxDepth = 3000 },
 	{ id = "origin", name = "Origin Shard", tier = "Singularity", value = 9000000, minDepth = 2200, maxDepth = 3000 },
+
+	-- Event-only. `seasonOnly` keeps it out of Ores.poolAt entirely, so it
+	-- cannot be rolled outside a live window no matter how much luck is
+	-- stacked. Server/Season.luau injects it directly.
+	{ id = "seasoncore", name = "Season Core", tier = "Abyssal", value = 260000, minDepth = 120, maxDepth = 3000, seasonOnly = true },
 }
 
 Ores.ById = {}
@@ -861,7 +879,7 @@ function Ores.poolAt(depth: number)
 
 	local byTier = {}
 	for _, ore in ipairs(Ores.List) do
-		if bucket >= ore.minDepth and bucket <= ore.maxDepth then
+		if not ore.seasonOnly and bucket >= ore.minDepth and bucket <= ore.maxDepth then
 			local list = byTier[ore.tier]
 			if not list then
 				list = {}
@@ -1207,6 +1225,137 @@ return Rebirth
         </Item>
         <Item class="ModuleScript" referent="RBX27">
           <Properties>
+            <string name="Name">Season</string>
+            <ProtectedString name="Source"><![CDATA[
+--!nonstrict
+--[[
+	Season.luau — the thing that makes a player think "I need that".
+
+	Copied in structure, not in substance, from what demonstrably works on the
+	platform right now: the biggest game on Roblox runs live weekend events
+	whose rewards you simply do not get if you were not there. That is the
+	whole mechanism. Scarcity plus a deadline plus something everyone can see
+	you have.
+
+	Three rules kept this from becoming the uglier version of itself:
+
+	  NOTHING IS SOLD HERE. The season badge cannot be bought, at any price.
+	  The moment scarcity is purchasable it stops being scarcity and starts
+	  being a store.
+
+	  THE PRICE IS ATTENDANCE, NOT MONEY. You show up in the window and mine.
+	  A player with no Robux and two spare hours gets exactly what a paying
+	  player gets.
+
+	  IT IS ACHIEVABLE IN ONE SITTING. The badge threshold is set so a normal
+	  session inside the window earns it. A deadline you cannot meet is not
+	  urgency, it is just exclusion.
+
+	We deliberately did NOT copy the rest of that game's toolkit — paid luck
+	multipliers on a spinner, and loss mechanics tuned to make children cry
+	for the clip. Those work too. They are not going in.
+]]
+
+local Season = {}
+
+-- Seasons roll over on this cadence. The epoch is fixed so every server and
+-- every player agrees which season it is without storing anything.
+Season.Epoch = 1767225600 -- 2026-01-01T00:00:00Z
+Season.LengthDays = 14
+
+-- The live window: Saturday and Sunday, UTC. os.date("!*t").wday is
+-- 1 = Sunday ... 7 = Saturday.
+Season.WindowDays = { [7] = true, [1] = true }
+
+--- The exclusive ore. It exists ONLY inside the window and is filtered out of
+--- the normal tables everywhere else, so it cannot be farmed off-schedule.
+Season.Ore = {
+	id = "seasoncore",
+	name = "Season Core",
+	tier = "Abyssal",
+	value = 260000,
+	minDepth = 120, -- reachable without rebirths: the event is for everyone
+}
+
+--- Chance per swing inside the window, at depth. Generous on purpose: this is
+--- attendance being rewarded, not another lottery.
+Season.OreChance = 0.05
+
+--- How many Season Cores earn the badge.
+---
+--- Tuned to about twenty-five minutes of real mining, travel and banking
+--- included. The first pass sat at four minutes, which made the badge
+--- something you picked up in passing — and a scarce thing nobody had to work
+--- for is not scarce, it is just free. tools/balance-spec.luau fails if this
+--- drifts back under eight modelled minutes.
+Season.BadgeRequirement = 40
+
+--- Cosmetics granted per season, cycled. Each is permanent and can never be
+--- earned again once its season has passed.
+Season.Badges = {
+	{ title = "season_1", trail = "trail_season_1", label = "FIRST DESCENT" },
+	{ title = "season_2", trail = "trail_season_2", label = "COLD SEAM" },
+	{ title = "season_3", trail = "trail_season_3", label = "HOLLOW SEASON" },
+	{ title = "season_4", trail = "trail_season_4", label = "PRESSURE SEASON" },
+}
+
+function Season.number(now: number?): number
+	local elapsed = (now or os.time()) - Season.Epoch
+	return math.max(1, math.floor(elapsed / (Season.LengthDays * 86400)) + 1)
+end
+
+function Season.badge(seasonNumber: number)
+	local index = ((seasonNumber - 1) % #Season.Badges) + 1
+	return Season.Badges[index]
+end
+
+--- Is the live window open right now?
+function Season.isOpen(now: number?): boolean
+	local parts = os.date("!*t", now or os.time())
+	return Season.WindowDays[parts.wday] == true
+end
+
+--- Seconds until the window closes (when open) or opens (when shut).
+function Season.secondsUntilChange(now: number?): number
+	local current = now or os.time()
+	local parts = os.date("!*t", current)
+	local secondsToday = parts.hour * 3600 + parts.min * 60 + parts.sec
+	local secondsLeftToday = 86400 - secondsToday
+
+	if Season.isOpen(current) then
+		-- Walk forward through the days that are still open.
+		local remaining = secondsLeftToday
+		local day = parts.wday
+		for _ = 1, 6 do
+			day = (day % 7) + 1
+			if not Season.WindowDays[day] then
+				break
+			end
+			remaining += 86400
+		end
+		return remaining
+	end
+
+	local remaining = secondsLeftToday
+	local day = parts.wday
+	for _ = 1, 7 do
+		day = (day % 7) + 1
+		if Season.WindowDays[day] then
+			break
+		end
+		remaining += 86400
+	end
+	return remaining
+end
+
+return Season
+
+]]></ProtectedString>
+            <bool name="Disabled">false</bool>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="RBX28">
+          <Properties>
             <string name="Name">Upgrades</string>
             <ProtectedString name="Source"><![CDATA[
 --!nonstrict
@@ -1365,7 +1514,7 @@ return Upgrades
           </Properties>
         </Item>
       </Item>
-      <Item class="ModuleScript" referent="RBX28">
+      <Item class="ModuleScript" referent="RBX29">
         <Properties>
           <string name="Name">Format</string>
           <ProtectedString name="Source"><![CDATA[
@@ -1453,7 +1602,7 @@ return Format
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX29">
+      <Item class="ModuleScript" referent="RBX30">
         <Properties>
           <string name="Name">Net</string>
           <ProtectedString name="Source"><![CDATA[
@@ -1518,6 +1667,7 @@ Net.Signals = {
 	"Crew", -- crew roster and nearby beacons
 	"Pings", -- a teammate marked something in the world
 	"Ad", -- rewarded-video availability changed
+	"Season", -- live window state and badge progress
 }
 
 Net.Functions = {
@@ -1687,7 +1837,7 @@ return Net
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX30">
+      <Item class="ModuleScript" referent="RBX31">
         <Properties>
           <string name="Name">Rarity</string>
           <ProtectedString name="Source"><![CDATA[
@@ -1790,7 +1940,7 @@ return Rarity
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX31">
+      <Item class="ModuleScript" referent="RBX32">
         <Properties>
           <string name="Name">Signal</string>
           <ProtectedString name="Source"><![CDATA[
@@ -1848,15 +1998,15 @@ return Signal
       </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="RBX57">
+  <Item class="ServerScriptService" referent="RBX59">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Folder" referent="RBX33">
+    <Item class="Folder" referent="RBX34">
       <Properties>
         <string name="Name">Server</string>
       </Properties>
-      <Item class="ModuleScript" referent="RBX34">
+      <Item class="ModuleScript" referent="RBX35">
         <Properties>
           <string name="Name">Ads</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2020,7 +2170,7 @@ return Ads
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX35">
+      <Item class="ModuleScript" referent="RBX36">
         <Properties>
           <string name="Name">AntiCheat</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2116,7 +2266,7 @@ return AntiCheat
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="Script" referent="RBX36">
+      <Item class="Script" referent="RBX37">
         <Properties>
           <string name="Name">Bootstrap</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2139,6 +2289,7 @@ local SERVICES = {
 	"Contracts",
 	"Quests",
 	"Rift",
+	"Season",
 	"Mining",
 	"Surface",
 	"Steal",
@@ -2182,7 +2333,7 @@ print(string.format("[DEEP RUSH] %d services up in %.2fs", #SERVICES, os.clock()
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX37">
+      <Item class="ModuleScript" referent="RBX38">
         <Properties>
           <string name="Name">Cargo</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2333,7 +2484,7 @@ return Cargo
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX38">
+      <Item class="ModuleScript" referent="RBX39">
         <Properties>
           <string name="Name">Contracts</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2616,7 +2767,7 @@ return Contracts
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX39">
+      <Item class="ModuleScript" referent="RBX40">
         <Properties>
           <string name="Name">Cosmetics</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2640,6 +2791,8 @@ local Players = game:GetService("Players")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config.Cosmetics)
 local Format = require(Shared.Format)
+local Ores = require(Shared.Config.Ores)
+local Mutations = require(Shared.Config.Mutations)
 local Net = require(Shared.Net)
 local RebirthConfig = require(Shared.Config.Rebirth)
 
@@ -2737,7 +2890,9 @@ local function applyNameplate(character: Model, profile, player: Player)
 
 	local plate = Instance.new("BillboardGui")
 	plate.Name = "DeepRushPlate"
-	plate.Size = UDim2.fromScale(11, 3.4)
+	-- Taller than it looks it needs to be: the rank and best-pull lines are
+	-- positioned below the plate's own box, at y = 1.0 and 1.3.
+	plate.Size = UDim2.fromScale(12, 3.4)
 	plate.StudsOffset = Vector3.new(0, 2.6, 0)
 	plate.AlwaysOnTop = false
 	plate.MaxDistance = 160
@@ -2782,6 +2937,33 @@ local function applyNameplate(character: Model, profile, player: Player)
 	rank.TextScaled = true
 	rank.TextStrokeTransparency = 0.5
 	rank.Parent = plate
+
+	-- The rarest thing this player has ever pulled, in that ore's own colour.
+	--
+	-- This is the cheapest strong idea in the game. Collection games run on
+	-- players being able to see what everyone else has; without that, a rare
+	-- find is a private number. With it, walking past someone wearing a
+	-- 1-in-4,300,000 pull is the reason you keep digging.
+	local best = profile.stats.bestPull
+	if best then
+		local mutationName = best.mutation and Mutations.ById[best.mutation]
+		local oreName = Ores.ById[best.oreId]
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, 0, 0.3, 0)
+		label.Position = UDim2.new(0, 0, 1.3, 0)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.GothamBold
+		label.Text = string.format(
+			"◆ %s%s · %s",
+			mutationName and (mutationName.name .. " ") or "",
+			oreName and oreName.name or best.oreId,
+			best.odds and best.odds > 0 and Format.odds(best.odds) or Format.short(best.value)
+		)
+		label.TextColor3 = Mutations.color(best.mutation) or Ores.color(best.tier)
+		label.TextScaled = true
+		label.TextStrokeTransparency = 0.4
+		label.Parent = plate
+	end
 end
 
 function Cosmetics.apply(player: Player)
@@ -2904,7 +3086,7 @@ return Cosmetics
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX40">
+      <Item class="ModuleScript" referent="RBX41">
         <Properties>
           <string name="Name">Crew</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3296,7 +3478,7 @@ return Crew
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX41">
+      <Item class="ModuleScript" referent="RBX42">
         <Properties>
           <string name="Name">Data</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3358,6 +3540,9 @@ local function template()
 			alltime = {},
 		},
 		stats = {
+			-- The rarest thing this player has ever pulled, shown to everyone
+			-- who walks past them. See Cosmetics.applyNameplate.
+			bestPull = nil,
 			bestDepth = 0,
 			bankedTotal = 0,
 			bestSingleBank = 0,
@@ -3378,6 +3563,10 @@ local function template()
 		descent = { days = 0, lastDay = "", claimed = {} },
 
 		cosmetics = { owned = {}, equipped = {} },
+
+		-- Live-window progress. The badge itself lives in cosmetics and
+		-- survives the season; only the counter here resets.
+		season = { number = 0, cores = 0, badge = false },
 		deals = { day = "", bought = {} },
 		purchases = {},
 		createdAt = os.time(),
@@ -3578,6 +3767,7 @@ function Data.snapshot(player: Player)
 		contract = profile.contract,
 		descent = profile.descent,
 		cosmetics = profile.cosmetics,
+		season = profile.season,
 		deals = profile.deals,
 		cargo = { count = #session.cargo.items, value = session.cargo.value },
 		depth = session.depth,
@@ -3684,7 +3874,7 @@ return Data
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX42">
+      <Item class="ModuleScript" referent="RBX43">
         <Properties>
           <string name="Name">Drones</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3858,7 +4048,7 @@ return Drones
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX43">
+      <Item class="ModuleScript" referent="RBX44">
         <Properties>
           <string name="Name">Economy</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4135,7 +4325,7 @@ return Economy
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX44">
+      <Item class="ModuleScript" referent="RBX45">
         <Properties>
           <string name="Name">Feedback</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4196,7 +4386,7 @@ return Feedback
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX45">
+      <Item class="ModuleScript" referent="RBX46">
         <Properties>
           <string name="Name">Hazards</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4321,7 +4511,7 @@ return Hazards
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX46">
+      <Item class="ModuleScript" referent="RBX47">
         <Properties>
           <string name="Name">Leaderboards</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4562,7 +4752,7 @@ return Leaderboards
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX47">
+      <Item class="ModuleScript" referent="RBX48">
         <Properties>
           <string name="Name">Mining</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4601,6 +4791,8 @@ local Economy = require(script.Parent.Economy)
 local Feedback = require(script.Parent.Feedback)
 local Quests = require(script.Parent.Quests)
 local Rift = require(script.Parent.Rift)
+local Season = require(script.Parent.Season)
+local SeasonConfig = require(Shared.Config.Season)
 local World = require(script.Parent.World)
 
 local Mining = {}
@@ -4669,18 +4861,36 @@ local function award(player: Player, node)
 		return
 	end
 
+	if Cargo.isFull(player) then
+		-- A snatch can fill the hold mid-swing. Bail before rolling so nothing
+		-- is consumed for a rock the player cannot carry.
+		Feedback.toast(player, { title = "CARGO FULL", body = "Bank it before you dig more.", kind = "error" })
+		return
+	end
+
 	local depth = node.depth
 	local riftActive = Rift.isActiveFor(player)
 	local luck = math.min(Economy.luck(player) * Rift.luckMultiplier(player), Config.MaxLuck)
 
-	local ore, probability = Rarity.rollOre(depth, luck, rng)
-	if not ore then
-		return
+	-- The live season window overrides the roll entirely: the Season Core is
+	-- not in any drop table, it is granted by attendance.
+	local seasonEntry = Season.tryDrop(player, depth)
+
+	local ore, probability, mutation
+	if seasonEntry then
+		ore = Ores.ById[seasonEntry.oreId]
+		probability = SeasonConfig.OreChance
+	else
+		ore, probability = Rarity.rollOre(depth, luck, rng)
+		if not ore then
+			return
+		end
+		mutation = Mutations.roll(luck, riftActive, rng)
 	end
 
-	local mutation = Mutations.roll(luck, riftActive, rng)
 	local tierIndex = Ores.TierIndex[ore.tier]
-	local value = math.floor(ore.value * Layers.depthMultiplier(depth) * (mutation and mutation.multiplier or 1))
+	local value = seasonEntry and seasonEntry.value
+		or math.floor(ore.value * Layers.depthMultiplier(depth) * (mutation and mutation.multiplier or 1))
 
 	local entry = {
 		oreId = ore.id,
@@ -4709,6 +4919,23 @@ local function award(player: Player, node)
 	local codexCount = 0
 	for _ in pairs(profile.codex) do
 		codexCount += 1
+	end
+
+	-- Your rarest-ever pull becomes part of your identity: it is rendered on
+	-- your nameplate for everyone who walks past. Rank by tier first, then by
+	-- value, so a mutated Legendary does not outrank a plain Mythic.
+	local best = profile.stats.bestPull
+	local bestTier = best and (Ores.TierIndex[best.tier] or 0) or 0
+	if tierIndex > bestTier or (tierIndex == bestTier and value > (best and best.value or 0)) then
+		profile.stats.bestPull = {
+			oreId = ore.id,
+			tier = ore.tier,
+			mutation = entry.mutation,
+			value = value,
+			odds = probability,
+		}
+		Data.push(player, { stats = { bestPull = Data.replace(table.clone(profile.stats.bestPull)) } })
+		require(script.Parent.Cosmetics).apply(player)
 	end
 
 	Data.push(player, {
@@ -4866,7 +5093,7 @@ return Mining
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX48">
+      <Item class="ModuleScript" referent="RBX49">
         <Properties>
           <string name="Name">Monetization</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5093,7 +5320,7 @@ return Monetization
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX49">
+      <Item class="ModuleScript" referent="RBX50">
         <Properties>
           <string name="Name">Quests</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5406,7 +5633,7 @@ return Quests
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX50">
+      <Item class="ModuleScript" referent="RBX51">
         <Properties>
           <string name="Name">Rebirth</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5500,7 +5727,7 @@ return Rebirth
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX51">
+      <Item class="ModuleScript" referent="RBX52">
         <Properties>
           <string name="Name">Rewards</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5608,7 +5835,7 @@ return Rewards
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX52">
+      <Item class="ModuleScript" referent="RBX53">
         <Properties>
           <string name="Name">Rift</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5775,7 +6002,199 @@ return Rift
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX53">
+      <Item class="ModuleScript" referent="RBX54">
+        <Properties>
+          <string name="Name">Season</string>
+          <ProtectedString name="Source"><![CDATA[
+--!nonstrict
+--[[
+	Season.luau — the live window, and the badge you only get by being there.
+
+	Every weekend (UTC) a window opens. Inside it, and nowhere else, the Season
+	Core drops. Mine twelve and you keep a title and a trail stamped with that
+	season's name, permanently, and that season never comes back.
+
+	The design intent is plain: give a player a specific reason to open the
+	game on a specific day, and give them something everyone else can see
+	afterwards. It feeds the platform's "play days" signal honestly, because
+	the only way to get it is to actually turn up.
+
+	What it will not do: it is never sold, never discounted, never extended for
+	a purchase, and the threshold is low enough that one ordinary session
+	inside the window earns it. Urgency that a player cannot satisfy is not
+	urgency, it is just a bad evening.
+]]
+
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Config = require(Shared.Config.Season)
+local Format = require(Shared.Format)
+local Net = require(Shared.Net)
+local Ores = require(Shared.Config.Ores)
+
+local Cosmetics = require(script.Parent.Cosmetics)
+local Data = require(script.Parent.Data)
+local Feedback = require(script.Parent.Feedback)
+
+local Season = {}
+
+local rng = Random.new(os.time() + 31337)
+local wasOpen = nil
+
+--- Roll the player's season record over when the season number changes. The
+--- badge itself is a cosmetic and survives; only the progress counter resets.
+local function ensureSeason(player: Player)
+	local profile = Data.get(player)
+	if not profile then
+		return nil
+	end
+
+	local number = Config.number()
+	if profile.season.number ~= number then
+		profile.season = { number = number, cores = 0, badge = false }
+		Data.push(player, { season = Data.replace(table.clone(profile.season)) })
+	end
+	return profile.season
+end
+
+function Season.state()
+	local open = Config.isOpen()
+	return {
+		open = open,
+		number = Config.number(),
+		label = Config.badge(Config.number()).label,
+		seconds = Config.secondsUntilChange(),
+		requirement = Config.BadgeRequirement,
+	}
+end
+
+local function grantBadge(player: Player)
+	local profile = Data.get(player)
+	local record = ensureSeason(player)
+	if not profile or not record or record.badge then
+		return
+	end
+
+	record.badge = true
+	local badge = Config.badge(record.number)
+	Cosmetics.unlock(player, badge.title)
+	Cosmetics.unlock(player, badge.trail)
+	Data.push(player, { season = Data.replace(table.clone(record)) })
+
+	Feedback.broadcast({
+		title = "🏅 SEASON BADGE",
+		body = `{player.DisplayName} earned "{badge.label}". It cannot be earned again after this weekend.`,
+		kind = "announce",
+		duration = 7,
+	})
+end
+
+--- Called by Mining on every swing inside the window. Returns a cargo entry
+--- for the Season Core, or nil.
+function Season.tryDrop(player: Player, depth: number)
+	if not Config.isOpen() or depth < Config.Ore.minDepth then
+		return nil
+	end
+
+	local record = ensureSeason(player)
+	if not record then
+		return nil
+	end
+
+	if rng:NextNumber() > Config.OreChance then
+		return nil
+	end
+
+	record.cores += 1
+	Data.push(player, { season = { cores = record.cores } })
+
+	if record.cores >= Config.BadgeRequirement and not record.badge then
+		grantBadge(player)
+	else
+		Feedback.toast(player, {
+			title = `SEASON CORE {record.cores}/{Config.BadgeRequirement}`,
+			body = "Only this weekend. Keep going.",
+			kind = "rift",
+		})
+	end
+
+	local ore = Ores.ById[Config.Ore.id]
+	return {
+		oreId = Config.Ore.id,
+		tier = ore and ore.tier or Config.Ore.tier,
+		mutation = nil,
+		value = Config.Ore.value,
+	}
+end
+
+local function announce(open: boolean)
+	local badge = Config.badge(Config.number())
+	if open then
+		Feedback.announce(
+			"🏅 SEASON WINDOW OPEN",
+			`"{badge.label}" — mine {Config.BadgeRequirement} Season Cores below {Format.depth(Config.Ore.minDepth)} to keep the badge forever.`,
+			{ 255, 205, 90 }
+		)
+		Feedback.effectAll("rift", { season = true })
+	else
+		Feedback.announce(
+			"SEASON WINDOW CLOSED",
+			`"{badge.label}" is gone. The next window opens in {Format.clock(Config.secondsUntilChange())}.`,
+			{ 150, 150, 170 }
+		)
+	end
+end
+
+function Season.start()
+	Data.loaded:connect(function(player)
+		ensureSeason(player)
+		task.delay(8, function()
+			if not player.Parent or not Config.isOpen() then
+				return
+			end
+			local record = Data.get(player) and Data.get(player).season
+			if record and not record.badge then
+				Feedback.toast(player, {
+					title = "🏅 SEASON WINDOW IS OPEN",
+					body = `{Config.badge(Config.number()).label} — this badge disappears when the weekend does.`,
+					kind = "rift",
+					duration = 7,
+				})
+			end
+		end)
+	end)
+
+	task.spawn(function()
+		while true do
+			local open = Config.isOpen()
+			if wasOpen ~= nil and open ~= wasOpen then
+				announce(open)
+			end
+			wasOpen = open
+
+			local state = Season.state()
+			for _, player in ipairs(Players:GetPlayers()) do
+				if Data.isReady(player) then
+					local profile = Data.get(player)
+					state.cores = profile.season.cores
+					state.badge = profile.season.badge
+					Net.to(player, "Season", state)
+				end
+			end
+
+			task.wait(2)
+		end
+	end)
+end
+
+return Season
+
+]]></ProtectedString>
+          <bool name="Disabled">false</bool>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX55">
         <Properties>
           <string name="Name">Steal</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6163,7 +6582,7 @@ return Steal
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX54">
+      <Item class="ModuleScript" referent="RBX56">
         <Properties>
           <string name="Name">Surface</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6348,7 +6767,7 @@ return Surface
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX55">
+      <Item class="ModuleScript" referent="RBX57">
         <Properties>
           <string name="Name">Upgrades</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6424,7 +6843,7 @@ return Upgrades
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX56">
+      <Item class="ModuleScript" referent="RBX58">
         <Properties>
           <string name="Name">World</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6954,7 +7373,7 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="RBX58">
+  <Item class="StarterPlayer" referent="RBX60">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
@@ -7806,6 +8225,40 @@ local function buildRiftChip(parent)
 	})
 
 	widgets.riftChip = chip
+
+	local season = Ui.frame({
+		parent = parent,
+		size = UDim2.fromOffset(210, 62),
+		position = UDim2.new(1, -16, 0, 88),
+		anchor = Vector2.new(1, 0),
+		color = theme.panel,
+		transparency = 0.15,
+		visible = false,
+	})
+	Ui.stroke(season, theme.gold, 2)
+	Ui.padding(season, 8)
+
+	widgets.seasonTitle = Ui.text({
+		parent = season,
+		size = UDim2.new(1, 0, 0, 22),
+		text = "SEASON",
+		color = theme.gold,
+		scaled = false,
+		textSize = 15,
+	})
+
+	widgets.seasonBody = Ui.text({
+		parent = season,
+		size = UDim2.new(1, 0, 0, 24),
+		position = UDim2.fromOffset(0, 22),
+		text = "",
+		color = theme.text,
+		font = Enum.Font.GothamBlack,
+		scaled = false,
+		textSize = 19,
+	})
+
+	widgets.seasonChip = season
 end
 
 local function buildCargo(parent)
@@ -8184,6 +8637,32 @@ function Hud.start()
 	buildReticle(gui)
 
 	findVault()
+
+	Net.listen("Season", function(state)
+		if typeof(state) ~= "table" or not widgets.seasonChip then
+			return
+		end
+
+		if state.open then
+			-- While the window is live this is the most important thing on
+			-- screen after depth, so it gets the loud colour and the count.
+			widgets.seasonChip.Visible = true
+			widgets.seasonTitle.Text = state.badge and "🏅 BADGE SECURED" or "🏅 SEASON OPEN"
+			widgets.seasonTitle.TextColor3 = state.badge and theme.green or theme.gold
+			widgets.seasonBody.Text = state.badge
+				and `{state.label or ""} · yours`
+				or `{state.cores or 0}/{state.requirement or 0} · {Format.clock(state.seconds or 0)} left`
+		elseif (state.seconds or 0) < 86400 * 2 then
+			-- Only advertise the next window when it is close enough to plan
+			-- around. A five-day countdown is noise.
+			widgets.seasonChip.Visible = true
+			widgets.seasonTitle.Text = "SEASON WINDOW IN"
+			widgets.seasonTitle.TextColor3 = theme.muted
+			widgets.seasonBody.Text = Format.clock(state.seconds or 0)
+		else
+			widgets.seasonChip.Visible = false
+		end
+	end)
 
 	Net.listen("Ad", function(payload)
 		if typeof(payload) == "table" and widgets.adButton then
