@@ -273,6 +273,16 @@ function Quests.start()
 		Quests.reroll(player)
 	end)
 
+	-- The rules card lives with onboarding: it teaches the same six things the
+	-- onboarding chain then makes you do.
+	Net.on("IntroSeen", function(player)
+		local profile = Data.get(player)
+		if profile and not profile.seenIntro then
+			profile.seenIntro = true
+			Data.push(player, { seenIntro = true })
+		end
+	end)
+
 	Data.loaded:connect(function(player)
 		ensureDaily(player)
 		-- Milestones read lifetime metrics, so a returning player may already

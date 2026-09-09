@@ -70,6 +70,9 @@ local function template()
 		},
 		rewards = { lastLogin = "", streak = 0, chests = 0 },
 
+		-- The rules card shows once per account, not once per session.
+		seenIntro = false,
+
 		-- Weekly ladder. dayPoints enforces the daily cap that pushes play
 		-- DAYS rather than long single sessions.
 		contract = { week = "", points = 0, dayPoints = 0, day = "", claimed = {} },
@@ -280,6 +283,7 @@ function Data.snapshot(player: Player)
 		quests = profile.quests,
 		stats = profile.stats,
 		rewards = profile.rewards,
+		seenIntro = profile.seenIntro,
 		contract = profile.contract,
 		descent = profile.descent,
 		cosmetics = profile.cosmetics,

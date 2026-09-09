@@ -9,11 +9,13 @@
 local CONTROLLERS = {
 	"State",
 	"Effects",
+	"Atmosphere",
 	"Mining",
 	"Panels",
 	"Notify",
 	"Hud",
 	"Crew",
+	"Intro",
 	"Onboarding",
 }
 

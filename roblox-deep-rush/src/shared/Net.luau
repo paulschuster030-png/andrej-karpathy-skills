@@ -46,6 +46,7 @@ Net.Events = {
 	EquipCosmetic = 6,
 	BuyCosmetic = 4,
 	WatchAd = 1,
+	IntroSeen = 1,
 }
 
 -- Server -> client only.

@@ -32,6 +32,7 @@ State.data = {
 	buffs = {},
 	gamepasses = {},
 	streak = 0,
+	seenIntro = nil, -- nil until the first snapshot; see Client/Intro.luau
 	contract = { week = "", points = 0, dayPoints = 0, claimed = {} },
 	descent = { days = 0, lastDay = "", claimed = {} },
 	cosmetics = { owned = {}, equipped = {} },
