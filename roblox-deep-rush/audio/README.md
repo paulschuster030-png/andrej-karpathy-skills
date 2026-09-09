@@ -7,10 +7,33 @@ Klick am Loop-Punkt.
 Erzeugt mit `python3 tools/make-audio.py`. Wenn dir etwas nicht gefällt:
 die Parameter stehen alle in dem Skript, neu erzeugen dauert Sekunden.
 
+## Warum du das selbst machen musst
+
+Roblox spielt ausschließlich Audio ab, das auf **Roblox' eigenen Servern**
+liegt. Eine Place-Datei kann Sound nicht mitbringen, nur auf eine Asset-ID
+verweisen — und Uploads laufen über deinen Account, nicht über meinen.
+Deshalb liegen die Dateien hier fertig, aber die IDs sind leer.
+
+Der Server sagt dir das beim Start selbst. Im Output steht dann:
+
+```
+[DEEP RUSH] audio: 9 of 9 sounds are still on the built-in fallback.
+  Upload these in Studio (Home > Asset Manager > Audio > right-click > Add Audio),
+  then paste each id into Shared/Config/Audio -> Audio.Custom:
+    ambienceSurface = "" -- audio/ambience-surface.ogg
+    ...
+```
+
+Die Zeile verschwindet, sobald alle neun IDs eingetragen sind.
+
 ## Hochladen (einmalig, ~5 Minuten)
 
-1. **Creator Dashboard ▸ Development Items ▸ Audio ▸ Upload Audio**
-2. Alle Dateien aus diesem Ordner hochladen
+Der schnellste Weg führt über Studio, weil du dort alle neun auf einmal
+auswählen kannst:
+
+1. **Studio ▸ Home ▸ Asset Manager ▸ Audio ▸ Rechtsklick ▸ Add Audio**
+   (alternativ: Creator Dashboard ▸ Development Items ▸ Audio ▸ Upload Audio)
+2. Alle neun Dateien aus diesem Ordner auswählen und hochladen
 3. Bei jeder Datei die **Asset-ID** kopieren (die Zahl in der URL)
 4. In `src/shared/Config/Audio.luau` eintragen:
 

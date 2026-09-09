@@ -69,6 +69,7 @@ src/shared/          ReplicatedStorage/Shared — von Server UND Client genutzt
     Season.luau      das Wochenend-Fenster mit dem exklusiven Badge
     Hazards.luau     die sichtbaren Gefahrenzonen
     Audio.luau       alle Sounds — hier deine eigenen Asset-IDs eintragen
+    Tools.luau       die 5 Spitzhacken-Stufen (folgen dem Drill-Upgrade)
     Crew.luau        Co-Play: Bonus, Pings, Rettung
     Cosmetics.luau   Lampen, Trails, Titel — die Status-Ebene
     Rebirth.luau     Prestige-Anforderungen und Boni
@@ -86,7 +87,8 @@ src/server/          ServerScriptService/Server — autoritativ
   World.luau         gechunkter 3.000-m-Schacht, Erz-Nodes, Kisten
   Mining.luau        der Schwung, der Roll, der Zahlen-Pop
   Cargo.luau         ungebunkerte Beute + Gier-Messung
-  Surface.luau       Lift nach oben, Bank an der Oberfläche
+  Tools.luau         die Spitzhacke in der Hand, animiert per Motor6D
+  Surface.luau       Lift nach oben, Bank an der Oberfläche, Notaufstieg
   Steal.luau         Kisten und Snatch — die soziale Mechanik
   Quests.luau        alle Aufgaben, ein Eintrittspunkt
   Contracts.luau     Wochen-Contract und Descent Log
@@ -121,7 +123,8 @@ tools/
   balance-spec.luau  57 Design-Zusagen als Assertions
   protocol-check.py  prüft, ob Client und Server dieselben Remotes benutzen
   sim-check.py       startet den echten Server headless
-  sim-spec.luau      25 Laufzeit-Checks: Mining, Bank, Lift, Gefahren, Crew
+  sim-spec.luau      34 Laufzeit-Checks: Mining, Bank, Lift, Werkzeug,
+                     Gefahren, Crew, Notaufstieg, Rückweg vom Grund
   robloxstub.luau    genug Roblox-API, um den Server ohne Roblox laufen zu lassen
   make-audio.py      erzeugt die Sounds in audio/
   audio-check.py     misst, ob die Loops wirklich nahtlos sind
@@ -144,7 +147,7 @@ cover/
 Der Code ist nicht nur geschrieben, sondern geprüft:
 
 ```bash
-# Syntax/Compile aller 55 Luau-Dateien (braucht die Luau-CLI)
+# Syntax/Compile aller 57 Luau-Dateien (braucht die Luau-CLI)
 find src -name '*.luau' -exec luau-compile --null -O2 {} \;
 
 # Die Ökonomie tatsächlich ausrechnen, nicht schätzen
@@ -175,7 +178,7 @@ nicht simuliert.
 "das erste Rebirth dauert 15–90 Minuten", "Co-Play steht nie auf dem
 Onboarding-Pfad".
 
-Die Prüfungen haben bisher vier echte Fehler gefunden, die sonst live gegangen
+Die Prüfungen haben bisher acht echte Fehler gefunden, die sonst live gegangen
 wären:
 
 - `Format.short` hat runde Zahlen um den Faktor 10 verkleinert
@@ -185,6 +188,18 @@ wären:
   Tagesgrenze mit **einer** Einzahlung gefüllt.
 - **Heruntergefallene Frachtkisten konnten gar nicht aufgehoben werden**: der
   Server akzeptierte `GrabCrate`, aber kein Knopf im Client hat es je gesendet.
+- **Am Grund des Schachts saß man fest.** Die nächste Liftplattform lag 31 Studs
+  *unter* dem Boden, die übernächsten 172 und 536 Studs darüber — bei einer
+  Sprunghöhe von 7. Jetzt gibt es einen Lift pro Chunk, einen fest am Grund und
+  zusätzlich den Notaufstieg.
+- **Roblox hätte zwei Drittel der Welt gelöscht.** `FallenPartsDestroyHeight`
+  steht standardmäßig auf -500, der Schacht reicht bis -9.000: alles darunter —
+  Spieler und Frachtkisten eingeschlossen — wäre bei Ankunft verschwunden.
+- **Die Tiefe kam vom Client.** Wer aufhörte sie zu melden, ist nie erstickt; wer
+  3000 meldete, bekam Tiefen-Meilensteine und das Rebirth-Tor geschenkt. Der
+  Server misst sie jetzt selbst.
+- **Einzahlen konnte stumm bleiben.** Der Leaderboard-Schreibvorgang lag zwischen
+  Auszahlung und Rückmeldung; ein Fehler dort hat bezahlt, aber nichts angezeigt.
 
 ---
 
@@ -193,6 +208,7 @@ wären:
 | Schritt | Wo |
 |---|---|
 | Gamepass-, Product- und Daily-Deal-IDs eintragen | `src/shared/Config/Products.luau` |
+| **Die 9 Sounds hochladen und IDs eintragen** | `audio/` → `src/shared/Config/Audio.luau` |
 | Icon und Thumbnails hochladen | `cover/out/` — siehe [`cover/README.md`](cover/README.md) |
 | Titel und Beschreibung | Creator-Dashboard — siehe `LAUNCH_PLAYBOOK.md` |
 | API-Zugriff für DataStores aktivieren | Game Settings ▸ Security |

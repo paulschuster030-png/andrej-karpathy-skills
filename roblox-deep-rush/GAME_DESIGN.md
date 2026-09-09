@@ -377,6 +377,47 @@ Sichtbare Gefahren sind Deko, die weh tut.
 
 ---
 
+## 10e. Werkzeug in der Hand und ein Weg zurück
+
+Zwei Dinge, die das Spiel gebraucht hat und die erst der Laufzeit-Simulator
+sichtbar gemacht hat.
+
+**Die Spitzhacke.** Vorher hat man mit leeren Händen auf Stein eingeschlagen —
+der Abbau war nur ein Fortschrittsbalken. Jetzt trägt jeder eine Spitzhacke,
+die per `Motor6D` an der Hand hängt (nicht geschweißt, sonst ließe sie sich
+nicht animieren) und bei jedem Schlag ausholt. Sie hat fünf Stufen, die dem
+Drill-Upgrade folgen:
+
+| Drill-Level | Spitzhacke |
+|---|---|
+| 0 | Rusted Pick |
+| 5 | Steel Pick |
+| 15 | Reinforced Pick |
+| 30 | Gilded Pick |
+| 50 | Abyssal Drill |
+
+Das ist der billigste Statuskanal, den es gibt: Man sieht am Werkzeug des
+anderen, wie weit er ist, ohne dass jemand etwas sagen muss — und seit
+Roblox' Chat-Altersprüfung sagt sowieso kaum noch jemand etwas.
+
+**Der Rückweg.** Der Simulator hat den Boden des Schachts als Falle entlarvt:
+Die nächste Liftplattform lag 31 Studs *unter* dem Boden, die übernächsten 172
+und 536 Studs darüber. Sprunghöhe: 7. Wer unten ankam, kam nicht mehr weg.
+Drei Änderungen:
+
+- **Ein Lift pro Chunk** statt jedem zweiten — der Abstand nach oben ist nie
+  größer als ein Chunk.
+- **Ein fester Lift am Grund**, auf einem eigenen Podest.
+- **Notaufstieg** als letzte Sicherung: 12 Sekunden stillstehen, dann zurück
+  an die Oberfläche. Wer sich dabei mehr als 22 Studs bewegt, bricht ab — es
+  ist eine Rettung, keine Abkürzung.
+
+Der Simulator prüft alle drei: Er misst den Abstand zur nächsten Plattform vom
+tiefsten Punkt aus, fährt tatsächlich Lift und misst die Landeposition, und
+startet den Notaufstieg einmal erfolgreich und einmal mit Bewegung.
+
+---
+
 ## 11. Ökonomie in Zahlen
 
 Aus `tools/balance-check.py`, nicht geschätzt:

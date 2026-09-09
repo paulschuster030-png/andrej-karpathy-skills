@@ -17,7 +17,7 @@
       <Color3 name="FogColor"><R>0.06</R><G>0.06</G><B>0.08</B></Color3>
     </Properties>
   </Item>
-  <Item class="ReplicatedStorage" referent="RBX37">
+  <Item class="ReplicatedStorage" referent="RBX38">
     <Properties>
       <string name="Name">ReplicatedStorage</string>
     </Properties>
@@ -80,6 +80,33 @@ Audio.Custom = {
 
 	music = "", -- optional loop; left empty on purpose, see below
 }
+
+--- The nine files in `audio/`, in upload order. This is what the boot notice
+--- checks: fill every slot here and the game runs entirely on your own audio.
+--- `music` is not in the list because it is meant to stay empty (see below).
+Audio.Uploads = {
+	{ slot = "ambienceSurface", file = "audio/ambience-surface.ogg" },
+	{ slot = "ambienceShallow", file = "audio/ambience-shallow.ogg" },
+	{ slot = "ambienceDeep", file = "audio/ambience-deep.ogg" },
+	{ slot = "ambienceAbyss", file = "audio/ambience-abyss.ogg" },
+	{ slot = "zoneGas", file = "audio/zone-gas.ogg" },
+	{ slot = "zoneVent", file = "audio/zone-vent.ogg" },
+	{ slot = "liftMotor", file = "audio/lift-motor.ogg" },
+	{ slot = "pickHit", file = "audio/pick-hit.ogg" },
+	{ slot = "rareReveal", file = "audio/rare-reveal.ogg" },
+}
+
+--- Slots still waiting on an asset id, in upload order.
+function Audio.missing()
+	local out = {}
+	for _, entry in ipairs(Audio.Uploads) do
+		local id = Audio.Custom[entry.slot]
+		if not id or id == "" then
+			table.insert(out, entry)
+		end
+	end
+	return out
+end
 
 --- Which positional loop each hazard kind uses. Persistent kinds get the
 --- hiss, pulsing kinds get the rumble.
@@ -575,6 +602,11 @@ return {
 	StudsPerMeter = 3, -- world scale: 3 studs of descent = 1 "meter" of depth
 	SurfaceY = 0, -- y=0 is depth 0
 	BankRadius = 26, -- studs around the vault that count as "at the surface"
+
+	-- The guarantee that nobody is ever stuck. Slower than a lift pad and
+	-- interruptible, so lift pads keep their value, but available anywhere.
+	EmergencyAscentSeconds = 12,
+	EmergencyAscentDrift = 22, -- studs you may move before it cancels
 
 	-- The spawn pad's colour, as RGB. Home base needs to be distinct from the
 	-- gold vault, the green lifts and the red gate beacons, so change this
@@ -1652,6 +1684,91 @@ return Season
         </Item>
         <Item class="ModuleScript" referent="RBX32">
           <Properties>
+            <string name="Name">Tools</string>
+            <ProtectedString name="Source"><![CDATA[
+--!nonstrict
+--[[
+	Tools.luau — the pickaxe in your hand.
+
+	The game shipped without one. Players held nothing, swung nothing, and the
+	only sign that mining was happening was a progress bar. In a game whose
+	entire verb is "mine", that is the first thing anyone notices missing.
+
+	The pickaxe also does a second job: it is the only upgrade in the game you
+	can SEE. Drill Power is otherwise an invisible number that makes a bar
+	fill faster. Now it changes the thing in your hand, and other players can
+	tell how far along you are by looking at you.
+]]
+
+local Tools = {}
+
+--- Picked by Drill Power level. `from` is inclusive.
+Tools.Tiers = {
+	{
+		from = 0,
+		name = "Rusted Pick",
+		haft = { 96, 68, 38 },
+		head = { 138, 108, 78 },
+		headSize = { 3.4, 0.5, 0.5 },
+		neon = false,
+	},
+	{
+		from = 5,
+		name = "Steel Pick",
+		haft = { 104, 74, 42 },
+		head = { 188, 194, 204 },
+		headSize = { 3.9, 0.6, 0.6 },
+		neon = false,
+	},
+	{
+		from = 15,
+		name = "Reinforced Pick",
+		haft = { 72, 76, 86 },
+		head = { 150, 172, 198 },
+		headSize = { 4.4, 0.7, 0.7 },
+		neon = false,
+	},
+	{
+		from = 26,
+		name = "Gilded Pick",
+		haft = { 78, 60, 34 },
+		head = { 255, 205, 90 },
+		headSize = { 4.8, 0.8, 0.8 },
+		neon = false,
+	},
+	{
+		from = 38,
+		name = "Abyssal Drill",
+		haft = { 34, 30, 44 },
+		head = { 0, 255, 214 },
+		headSize = { 5.2, 0.9, 0.9 },
+		neon = true,
+	},
+}
+
+function Tools.tierFor(drillLevel: number)
+	local chosen = Tools.Tiers[1]
+	for _, tier in ipairs(Tools.Tiers) do
+		if (drillLevel or 0) >= tier.from then
+			chosen = tier
+		end
+	end
+	return chosen
+end
+
+--- Where the pickaxe sits relative to the hand, and how far it swings.
+Tools.Grip = { 0, -1.1, -0.4 }
+Tools.SwingAngle = 105 -- degrees the head travels on a chop
+Tools.ReturnFraction = 0.45 -- share of the swing spent coming back
+
+return Tools
+
+]]></ProtectedString>
+            <bool name="Disabled">false</bool>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="RBX33">
+          <Properties>
             <string name="Name">Upgrades</string>
             <ProtectedString name="Source"><![CDATA[
 --!nonstrict
@@ -1810,7 +1927,7 @@ return Upgrades
           </Properties>
         </Item>
       </Item>
-      <Item class="ModuleScript" referent="RBX33">
+      <Item class="ModuleScript" referent="RBX34">
         <Properties>
           <string name="Name">Format</string>
           <ProtectedString name="Source"><![CDATA[
@@ -1898,7 +2015,7 @@ return Format
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX34">
+      <Item class="ModuleScript" referent="RBX35">
         <Properties>
           <string name="Name">Net</string>
           <ProtectedString name="Source"><![CDATA[
@@ -1934,7 +2051,7 @@ Net.Events = {
 	RerollDaily = 2,
 	Rebirth = 2,
 	UseLift = 3,
-	ReportDepth = 20,
+	EmergencyAscent = 2,
 
 	-- Co-play. Ping is the only one with real traffic; it is the entire
 	-- coordination vocabulary now that chat is age-gated.
@@ -2134,7 +2251,7 @@ return Net
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX35">
+      <Item class="ModuleScript" referent="RBX36">
         <Properties>
           <string name="Name">Rarity</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2237,7 +2354,7 @@ return Rarity
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX36">
+      <Item class="ModuleScript" referent="RBX37">
         <Properties>
           <string name="Name">Signal</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2295,15 +2412,15 @@ return Signal
       </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="RBX63">
+  <Item class="ServerScriptService" referent="RBX65">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Folder" referent="RBX38">
+    <Item class="Folder" referent="RBX39">
       <Properties>
         <string name="Name">Server</string>
       </Properties>
-      <Item class="ModuleScript" referent="RBX39">
+      <Item class="ModuleScript" referent="RBX40">
         <Properties>
           <string name="Name">Ads</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2467,7 +2584,7 @@ return Ads
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX40">
+      <Item class="ModuleScript" referent="RBX41">
         <Properties>
           <string name="Name">AntiCheat</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2563,7 +2680,7 @@ return AntiCheat
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="Script" referent="RBX41">
+      <Item class="Script" referent="RBX42">
         <Properties>
           <string name="Name">Bootstrap</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2583,6 +2700,7 @@ local SERVICES = {
 	"Economy",
 	"Cargo",
 	"Cosmetics",
+	"Tools",
 	"Contracts",
 	"Quests",
 	"Rift",
@@ -2626,11 +2744,30 @@ end
 
 print(string.format("[DEEP RUSH] %d services up in %.2fs", #SERVICES, os.clock() - started))
 
+-- The audio notice. Roblox will only play sound that lives on its own
+-- servers, so the nine files in `audio/` have to be uploaded from your own
+-- account — no place file can carry them and nobody can upload them for you.
+-- Until then the game runs on the built-in client sounds, which work but are
+-- much thinner. This says so once, plainly, instead of leaving you to wonder
+-- why it sounds flat.
+local missingAudio = require(game:GetService("ReplicatedStorage").Shared.Config.Audio).missing()
+if #missingAudio > 0 then
+	local lines = {
+		`[DEEP RUSH] audio: {#missingAudio} of 9 sounds are still on the built-in fallback.`,
+		"  Upload these in Studio (Home > Asset Manager > Audio > right-click > Add Audio),",
+		"  then paste each id into Shared/Config/Audio -> Audio.Custom:",
+	}
+	for _, entry in ipairs(missingAudio) do
+		table.insert(lines, `    {entry.slot} = "" -- {entry.file}`)
+	end
+	print(table.concat(lines, "\n"))
+end
+
 ]]></ProtectedString>
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX42">
+      <Item class="ModuleScript" referent="RBX43">
         <Properties>
           <string name="Name">Cargo</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2781,7 +2918,7 @@ return Cargo
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX43">
+      <Item class="ModuleScript" referent="RBX44">
         <Properties>
           <string name="Name">Contracts</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3064,7 +3201,7 @@ return Contracts
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX44">
+      <Item class="ModuleScript" referent="RBX45">
         <Properties>
           <string name="Name">Cosmetics</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3383,7 +3520,7 @@ return Cosmetics
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX45">
+      <Item class="ModuleScript" referent="RBX46">
         <Properties>
           <string name="Name">Crew</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3775,7 +3912,7 @@ return Crew
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX46">
+      <Item class="ModuleScript" referent="RBX47">
         <Properties>
           <string name="Name">Data</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4175,7 +4312,7 @@ return Data
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX47">
+      <Item class="ModuleScript" referent="RBX48">
         <Properties>
           <string name="Name">Drones</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4349,7 +4486,7 @@ return Drones
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX48">
+      <Item class="ModuleScript" referent="RBX49">
         <Properties>
           <string name="Name">Economy</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4626,7 +4763,7 @@ return Economy
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX49">
+      <Item class="ModuleScript" referent="RBX50">
         <Properties>
           <string name="Name">Feedback</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4687,7 +4824,7 @@ return Feedback
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX50">
+      <Item class="ModuleScript" referent="RBX51">
         <Properties>
           <string name="Name">Hazards</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4726,6 +4863,7 @@ local Layers = require(Shared.Config.Layers)
 local Data = require(script.Parent.Data)
 local Economy = require(script.Parent.Economy)
 local Feedback = require(script.Parent.Feedback)
+local World = require(script.Parent.World)
 
 local Hazards = {}
 
@@ -4852,7 +4990,13 @@ local function tick(delta: number)
 			continue
 		end
 
-		local depth = session.depth or 0
+		-- Measured here rather than read from session.depth, which another
+		-- loop maintains at a different rate. Reading it meant a player who
+		-- had just surfaced kept suffocating for a tick or two on a stale
+		-- number — invisible in play, and the sort of ordering bug that only
+		-- ever gets worse.
+		local root = rootOf(player)
+		local depth = root and World.depthOf(root.Position) or 0
 		local layer = Layers.at(depth)
 		local maxOxygen = Economy.maxOxygen(player)
 
@@ -4905,7 +5049,7 @@ return Hazards
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX51">
+      <Item class="ModuleScript" referent="RBX52">
         <Properties>
           <string name="Name">Leaderboards</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5146,7 +5290,7 @@ return Leaderboards
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX52">
+      <Item class="ModuleScript" referent="RBX53">
         <Properties>
           <string name="Name">Mining</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5415,6 +5559,10 @@ function Mining.begin(player: Player, nodeId: string)
 		endsAt = os.clock() + duration,
 		duration = duration,
 	}
+
+	-- The pickaxe chop is timed to the same duration, so the hit lands when
+	-- the bar fills rather than on its own schedule.
+	require(script.Parent.Tools).swing(player, duration)
 	Feedback.effect(player, "swing", { duration = duration, nodeId = nodeId })
 end
 
@@ -5448,35 +5596,43 @@ function Mining.start()
 		end
 	end)
 
-	--- Depth is reported by the client (it owns the character) but it is only
-	--- ever used for display, rift eligibility and hazards — never for pay.
-	--- Payout depth comes from the node's own recorded position.
-	Net.on("ReportDepth", function(player)
-		local session = Data.session(player)
-		local root = rootOf(player)
-		if not session or not root then
-			return
-		end
-
-		local depth = World.depthOf(root.Position)
-		session.depth = depth
-
-		local profile = Data.get(player)
-		if profile and depth > profile.stats.bestDepth then
-			local gained = depth - profile.stats.bestDepth
-			profile.stats.bestDepth = depth
-			Data.push(player, { stats = { bestDepth = depth } })
-			Quests.record(player, "depth_alltime", depth, "max")
-			Contracts.award(player, gained * ContractConfig.Points.perDepthRecord)
-		end
-		Quests.record(player, "depth", depth, "max")
-		Data.push(player, { depth = depth })
-	end)
-
 	task.spawn(function()
 		while true do
 			step()
 			task.wait(0.1)
+		end
+	end)
+
+	--- Depth is measured from the character the server can see, on a timer.
+	---
+	--- It used to be reported by the client, which was wrong twice over: a
+	--- client that simply stopped sending it never ran out of air, and one
+	--- that sent 3,000 collected the depth milestones and unlocked the
+	--- rebirth gate without moving. Payout depth always came from the node's
+	--- own recorded position, so cash was never at risk — but records,
+	--- hazards and rift eligibility all were.
+	task.spawn(function()
+		while true do
+			task.wait(0.4)
+			for _, player in ipairs(Players:GetPlayers()) do
+				local session = Data.session(player)
+				local root = rootOf(player)
+				if session and root then
+					local depth = World.depthOf(root.Position)
+					session.depth = depth
+
+					local profile = Data.get(player)
+					if profile and depth > profile.stats.bestDepth then
+						local gained = depth - profile.stats.bestDepth
+						profile.stats.bestDepth = depth
+						Data.push(player, { stats = { bestDepth = depth } })
+						Quests.record(player, "depth_alltime", depth, "max")
+						Contracts.award(player, gained * ContractConfig.Points.perDepthRecord)
+					end
+					Quests.record(player, "depth", depth, "max")
+					Data.push(player, { depth = depth })
+				end
+			end
 		end
 	end)
 end
@@ -5487,7 +5643,7 @@ return Mining
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX53">
+      <Item class="ModuleScript" referent="RBX54">
         <Properties>
           <string name="Name">Monetization</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5714,7 +5870,7 @@ return Monetization
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX54">
+      <Item class="ModuleScript" referent="RBX55">
         <Properties>
           <string name="Name">Quests</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6037,7 +6193,7 @@ return Quests
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX55">
+      <Item class="ModuleScript" referent="RBX56">
         <Properties>
           <string name="Name">Rebirth</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6131,7 +6287,7 @@ return Rebirth
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX56">
+      <Item class="ModuleScript" referent="RBX57">
         <Properties>
           <string name="Name">Rewards</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6239,7 +6395,7 @@ return Rewards
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX57">
+      <Item class="ModuleScript" referent="RBX58">
         <Properties>
           <string name="Name">Rift</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6406,7 +6562,7 @@ return Rift
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX58">
+      <Item class="ModuleScript" referent="RBX59">
         <Properties>
           <string name="Name">Season</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6598,7 +6754,7 @@ return Season
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX59">
+      <Item class="ModuleScript" referent="RBX60">
         <Properties>
           <string name="Name">Steal</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6986,7 +7142,7 @@ return Steal
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX60">
+      <Item class="ModuleScript" referent="RBX61">
         <Properties>
           <string name="Name">Surface</string>
           <ProtectedString name="Source"><![CDATA[
@@ -7111,6 +7267,77 @@ function Surface.deposit(player: Player)
 	end
 end
 
+--- The way out that always exists.
+---
+--- Lift pads are on every chunk now, but "every chunk" is not "everywhere":
+--- a player can end up wedged, or on a ledge with nothing below, or simply
+--- lost. A mining game where getting stuck is possible is a mining game where
+--- someone loses an hour of cargo to level geometry.
+---
+--- It is deliberately worse than a lift: three times the channel, and any real
+--- movement cancels it. That keeps the pads worth finding.
+function Surface.emergencyAscent(player: Player)
+	local session = Data.session(player)
+	local root = rootOf(player)
+	if not session or not root or session.lifting then
+		return
+	end
+
+	if (session.depth or 0) < 20 then
+		Feedback.toast(player, {
+			title = "YOU ARE ALREADY UP",
+			body = "Emergency ascent only works underground.",
+			kind = "error",
+		})
+		return
+	end
+
+	session.lifting = true
+	local origin = root.Position
+	local seconds = Config.EmergencyAscentSeconds
+
+	Feedback.effect(player, "lift", { duration = seconds })
+	Feedback.toast(player, {
+		title = "EMERGENCY ASCENT",
+		body = `Hold still for {seconds}s. Moving cancels it.`,
+		kind = "quest",
+		duration = seconds,
+	})
+
+	task.spawn(function()
+		local elapsed = 0
+		while elapsed < seconds do
+			task.wait(0.5)
+			elapsed += 0.5
+
+			local current = rootOf(player)
+			if not player.Parent or not current then
+				session.lifting = false
+				return
+			end
+
+			if (current.Position - origin).Magnitude > Config.EmergencyAscentDrift then
+				session.lifting = false
+				Feedback.toast(player, {
+					title = "ASCENT CANCELLED",
+					body = "You moved. Stand still and try again.",
+					kind = "error",
+				})
+				return
+			end
+		end
+
+		session.lifting = false
+		local current = rootOf(player)
+		if not current or not World.spawnPosition then
+			return
+		end
+		current.CFrame = CFrame.new(World.spawnPosition + Vector3.new(0, 3, 0))
+		session.depth = 0
+		Feedback.effect(player, "lifted", {})
+	end)
+end
+
 --- Ride a lift pad back to the surface. The channel time is the real cost of
 --- being deep; the Express Lift pass removes it, which is exactly the kind
 --- of thing a pass should sell — time, not power.
@@ -7162,6 +7389,10 @@ function Surface.start()
 		Surface.useLift(player)
 	end)
 
+	Net.on("EmergencyAscent", function(player)
+		Surface.emergencyAscent(player)
+	end)
+
 	-- Track the deepest point of the current trip for the streak rule.
 	task.spawn(function()
 		while true do
@@ -7182,7 +7413,176 @@ return Surface
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX61">
+      <Item class="ModuleScript" referent="RBX62">
+        <Properties>
+          <string name="Name">Tools</string>
+          <ProtectedString name="Source"><![CDATA[
+--!nonstrict
+--[[
+	Tools.luau — build the pickaxe, and swing it.
+
+	A Motor6D rather than a WeldConstraint, because a weld cannot be animated
+	and the swing is most of the point: a progress bar tells you mining is
+	happening, an arm coming down tells you it is happening to THAT rock.
+
+	Rig-agnostic: R15 characters have a RightHand, R6 characters have a
+	"Right Arm". New experiences default to R15, but a place can be switched
+	to R6 in one setting and nobody would think to update this file.
+]]
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Config = require(Shared.Config.Tools)
+
+local Data = require(script.Parent.Data)
+
+local Tools = {}
+
+local motors: { [Player]: Motor6D } = {}
+
+local function handOf(character: Model)
+	return character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+end
+
+local function makePart(name: string, size: Vector3, color, material)
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Size = size
+	part.Color = color
+	part.Material = material
+	part.CanCollide = false
+	part.Massless = true
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	return part
+end
+
+local function rgb(triple)
+	return Color3.fromRGB(triple[1], triple[2], triple[3])
+end
+
+--- Rebuild the pickaxe for whatever tier the player is currently on.
+function Tools.equip(player: Player)
+	local character = player.Character
+	local profile = Data.get(player)
+	if not character or not profile then
+		return
+	end
+
+	local hand = handOf(character)
+	if not hand then
+		return
+	end
+
+	local existing = character:FindFirstChild("Pickaxe")
+	if existing then
+		existing:Destroy()
+	end
+	motors[player] = nil
+
+	local tier = Config.tierFor(profile.upgrades.drill or 0)
+
+	local haft = makePart("Pickaxe", Vector3.new(0.28, 2.6, 0.28), rgb(tier.haft), Enum.Material.Wood)
+	haft.CFrame = hand.CFrame
+	haft.Parent = character
+
+	local head = makePart(
+		"Head",
+		Vector3.new(tier.headSize[1], tier.headSize[2], tier.headSize[3]),
+		rgb(tier.head),
+		tier.neon and Enum.Material.Neon or Enum.Material.Metal
+	)
+	head.CFrame = haft.CFrame * CFrame.new(0, 1.3, 0)
+	head.Parent = haft
+
+	local headWeld = Instance.new("WeldConstraint")
+	headWeld.Part0 = haft
+	headWeld.Part1 = head
+	headWeld.Parent = haft
+
+	-- The tip, so the silhouette reads as a pick rather than a hammer.
+	local tip = makePart("Tip", Vector3.new(0.5, 0.9, 0.4), rgb(tier.head), head.Material)
+	tip.CFrame = head.CFrame * CFrame.new(-tier.headSize[1] / 2 + 0.2, -0.4, 0)
+	tip.Parent = haft
+
+	local tipWeld = Instance.new("WeldConstraint")
+	tipWeld.Part0 = haft
+	tipWeld.Part1 = tip
+	tipWeld.Parent = haft
+
+	if tier.neon then
+		local glow = Instance.new("PointLight")
+		glow.Color = rgb(tier.head)
+		glow.Range = 14
+		glow.Brightness = 2
+		glow.Parent = head
+	end
+
+	local motor = Instance.new("Motor6D")
+	motor.Name = "PickaxeMotor"
+	motor.Part0 = hand
+	motor.Part1 = haft
+	motor.C0 = CFrame.new(Config.Grip[1], Config.Grip[2], Config.Grip[3])
+	motor.Parent = hand
+
+	motors[player] = motor
+end
+
+--- One chop, timed to the swing the server is already running.
+function Tools.swing(player: Player, duration: number)
+	local motor = motors[player]
+	if not motor or not motor.Parent then
+		return
+	end
+
+	local rest = CFrame.new(Config.Grip[1], Config.Grip[2], Config.Grip[3])
+	local raised = rest * CFrame.Angles(math.rad(-Config.SwingAngle * 0.5), 0, 0)
+	local struck = rest * CFrame.Angles(math.rad(Config.SwingAngle * 0.5), 0, 0)
+
+	local down = math.max(duration * (1 - Config.ReturnFraction), 0.08)
+	local back = math.max(duration * Config.ReturnFraction, 0.06)
+
+	motor.C0 = raised
+	local chop = TweenService:Create(motor, TweenInfo.new(down, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { C0 = struck })
+	chop:Play()
+	chop.Completed:Once(function()
+		if motor.Parent then
+			TweenService:Create(motor, TweenInfo.new(back, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { C0 = rest }):Play()
+		end
+	end)
+end
+
+function Tools.start()
+	local function hook(player: Player)
+		player.CharacterAdded:Connect(function()
+			-- The hand is not there on the first frame.
+			task.wait(0.6)
+			Tools.equip(player)
+		end)
+		if player.Character then
+			task.delay(1, Tools.equip, player)
+		end
+	end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		hook(player)
+	end
+	Players.PlayerAdded:Connect(hook)
+
+	Players.PlayerRemoving:Connect(function(player)
+		motors[player] = nil
+	end)
+end
+
+return Tools
+
+]]></ProtectedString>
+          <bool name="Disabled">false</bool>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX63">
         <Properties>
           <string name="Name">Upgrades</string>
           <ProtectedString name="Source"><![CDATA[
@@ -7236,6 +7636,12 @@ function Upgrades.buy(player: Player, upgradeId: string)
 	Quests.record(player, "upgrade", 1)
 	Economy.applyCharacter(player)
 
+	-- Drill Power is the one upgrade with a visible form. Rebuild the pickaxe
+	-- so crossing a tier is something the player and everyone near them sees.
+	if upgradeId == "drill" then
+		require(script.Parent.Tools).equip(player)
+	end
+
 	Feedback.effect(player, "upgrade", { id = upgradeId })
 	Feedback.toast(player, {
 		title = `{upgrade.name} Lv{level + 1}`,
@@ -7258,7 +7664,7 @@ return Upgrades
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX62">
+      <Item class="ModuleScript" referent="RBX64">
         <Properties>
           <string name="Name">World</string>
           <ProtectedString name="Source"><![CDATA[
@@ -7299,7 +7705,7 @@ local SHAFT_RADIUS = 62
 local WALL_SEGMENTS = 10
 local SHELVES_PER_CHUNK = 2
 local NODES_PER_SHELF = 6
-local LIFT_EVERY_CHUNKS = 2
+local LIFT_EVERY_CHUNKS = 1 -- every chunk: see the bedrock note in buildChunk
 local KEEP_RADIUS = 2 -- chunks around a player kept alive
 local MAX_DEPTH_METERS = 3000
 
@@ -7484,7 +7890,7 @@ local function buildShelf(parent: Instance, chunkIndex: number, slot: number)
 	local shelfCenter = outward * (SHAFT_RADIUS - 17)
 	local cframe = CFrame.lookAt(Vector3.new(shelfCenter.X, y, shelfCenter.Z), Vector3.new(0, y, 0))
 
-	local shelf = makePart("Shelf", Vector3.new(38, 3, 26), cframe, layerColor(layer), Enum.Material.Rock)
+	local shelf = makePart("Shelf", Vector3.new(54, 3, 36), cframe, layerColor(layer), Enum.Material.Rock)
 	shelf.Parent = parent
 
 	for _ = 1, NODES_PER_SHELF do
@@ -7851,16 +8257,33 @@ local function buildChunk(chunkIndex: number)
 		hazardsPlaced += 1
 	end
 
-	-- The floor of the world.
+	-- The floor of the world, and the way off it.
+	--
+	-- This used to be bedrock and nothing else, which made the bottom of the
+	-- shaft a permanent trap: the nearest lift pad sat below the floor, the
+	-- next two were 172 and 536 studs overhead, and a Roblox character jumps
+	-- about seven. Anyone who fell the whole way was stuck for good.
 	if depth >= MAX_DEPTH_METERS then
+		local floorY = World.yForDepth(MAX_DEPTH_METERS) - 6
 		local floor = makePart(
 			"Bedrock",
 			Vector3.new(SHAFT_RADIUS * 2.4, 12, SHAFT_RADIUS * 2.4),
-			CFrame.new(0, World.yForDepth(MAX_DEPTH_METERS) - 6, 0),
+			CFrame.new(0, floorY, 0),
 			Color3.fromRGB(8, 6, 12),
 			Enum.Material.Basalt
 		)
 		floor.Parent = folder
+
+		local dais = makePart(
+			"BedrockDais",
+			Vector3.new(30, 2, 30),
+			CFrame.new(0, floorY + 7, 0),
+			Color3.fromRGB(22, 18, 30),
+			Enum.Material.Slate
+		)
+		dais.Parent = folder
+
+		buildLiftPad(folder, CFrame.new(0, floorY + 6, 0))
 	end
 
 	folder.Parent = container
@@ -8267,6 +8690,12 @@ local function streamChunks()
 end
 
 function World.start()
+	-- Roblox destroys anything that falls below FallenPartsDestroyHeight, and
+	-- the default is -500. This shaft bottoms out at -9,000. Left alone, the
+	-- entire lower two thirds of the world — and every player and dropped
+	-- cargo crate in it — would be deleted on arrival.
+	workspace.FallenPartsDestroyHeight = World.yForDepth(MAX_DEPTH_METERS) - 400
+
 	container = Instance.new("Folder")
 	container.Name = "DeepRushWorld"
 	container.Parent = workspace
@@ -8295,7 +8724,7 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="RBX64">
+  <Item class="StarterPlayer" referent="RBX66">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
@@ -9530,6 +9959,21 @@ local function buildActions(parent)
 		end,
 	})
 
+	-- Always there once you are underground. It is the answer to "I am stuck",
+	-- and a player who has ever needed it will look for it again.
+	widgets.escapeButton = Ui.button({
+		parent = holder,
+		size = UDim2.fromOffset(176, 48),
+		text = "🆘 EMERGENCY UP",
+		color = theme.panelLight,
+		stroke = theme.danger,
+		scaled = false,
+		visible = false,
+		onClick = function()
+			Net.fire("EmergencyAscent")
+		end,
+	})
+
 	widgets.grabButton = Ui.button({
 		parent = holder,
 		size = UDim2.fromOffset(176, 58),
@@ -9687,6 +10131,9 @@ local function renderContextual()
 		end
 	end
 	widgets.liftButton.Visible = onPad
+
+	-- Hidden on a pad, because there the fast option is right there.
+	widgets.escapeButton.Visible = (State.data.depth or 0) > 20 and not onPad
 
 	-- Dropped crates: the server has always accepted the pickup, but until
 	-- now nothing on screen asked for it.
@@ -10243,17 +10690,6 @@ function Mining.start()
 	end, false, Enum.KeyCode.E, Enum.KeyCode.ButtonR2)
 
 	RunService.Heartbeat:Connect(tick)
-
-	-- Depth is reported on a timer rather than every frame: it drives the
-	-- HUD, hazards and rift eligibility, none of which need 60Hz.
-	task.spawn(function()
-		while true do
-			task.wait(0.5)
-			if rootPart() then
-				Net.fire("ReportDepth")
-			end
-		end
-	end)
 end
 
 return Mining
