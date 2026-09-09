@@ -23,6 +23,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local AudioConfig = require(Shared.Config.Audio)
 local Config = require(Shared.Config.Game)
 local HazardConfig = require(Shared.Config.Hazards)
 local Layers = require(Shared.Config.Layers)
@@ -75,6 +76,27 @@ local function makePart(name: string, size: Vector3, cframe: CFrame, color: Colo
 	return part
 end
 
+--- Attach a positional looping sound to a part. Silently does nothing until
+--- the slot has an asset id, which is why the game is never broken-sounding
+--- before you upload anything — it is just quieter.
+local function attachLoop(part: BasePart, slot: string, volume: number, maxDistance: number)
+	local id = AudioConfig.source(slot)
+	if id == "" then
+		return
+	end
+
+	local sound = Instance.new("Sound")
+	sound.Name = "Loop_" .. slot
+	sound.SoundId = id
+	sound.Looped = true
+	sound.Volume = volume
+	sound.RollOffMode = Enum.RollOffMode.InverseTapered
+	sound.RollOffMinDistance = 8
+	sound.RollOffMaxDistance = maxDistance
+	sound.Parent = part
+	sound:Play()
+end
+
 local function layerColor(layer): Color3
 	return Color3.fromRGB(layer.rock[1], layer.rock[2], layer.rock[3])
 end
@@ -92,7 +114,10 @@ local function spawnNode(parent: Instance, position: Vector3, depth: number, lay
 		layerColor(layer):Lerp(Color3.fromRGB(255, 255, 255), 0.18),
 		Enum.Material.Slate
 	)
-	part.CanCollide = false
+	-- Solid, because walking through a boulder is the most obviously broken
+	-- thing a mining game can do. Mined-out nodes go non-solid in
+	-- World.consumeNode, so you are never stopped by an invisible rock.
+	part.CanCollide = true
 	part:SetAttribute("NodeId", id)
 	part:SetAttribute("Depth", math.floor(depth))
 	part.Parent = parent
@@ -152,6 +177,7 @@ function World.consumeNode(nodeId: string)
 	local part = node.part
 	if part.Parent then
 		part.Transparency = 1
+		part.CanCollide = false
 		for _, piece in ipairs(part:GetChildren()) do
 			if piece:IsA("BasePart") then
 				piece.Transparency = 1
@@ -167,6 +193,7 @@ function World.consumeNode(nodeId: string)
 		if node.part.Parent then
 			node.alive = true
 			node.part.Transparency = 0
+			node.part.CanCollide = true
 			for _, piece in ipairs(node.part:GetChildren()) do
 				if piece:IsA("BasePart") then
 					piece.Transparency = 0.15
@@ -224,6 +251,8 @@ local function buildLiftPad(parent: Instance, cframe: CFrame)
 	)
 	pad:SetAttribute("LiftPad", true)
 	pad.Parent = parent
+
+	attachLoop(pad, "liftMotor", 0.3, 90)
 
 	local billboard = Instance.new("BillboardGui")
 	billboard.Size = UDim2.fromScale(9, 3)
@@ -296,6 +325,13 @@ local function buildHazardZone(parent: Instance, cframe: CFrame, layer)
 	light.Range = kind.radius * 1.6
 	light.Brightness = kind.mode == "persistent" and 1.6 or 0.5
 	light.Parent = zone
+
+	-- You should hear a gas pocket through rock before you round the corner
+	-- into it. Range is generous for that reason.
+	local slot = AudioConfig.ZoneLoops[kindId]
+	if slot then
+		attachLoop(zone, slot, kind.mode == "persistent" and 0.45 or 0.35, kind.radius * 6)
+	end
 
 	-- A floating sign, because a player should be able to name the thing that
 	-- is about to hurt them before it does.
@@ -395,7 +431,6 @@ local function dressShelf(parent: Instance, cframe: CFrame, layer)
 			color:Lerp(Color3.fromRGB(0, 0, 0), rng:NextNumber(0.1, 0.35)),
 			Enum.Material.Rock
 		)
-		rubble.CanCollide = false
 		rubble.Parent = parent
 	end
 
@@ -419,7 +454,7 @@ local function dressShelf(parent: Instance, cframe: CFrame, layer)
 			Color3.fromRGB(255, 226, 170),
 			Enum.Material.Neon
 		)
-		lamp.CanCollide = false
+
 		lamp.Parent = parent
 
 		local glow = Instance.new("PointLight")
@@ -445,15 +480,12 @@ local function buildSupports(parent: Instance, chunkIndex: number)
 		local facing = CFrame.lookAt(Vector3.new(at.X, y, at.Z), Vector3.new(0, y, 0))
 
 		local post = makePart("Support", Vector3.new(2.2, 26, 2.2), facing * CFrame.new(-9, 0, 0), timber, Enum.Material.Wood)
-		post.CanCollide = false
 		post.Parent = parent
 
 		local post2 = makePart("Support", Vector3.new(2.2, 26, 2.2), facing * CFrame.new(9, 0, 0), timber, Enum.Material.Wood)
-		post2.CanCollide = false
 		post2.Parent = parent
 
 		local beam = makePart("Support", Vector3.new(20, 2.2, 2.2), facing * CFrame.new(0, 13, 0), timber, Enum.Material.Wood)
-		beam.CanCollide = false
 		beam.Parent = parent
 
 		local lamp = makePart(
@@ -491,7 +523,6 @@ local function buildStalactites(parent: Instance, chunkIndex: number, layer)
 			layerColor(layer):Lerp(Color3.fromRGB(0, 0, 0), 0.25),
 			Enum.Material.Slate
 		)
-		spike.CanCollide = false
 		spike.Parent = parent
 	end
 end
@@ -647,9 +678,30 @@ local function buildSurface()
 	spawnLocation.CFrame = CFrame.new(0, 1, SHAFT_RADIUS + 18)
 	spawnLocation.Anchored = true
 	spawnLocation.Neutral = true
-	spawnLocation.Color = Color3.fromRGB(120, 200, 255)
+	spawnLocation.Color = Color3.fromRGB(Config.SpawnColor[1], Config.SpawnColor[2], Config.SpawnColor[3])
 	spawnLocation.Material = Enum.Material.Neon
 	spawnLocation.Parent = hub
+
+	-- A ring and a soft light around the pad. The surface has a gold vault, a
+	-- green lift and red gate beacons; home needs its own colour or it is just
+	-- another glowing square.
+	local spawnColor = Color3.fromRGB(Config.SpawnColor[1], Config.SpawnColor[2], Config.SpawnColor[3])
+	local ring = makePart(
+		"SpawnRing",
+		Vector3.new(34, 0.6, 34),
+		CFrame.new(0, 0.4, SHAFT_RADIUS + 18),
+		spawnColor,
+		Enum.Material.Neon
+	)
+	ring.CanCollide = false
+	ring.Transparency = 0.35
+	ring.Parent = hub
+
+	local spawnGlow = Instance.new("PointLight")
+	spawnGlow.Color = spawnColor
+	spawnGlow.Range = 40
+	spawnGlow.Brightness = 2.4
+	spawnGlow.Parent = spawnLocation
 	World.spawnPosition = spawnLocation.Position + Vector3.new(0, 4, 0)
 
 	local sign = makePart(
@@ -701,12 +753,10 @@ local function buildSurface()
 			steel,
 			Enum.Material.Metal
 		)
-		brace.CanCollide = false
 		brace.Parent = hub
 	end
 
 	local wheelHouse = makePart("Headframe", Vector3.new(26, 4, 26), CFrame.new(0, 78, 0), steel, Enum.Material.Metal)
-	wheelHouse.CanCollide = false
 	wheelHouse.Parent = hub
 
 	local wheel = makePart("Wheel", Vector3.new(3, 22, 22), CFrame.new(0, 88, 0), Color3.fromRGB(198, 96, 40), Enum.Material.Metal)
@@ -714,14 +764,38 @@ local function buildSurface()
 	wheel.CanCollide = false
 	wheel.Parent = hub
 
-	-- Railing around the mouth, so the drop reads as deliberate rather than
-	-- like the floor simply stops.
+	-- A solid railing with a gate. Solid, because a barrier you walk through
+	-- is scenery pretending to be architecture. With a gate, because jumping
+	-- into the shaft is the entire game and the way in has to be obvious.
+	local GATE_ANGLE = math.pi / 2 -- the spawn sits on +Z
+	local GATE_HALF_WIDTH = 0.42 -- radians; about a 48-degree opening
 	for post = 1, 28 do
 		local angle = (post / 28) * math.pi * 2
+		local offset = math.abs(((angle - GATE_ANGLE + math.pi) % (math.pi * 2)) - math.pi)
+		if offset > GATE_HALF_WIDTH then
+			local at = Vector3.new(math.cos(angle), 0, math.sin(angle)) * (SHAFT_RADIUS + 4)
+			local rail = makePart("Rail", Vector3.new(1.1, 5, 1.1), CFrame.new(at.X, 2.5, at.Z), Color3.fromRGB(216, 170, 60), Enum.Material.Metal)
+			rail.Parent = hub
+		end
+	end
+
+	-- Gate posts, taller and lit, so the opening reads as the entrance rather
+	-- than as a hole someone forgot to fence.
+	for _, side in ipairs({ -1, 1 }) do
+		local angle = GATE_ANGLE + side * GATE_HALF_WIDTH
 		local at = Vector3.new(math.cos(angle), 0, math.sin(angle)) * (SHAFT_RADIUS + 4)
-		local rail = makePart("Rail", Vector3.new(0.7, 4.2, 0.7), CFrame.new(at.X, 2.1, at.Z), Color3.fromRGB(216, 170, 60), Enum.Material.Metal)
-		rail.CanCollide = false
-		rail.Parent = hub
+		local gatePost = makePart("GatePost", Vector3.new(2, 11, 2), CFrame.new(at.X, 5.5, at.Z), Color3.fromRGB(232, 184, 66), Enum.Material.Metal)
+		gatePost.Parent = hub
+
+		local beacon = makePart("GateBeacon", Vector3.new(2.4, 1.4, 2.4), CFrame.new(at.X, 11.4, at.Z), Color3.fromRGB(255, 120, 90), Enum.Material.Neon)
+		beacon.CanCollide = false
+		beacon.Parent = hub
+
+		local glow = Instance.new("PointLight")
+		glow.Color = Color3.fromRGB(255, 120, 90)
+		glow.Range = 26
+		glow.Brightness = 3
+		glow.Parent = beacon
 	end
 
 	-- Floodlights. The surface should be the brightest place in the game, so
@@ -752,7 +826,6 @@ local function buildSurface()
 	shack.Parent = hub
 
 	local roof = makePart("Shack", Vector3.new(24, 1.4, 20), CFrame.new(-46, 10.6, SHAFT_RADIUS + 22), Color3.fromRGB(150, 62, 42), Enum.Material.Metal)
-	roof.CanCollide = false
 	roof.Parent = hub
 
 	local shackSign = Instance.new("BillboardGui")
@@ -773,7 +846,6 @@ local function buildSurface()
 
 	-- Vault door, so the vault looks like something you put things into.
 	local door = makePart("VaultDoor", Vector3.new(9, 11, 1.4), CFrame.new(0, 5, SHAFT_RADIUS + 26.6), Color3.fromRGB(52, 44, 24), Enum.Material.Metal)
-	door.CanCollide = false
 	door.Parent = hub
 
 	local dial = makePart("VaultDial", Vector3.new(1, 4, 4), CFrame.new(0, 6, SHAFT_RADIUS + 25.8), Color3.fromRGB(255, 226, 150), Enum.Material.Metal)
@@ -799,7 +871,6 @@ local function buildSurface()
 			barrel.Parent = hub
 		else
 			local pile = makePart("Prop", Vector3.new(propRng:NextNumber(2, 5), propRng:NextNumber(1.4, 3), propRng:NextNumber(2, 5)), CFrame.new(at.X, 1.4, at.Z) * CFrame.Angles(0, propRng:NextNumber(0, 6), 0), Color3.fromRGB(96, 88, 78), Enum.Material.Rock)
-			pile.CanCollide = false
 			pile.Parent = hub
 		end
 	end

@@ -24,6 +24,11 @@ return {
 	StudsPerMeter = 3, -- world scale: 3 studs of descent = 1 "meter" of depth
 	SurfaceY = 0, -- y=0 is depth 0
 	BankRadius = 26, -- studs around the vault that count as "at the surface"
+
+	-- The spawn pad's colour, as RGB. Home base needs to be distinct from the
+	-- gold vault, the green lifts and the red gate beacons, so change this
+	-- together with those if you retheme the surface.
+	SpawnColor = { 150, 90, 255 },
 	DeathCargoLoss = 0.30, -- 30% burns, 70% drops as a lootable crate
 	CrateLifetime = 25, -- seconds a dropped crate stays stealable
 	CrateFreeForAllDelay = 6, -- owner-only window before it opens to everyone
