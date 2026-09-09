@@ -17,20 +17,45 @@
 	broken audio that looks configured. The built-ins are worse-sounding and
 	honest.
 
-	**The single biggest upgrade you can make to how this game feels** is
-	uploading three ambience loops and pasting them below. Audio ▸ Create in
-	the Creator Dashboard; the Roblox library also has thousands of free
-	loops you can take the ids from.
+	**The files are already made.** `audio/` in this repo contains nine
+	purpose-built pieces — four ambience loops, three positional loops and two
+	one-shots — every loop seamless by construction (see tools/make-audio.py).
+	Upload them once, paste the ids below, done. `audio/README.md` walks
+	through it.
 ]]
 
 local Audio = {}
 
 Audio.Custom = {
-	ambienceSurface = "", -- open air, wind, distant machinery
-	ambienceShallow = "", -- dripping water, close rock
-	ambienceDeep = "", -- low drone, pressure
-	ambienceAbyss = "", -- something wrong
+	-- Paste the asset id (just the number) after uploading audio/*.ogg.
+	ambienceSurface = "", -- audio/ambience-surface.ogg
+	ambienceShallow = "", -- audio/ambience-shallow.ogg
+	ambienceDeep = "", -- audio/ambience-deep.ogg
+	ambienceAbyss = "", -- audio/ambience-abyss.ogg
+
+	-- Positional. These attach to the objects themselves, so you hear a gas
+	-- pocket before you can see it and the volume tells you how close it is.
+	zoneGas = "", -- audio/zone-gas.ogg — gas, frost, the Hollow
+	zoneVent = "", -- audio/zone-vent.ogg — vents, pressure, collapse
+	liftMotor = "", -- audio/lift-motor.ogg
+
+	-- One-shots.
+	pickHit = "", -- audio/pick-hit.ogg
+	rareReveal = "", -- audio/rare-reveal.ogg
+
 	music = "", -- optional loop; left empty on purpose, see below
+}
+
+--- Which positional loop each hazard kind uses. Persistent kinds get the
+--- hiss, pulsing kinds get the rumble.
+Audio.ZoneLoops = {
+	gas = "zoneGas",
+	freeze = "zoneGas",
+	hollow = "zoneGas",
+	cavein = "zoneVent",
+	heat = "zoneVent",
+	pressure = "zoneVent",
+	collapse = "zoneVent",
 }
 
 --- Built-ins. Pitched and looped rather than used as one-shots, which is how

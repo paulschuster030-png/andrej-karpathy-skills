@@ -192,7 +192,7 @@ local function showReveal(payload)
 		Position = UDim2.fromScale(0, 0),
 	}):Play()
 
-	Effects.sound("boom", 0.6, 1.1)
+	Effects.sound("reveal", 0.7, 1)
 	Effects.shake(1.4, 0.3)
 
 	task.delay(3.2, function()

@@ -24,8 +24,16 @@ local Effects = {}
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
+local AudioConfig = require(Shared.Config.Audio)
+
+--- Built-ins by default; anything uploaded and configured wins. The mining
+--- hit is the sound a player hears thousands of times a session, so it is the
+--- one most worth replacing.
 local SOUNDS = {
-	hit = "rbxasset://sounds/snap.wav",
+	hit = AudioConfig.source("pickHit") ~= "" and AudioConfig.source("pickHit")
+		or "rbxasset://sounds/snap.wav",
+	reveal = AudioConfig.source("rareReveal") ~= "" and AudioConfig.source("rareReveal")
+		or "rbxasset://sounds/bass.wav",
 	ping = "rbxasset://sounds/electronicpingshort.wav",
 	click = "rbxasset://sounds/clickfast.wav",
 	whoosh = "rbxasset://sounds/swoosh.wav",
