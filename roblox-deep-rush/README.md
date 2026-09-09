@@ -8,6 +8,9 @@ Speicherung und UI sind hier von Grund auf gebaut.
 unten multipliziert deine Beute *und* dein Risiko — bring sie hoch und bunkere
 sie, oder verliere alles an die Tiefe oder an einen anderen Spieler.
 
+Fertige Store-Grafiken liegen in [`cover/`](cover/). Was sich seit der ersten
+Fassung geändert hat und warum, steht in [`TRENDS.md`](TRENDS.md).
+
 ---
 
 ## In 3 Minuten spielbar
@@ -60,9 +63,12 @@ src/shared/          ReplicatedStorage/Shared — von Server UND Client genutzt
     Mutations.luau   die Multiplikatoren, die Screenshots erzeugen
     Upgrades.luau    7 Upgrade-Linien mit Kostenkurven
     Quests.luau      Onboarding-Kette, Daily-Pool, Meilensteine
+    Contracts.luau   Wochen-Leiter und 28-Tage-Log (Langzeitbindung)
+    Crew.luau        Co-Play: Bonus, Pings, Rettung
+    Cosmetics.luau   Lampen, Trails, Titel — die Status-Ebene
     Rebirth.luau     Prestige-Anforderungen und Boni
     Drones.luau      die Sammel-Ebene
-    Products.luau    Gamepasses und Dev-Products (IDs eintragen!)
+    Products.luau    Gamepasses, Dev-Products, Daily Deals (IDs eintragen!)
   Net.luau           jedes Remote an einem Ort, mit Rate-Limit
   Rarity.luau        gewichteter Roll + ehrliche Quotenanzeige
   Format.luau        Zahlenformatierung (12.4K statt 12400)
@@ -78,6 +84,10 @@ src/server/          ServerScriptService/Server — autoritativ
   Surface.luau       Lift nach oben, Bank an der Oberfläche
   Steal.luau         Kisten und Snatch — die soziale Mechanik
   Quests.luau        alle Aufgaben, ein Eintrittspunkt
+  Contracts.luau     Wochen-Contract und Descent Log
+  Crew.luau          Crew-Bildung, Ping-Broadcast, Nähe-Bonus
+  Cosmetics.luau     sichtbarer Status auf dem Charakter
+  Ads.luau           Rewarded Video (aus, bis konfiguriert)
   Rift.luau          das serverweite Live-Event
   Hazards.luau       Sauerstoff und Schichtgefahren
   Upgrades / Rebirth / Drones / Rewards / Leaderboards
@@ -92,13 +102,20 @@ src/client/          StarterPlayerScripts/Client — nur Darstellung + Absicht
   Panels.luau        Shop, Aufgaben, Codex, Drohnen, Boards, Rebirth
   Notify.luau        Toasts und die Rare-Pull-Karte
   Onboarding.luau    die ersten zwei Minuten
+  Crew.luau          Crew-Leiste, Ping-Reihe, Einladen-Knopf
   Effects.luau       Shake, Partikel, schwebende Zahlen
   Ui.luau            das kleinstmögliche UI-Kit
 
 tools/
   build-rbxlx.mjs    Quellbaum → Place-Datei
   balance-check.py   fährt die Ökonomie außerhalb von Roblox
-  balance-spec.luau  25 Design-Zusagen als Assertions
+  balance-spec.luau  43 Design-Zusagen als Assertions
+  protocol-check.py  prüft, ob Client und Server dieselben Remotes benutzen
+
+cover/
+  render.mjs         HTML → fertige PNGs (nur Node + Chromium)
+  png.mjs            Zuschnitt und Verkleinerung, ohne Abhängigkeiten
+  out/               die Dateien, die du hochlädst
 ```
 
 ---
@@ -108,19 +125,31 @@ tools/
 Der Code ist nicht nur geschrieben, sondern geprüft:
 
 ```bash
-# Syntax/Compile aller 41 Luau-Dateien (braucht die Luau-CLI)
+# Syntax/Compile aller 49 Luau-Dateien (braucht die Luau-CLI)
 find src -name '*.luau' -exec luau-compile --null -O2 {} \;
 
 # Die Ökonomie tatsächlich ausrechnen, nicht schätzen
 python3 tools/balance-check.py /pfad/zu/luau
+
+# Benutzen Client und Server dieselben Remotes?
+python3 tools/protocol-check.py
 ```
 
 `balance-spec.luau` prüft Zusagen, keine Implementierungsdetails — z. B.
 "tiefer graben lohnt sich immer", "Luck erhöht seltene Quoten streng monoton",
-"das erste Rebirth dauert 15–90 Minuten". Zwei echte Bugs sind dabei
-aufgefallen: `Format.short` hat runde Zahlen um den Faktor 10 verkleinert
-(`250000` → `"25K"`), und Rebirth war für 25.000 Cash zu haben, während die
-Upgrade-Leiter bis 77M reicht.
+"das erste Rebirth dauert 15–90 Minuten", "Co-Play steht nie auf dem
+Onboarding-Pfad".
+
+Die Prüfungen haben bisher vier echte Fehler gefunden, die sonst live gegangen
+wären:
+
+- `Format.short` hat runde Zahlen um den Faktor 10 verkleinert
+  (`250000` → `"25K"`) — das betraf jede runde Zahl im HUD.
+- Rebirth war für 25.000 Cash zu haben, während die Upgrade-Leiter bis 77M reicht.
+- Contract-Punkte pro Cash-Betrag hätten einem Spätspiel-Spieler die
+  Tagesgrenze mit **einer** Einzahlung gefüllt.
+- **Heruntergefallene Frachtkisten konnten gar nicht aufgehoben werden**: der
+  Server akzeptierte `GrabCrate`, aber kein Knopf im Client hat es je gesendet.
 
 ---
 
@@ -128,9 +157,11 @@ Upgrade-Leiter bis 77M reicht.
 
 | Schritt | Wo |
 |---|---|
-| Gamepass- und Product-IDs eintragen | `src/shared/Config/Products.luau` |
-| Titel, Thumbnail, Beschreibung | Creator-Dashboard — siehe `LAUNCH_PLAYBOOK.md` |
+| Gamepass-, Product- und Daily-Deal-IDs eintragen | `src/shared/Config/Products.luau` |
+| Icon und Thumbnails hochladen | `cover/out/` — siehe [`cover/README.md`](cover/README.md) |
+| Titel und Beschreibung | Creator-Dashboard — siehe `LAUNCH_PLAYBOOK.md` |
 | API-Zugriff für DataStores aktivieren | Game Settings ▸ Security |
+| **Private Server aktivieren** | Game Settings — zahlt aufs Co-Play-Signal ein |
 | Balancing anpassen | `src/shared/Config/Game.luau` |
 
 Alle Produkte sind mit `assetId = 0` vorkonfiguriert und werden dann schlicht
@@ -153,6 +184,14 @@ Fracht dabei hast. Das ist Absicht: sichtbare Knöpfe sind immer nutzbare Knöpf
 **"Mein Freund kann mich nicht beklauen"** — Spieler unter 10 Minuten Spielzeit
 und 100 m Tiefe sind vollständig immun, und stehlen kann man nur von Spielern,
 deren Frachtraum über 60 % voll ist.
+
+**"Der Crew-Bonus kommt nicht an"** — er wird fürs Zusammengraben gezahlt, nicht
+fürs Zusammensein auf einer Liste: ihr müsst innerhalb von 120 Studs
+voneinander sein. Die Crew-Leiste sagt "too far apart", wenn es nicht zählt.
+
+**"Der Werbe-Knopf erscheint nie"** — das ist so gebaut. Er kommt erst, wenn du
+eine Produkt-ID in `Products.RewardedVideo` einträgst *und* Roblox tatsächlich
+eine Anzeige liefert. Voraussetzung sind u. a. 2.000 eindeutige Besucher/Monat.
 
 ---
 

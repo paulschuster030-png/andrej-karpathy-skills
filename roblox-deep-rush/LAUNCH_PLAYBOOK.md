@@ -12,21 +12,45 @@ Iterationen, nicht in einem großen Launch.
 
 ## 1. Wie Roblox entscheidet, wer dich sieht
 
-Die Empfehlungsleiste bewertet im Kern vier Signale. Alle vier sind
-beeinflussbar:
+> **Korrektur gegenüber der ersten Fassung dieses Dokuments.** Hier stand
+> vorher, der Algorithmus bewerte CTR, D1-Retention, Session-Länge und
+> Gesamt-Playtime. Das galt 2024/25. Roblox hat den Empfehlungsalgorithmus
+> 2026 umgebaut und die tatsächlichen Signale veröffentlicht — die Liste unten
+> ist die offizielle. Herleitung und Quellen: [`TRENDS.md`](TRENDS.md).
 
-| Signal | Was es misst | Dein Hebel |
+Der „Recommended For You"-Algorithmus nutzt **sechs** Signale:
+
+| # | Signal | Dein Hebel |
 |---|---|---|
-| **CTR** | Klicks pro Impression | Thumbnail und Titel — mit Abstand am wichtigsten |
-| **D1-Retention** | kommt jemand morgen wieder | Onboarding + Daily Quests |
-| **Session-Länge** | wie lange am Stück | Rift-Countdown, Streak-Bonus |
-| **Playtime gesamt** | Summe über alle | Meta-Loop, Rebirth |
+| 1 | **qPTR** — engagierte Plays pro Impression | Thumbnail und Icon (siehe `cover/`) |
+| 2 | **7-Tage-Playtime pro Nutzer**, gedeckelt bei 60 Min/Tag | Core Loop, Rift-Countdown |
+| 3 | **7-Tage-Spieltage pro Nutzer** | Dailies, Login-Streak, Descent Log |
+| 4 | **7-Tage-Ausgabetage pro Nutzer** | Daily Deal (billig, täglich neu) |
+| 5 | **7-Tage-Robux pro Nutzer** | Pässe, Dev-Products |
+| 6 | **7-Tage-Co-Play-Tage pro Nutzer** | Crew-System, Einladen-Knopf, private Server |
 
-Der entscheidende Punkt: **CTR entscheidet, ob du überhaupt getestet wirst;
-Retention entscheidet, ob der Test wiederholt wird.** Ein grandioses Spiel mit
-schlechtem Thumbnail wird nie gemessen.
+Roblox sagt dazu: *„There is no one signal that is most important. All of
+these signals work together."* Es gibt also keinen Trick, nur mehrere Hebel.
 
----
+**Drei Dinge daran ändern die Strategie grundlegend:**
+
+**Der 60-Minuten-Deckel.** Playtime über eine Stunde pro Tag und Spieler zählt
+für die Empfehlung schlicht nicht mehr. Ein Design, das auf Marathon-Sessions
+zielt, verschenkt seinen Aufwand. Deshalb hat der Weekly Contract einen
+Tagesdeckel bei etwa 26 Minuten Spielzeit und sagt dir danach ausdrücklich,
+dass du für heute fertig bist.
+
+**Spieltage schlagen Spielstunden.** Zweimal 20 Minuten an zwei Tagen ist mehr
+wert als 40 Minuten an einem. Der gesamte Descent Log existiert nur dafür.
+
+**Co-Play ist ein eigenes Signal.** Ein Spiel ohne Grund, jemanden mitzubringen,
+bekommt hier eine Null — egal wie gut es sonst ist.
+
+Und: Das Bewertungsfenster geht inzwischen über **28 Tage**, mit getrennten
+Phasen für Tag 1, Tag 2–7 und Tag 8–28. Roblox' erklärtes Ziel ist, Spiele zu
+verdrängen, die „mit aufregenden Thumbnails Aufmerksamkeit gewinnen, aber
+keinen langfristigen Wert liefern". Ein starkes Thumbnail bringt dich also in
+den Test — durchfallen kannst du trotzdem noch drei Wochen später.
 
 ## 2. Titel und Thumbnail
 
@@ -62,8 +86,13 @@ schwarze Schacht mit leuchtendem Erz, rechts groß `1.400m`, links das erschrock
 Gesicht. Der Schacht liefert die Tiefenwirkung gratis.
 
 **Teste mindestens drei Varianten.** Roblox erlaubt mehrere Thumbnails; die
-CTR-Unterschiede zwischen zwei Bildern desselben Spiels liegen regelmäßig beim
+Unterschiede zwischen zwei Bildern desselben Spiels liegen regelmäßig beim
 Faktor zwei bis drei. Das ist der größte einzelne Hebel, den du hast.
+
+Drei fertige Varianten liegen in [`cover/out/`](cover/) — je eine für den
+Risiko-Hook, den Seltenheits-Hook und den Diebstahl-Hook. Sie ziehen
+unterschiedliche Spielertypen an, und nur deine qPTR-Zahlen können dir sagen,
+welcher deiner ist. Lade alle drei hoch und lass sie eine Woche laufen.
 
 ### Beschreibung
 
@@ -104,6 +133,21 @@ Das Spiel läuft ohne diesen Schritt vollständig — nichts hier ist Pflicht.
 im Code automatisch mit dem bisherigen Fortschritt des Spielers, damit ein Kauf
 in Stunde 1 und in Stunde 100 ungefähr gleich viele Runs wert ist.
 
+**Daily Deals (wichtiger als sie aussehen).** Sechs kleine Produkte zu 25–49 R$
+in `Products.DailyDeals`, von denen täglich eines im Shop steht. Der Grund ist
+kein Preis-Trick, sondern ein Ranking-Signal: Roblox zählt **Ausgabetage**
+getrennt von der Ausgabenhöhe. Fünf kleine Käufe an fünf Tagen sind für die
+Empfehlung mehr wert als ein großer an einem — und für den Geldbeutel eines
+13-Jährigen ohnehin freundlicher. Lege alle sechs an, sonst rotiert der Shop
+ins Leere.
+
+**Rewarded Video** (`Products.RewardedVideo.devProductId`): erst möglich mit
+2FA, ID-verifiziertem Konto ab 13, öffentlichem Erlebnis und **2.000
+eindeutigen Besuchern pro Monat**. Bis dahin bleibt der Knopf unsichtbar, das
+ist so gebaut. Danach bringt es bei guter Platzierung 8–15 % des Umsatzes.
+Belohnung darf niemals Robux sein — unsere ist ein Luck-Boost mit einer Stunde
+Abklingzeit.
+
 **Danach unbedingt testen:** Kauf im veröffentlichten Platz durchführen (nicht
 im Studio) und prüfen, dass die Belohnung genau einmal ankommt. Der
 Receipt-Handler ist idempotent gebaut, aber ein falsch eingetragener
@@ -141,29 +185,40 @@ Ein Spiel ohne Puls stirbt, auch wenn es gut ist.
 
 | Rhythmus | Maßnahme | Aufwand |
 |---|---|---|
-| täglich | Daily Quests (automatisch) | 0 |
-| alle 12 Min | Rift Surge (automatisch) | 0 |
+| alle 12 Min | Rift Surge | 0 — automatisch |
+| täglich | Daily Quests + Daily Deal | 0 — automatisch |
+| montags | Weekly Contract rotiert | 0 — automatisch |
+| laufend | Descent Log (Tag 2 bis 28) | 0 — automatisch |
 | wöchentlich | ein neues Erz oder eine Drohne | ~30 Min |
 | zweiwöchentlich | Doppel-Luck-Wochenende | 1 Zeile in `Game.luau` |
-| monatlich | neue Schicht oder Mechanik | 1 Tag |
+| monatlich | neue Schicht oder Kosmetik-Set | 1 Tag |
 
-Die ersten beiden Zeilen laufen ohne dich. Das ist Absicht: Live-Ops, die
-tägliche Handarbeit brauchen, werden nach drei Wochen eingestellt.
+Die ersten vier Zeilen laufen ohne dich. Das ist Absicht: Live-Ops, die
+tägliche Handarbeit brauchen, werden nach drei Wochen eingestellt — und dann
+fällt genau das Signal weg, das dich in die Empfehlungen bringt.
 
 ---
 
 ## 6. Welche Zahlen wirklich zählen
 
+Roblox liefert dir die Signale inzwischen selbst: **Creator-Dashboard ▸
+Analytics ▸ Home Recommendations.** Dort stehen deine Werte für genau die
+sechs Signale aus Abschnitt 1, plus Vergleichs-Benchmarks. Diese Seite ist
+deine wichtigste, nicht die CCU-Anzeige.
+
 Nach Priorität:
 
-1. **D1-Retention** — alles andere ist ohne sie egal.
-2. **CTR** — deine einzige Kontrolle über die Verteilungsmenge.
-3. **Median-Session** — Ziel > 8 Minuten. Darunter greift der Meta-Loop nicht.
-4. **Anteil, der Rebirth 1 erreicht** — misst, ob der Mittelteil trägt.
-5. **Umsatz pro Spieler** — zuletzt. Monetarisierung ohne Bindung ist eine
-   Zahl, die man nicht vergrößern kann.
-
----
+1. **qPTR** — deine einzige Kontrolle über die Verteilungsmenge. Teste
+   Thumbnails, bis diese Zahl sich bewegt.
+2. **Spieltage pro Nutzer** — die Zahl, die das 28-Tage-Fenster entscheidet.
+   Wenn sie bei 1,x klebt, ist der Descent Log unsichtbar oder zu langsam.
+3. **Co-Play-Tage** — wenn hier nichts passiert, findet niemand das
+   Crew-System. Dann gehört der Beacon-Knopf prominenter ins HUD, nicht ein
+   weiteres Feature daneben.
+4. **D1-Retention** — bleibt der schnellste Frühindikator für kaputtes
+   Onboarding.
+5. **Ausgabetage** — misst, ob der Daily Deal seinen Job macht. Ein guter Wert
+   ist hier mehr wert als ein teurerer Pass.
 
 ## 7. Moderation und Regeln
 

@@ -214,7 +214,89 @@ geschenkt — eine Bindungsmechanik, die Robux kostet, bindet niemanden.
 
 ---
 
-## 8. Ökonomie in Zahlen
+## 8. Crew: warum Alleinspielen jetzt teurer ist
+
+Diese Ebene kam nach der Trendrecherche dazu, und zwar aus einem harten Grund:
+Roblox zählt **Co-Play-Tage** als eigenes Ranking-Signal, und DEEP RUSH hatte
+darauf exakt null zu bieten. Nichts am Spiel war mit einer zweiten Person
+besser.
+
+Zwei Randbedingungen haben das Design bestimmt:
+
+**Kein Text.** Seit der Alterprüfung für den Chat (Januar 2026) können viele
+Spielerpaare gar nicht miteinander schreiben. Ein Koop-System, das Absprache
+braucht, schließt sie aus. Also besteht das gesamte Vokabular aus **vier
+Pings** — Reiche Ader, Gefahr, Lift, Zu mir — und einem Näheeffekt. Niemand
+muss etwas tippen, und nichts bricht, wenn zwei Crewmates in Altersklassen
+sitzen, die nicht miteinander reden dürfen.
+
+**Keine Lobby.** Der Bonus wird fürs Nebeneinander-Graben gezahlt (120 Studs),
+nicht fürs Auf-einer-Liste-Stehen. Eine Crew, mit der du nie gräbst, ist nichts
+wert. Das hält das Signal ehrlich statt farmbar.
+
+Konkret: +12 % Cash und +0,25 Luck pro zusätzlichem Mitglied in Reichweite,
+maximal +36 % / +0,75 bei vier Leuten. Groß genug, um Verhalten zu ändern;
+klein genug, dass Solospiel nie ausgeschlossen ist.
+
+Dazu kommt die **Rettung** — einem Crewmate seine gefallene Kiste zurückgeben
+statt sie zu plündern, gegen 10 % Finderlohn. In einem Spiel, das auf Diebstahl
+gebaut ist, braucht es genau eine eindeutig kooperative Handlung, damit eine
+Crew sich wie eine Crew anfühlt.
+
+**Eine Regel, die wir nicht brechen:** Co-Play steht **nie** auf dem
+Onboarding-Pfad. Crew-Aufgaben sind Dailies, niemals Teil der Einstiegskette —
+sonst hängt ein neuer Spieler in einem leeren Server fest. Der Balance-Check
+erzwingt das inzwischen als Assertion.
+
+---
+
+## 9. Contract und Descent Log: das Spiel bekommt eine zweite Zeitachse
+
+Roblox bewertet ein Erlebnis inzwischen über **28 Tage** und zählt **Spieltage**
+statt Spielstunden — mit einem Deckel von 60 Minuten pro Tag und Erlebnis. Der
+längste Bogen in DEEP RUSH war eine Tagesaufgabe. Das Spiel hatte einem Spieler
+an Tag 12 nichts zu sagen.
+
+**Weekly Contract.** Eine Währung, sieben Stufen, Reset am Montag. Punkte
+kommen aus dem, was man ohnehin tut: eine tiefe Fahrt bunkern, ein Rare ziehen,
+ein neues Erz finden, einen Tiefenrekord aufstellen, mit der Crew graben.
+
+Die entscheidende Zahl ist der **Tagesdeckel**: rund 26 Minuten Spielzeit, dann
+ist die Leiter für heute voll. Das ist keine Monetarisierungsschranke, sondern
+Taktung — und sie deckt sich exakt mit dem 60-Minuten-Deckel des Algorithmus.
+Der Text sagt deshalb "heute erledigt", nicht "gesperrt": alles andere zahlt
+weiter, nur diese eine Leiter ruht.
+
+**Ein Fehler, den der Balance-Check gefangen hat:** Ursprünglich gab es Punkte
+pro 1.000 gebunkertem Cash. Das sieht fair aus, bis man merkt, dass Auszahlungen
+mit Tiefe und Rebirths exponentiell wachsen — ein Spätspiel-Spieler hätte das
+Tagesbudget mit **einer** Einzahlung geleert, während ein neuer eine Stunde
+gräbt. Punkte kommen jetzt aus **Aktionen**, die skaleninvariant sind. Eine
+tiefe Fahrt ist an Tag 1 dasselbe wert wie nach zehn Rebirths.
+
+**Descent Log.** Einmalige Belohnungen für die Anzahl **verschiedener Tage**,
+an denen du gespielt hast — bis Tag 28. Bewusst nach hinten gewichtet: der
+Tag-28-Preis existiert, um an Tag 2 gesehen zu werden.
+
+---
+
+## 10. Kosmetik: Status braucht Publikum
+
+Die 2026er Ausgabenlage ist eindeutig: Spieler geben mehr für Kosmetik,
+Statussymbole und Seltenheits-Flex aus als für Zeitersparnis. DEEP RUSH
+verkaufte ausschließlich Zeitersparnis.
+
+Die Regel, die diese Ebene funktionieren lässt: **ein Kosmetikum muss für
+andere sichtbar sein.** Ein Skin, den nur du siehst, ist ein Screenshot; ein
+Skin, den der Schacht sieht, ist Status. Deshalb rendern alle drei Arten am
+Charakter — die Helmlampe färbt den Fels um dich, den Trail sieht man, wenn du
+an jemandem vorbeifällst, und der Titel steht auf dem Namensschild über dir.
+
+Die meisten werden verdient. Die kaufbaren sind absichtlich nicht die schönsten.
+
+---
+
+## 11. Ökonomie in Zahlen
 
 Aus `tools/balance-check.py`, nicht geschätzt:
 
@@ -239,7 +321,7 @@ bleibt im Fenster von 15–90 Minuten.
 
 ---
 
-## 9. Monetarisierung
+## 12. Monetarisierung
 
 Eine Regel, an die wir uns halten: **Passes verkaufen Tempo und Komfort, nie
 exklusive Inhalte und nie Schutz vor Spieleraktionen.**
@@ -254,9 +336,20 @@ Der Receipt-Handler ist idempotent (Roblox liefert Quittungen erneut aus) und
 gibt bei Fehlern `NotProcessedYet` zurück statt zu schlucken — das ist die
 einzige Funktion im Spiel, in der ein Bug echtes Geld kostet.
 
+**Daily Deals** kamen aus einem Ranking-Detail: Roblox zählt **Ausgabetage**
+getrennt von der Ausgabenhöhe. Fünf kleine Käufe an fünf Tagen sind für die
+Empfehlung mehr wert als ein großer an einem — und für den Geldbeutel eines
+Dreizehnjährigen ohnehin freundlicher. Sechs Produkte zu 25–49 R$, täglich
+eines im Shop, deterministisch nach UTC-Datum, damit sichtbar ist, dass es eine
+Rotation ist und kein gezielter Preis.
+
+**Rewarded Video** ist bewusst die Gegenform zu dem, was Roblox im August 2026
+verboten hat: ein einzelner freiwilliger Knopf mit einer Stunde Abklingzeit —
+kein Feed, kein Autoplay, keine Belohnung, die vom Weiterschauen abhängt.
+
 ---
 
-## 10. Was bewusst fehlt
+## 13. Was bewusst fehlt
 
 Genauso wichtig wie das, was drin ist:
 
@@ -272,7 +365,7 @@ Genauso wichtig wie das, was drin ist:
 
 ---
 
-## 11. Wenn es zieht: der Erweiterungspfad
+## 14. Wenn es zieht: der Erweiterungspfad
 
 In dieser Reihenfolge, jeweils erst wenn die Metriken es rechtfertigen:
 
