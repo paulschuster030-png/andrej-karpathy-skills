@@ -499,6 +499,95 @@ check("every title cosmetic has display text", (function()
 	return true
 end)())
 
+print("\n== hazards (danger you can see) ==")
+
+local HazardConfig = MODULES.Hazards
+
+check("every layer hazard names a defined kind", (function()
+	for _, layer in ipairs(Layers.List) do
+		if layer.hazard and not HazardConfig.Kinds[layer.hazard.kind] then
+			print("       " .. layer.id .. " -> unknown kind " .. tostring(layer.hazard.kind))
+			return false
+		end
+	end
+	return true
+end)())
+
+check("the first layer is a clean room", (function()
+	-- A new player learns the core loop before they learn to dodge anything.
+	local first = Layers.List[1]
+	return first.hazard == nil and HazardConfig.densityFor(first) == 0
+end)())
+
+check("pulsing zones leave a longer safe gap than danger window", (function()
+	-- The counterplay to a rhythm is timing it, which only works if the safe
+	-- half is the bigger half.
+	for id, kind in pairs(HazardConfig.Kinds) do
+		if kind.mode == "pulsing" then
+			local danger = kind.telegraph + kind.active
+			if kind.rest <= kind.active then
+				print(string.format("       %s: rest %.1fs is not longer than active %.1fs", id, kind.rest, kind.active))
+				return false
+			end
+			if danger > kind.rest * 2 then
+				print(string.format("       %s: danger window %.1fs dwarfs the rest %.1fs", id, danger, kind.rest))
+				return false
+			end
+		end
+	end
+	return true
+end)())
+
+check("standing in a persistent zone is survivable long enough to leave", (function()
+	-- 100 health, no resist. You need seconds to walk out, not a frame.
+	for id, kind in pairs(HazardConfig.Kinds) do
+		if kind.mode == "persistent" then
+			local seconds = 100 / kind.dps
+			if seconds < 5 then
+				print(string.format("       %s kills in %.1fs", id, seconds))
+				return false
+			end
+		end
+	end
+	return true
+end)())
+
+check("no single burst can kill from full health", (function()
+	-- Being caught by a vent should be a mistake you learn from, not a
+	-- teleport back to the surface with your cargo on the floor.
+	for id, kind in pairs(HazardConfig.Kinds) do
+		if kind.mode == "pulsing" and kind.burst >= 100 then
+			print("       " .. id .. " one-shots at " .. kind.burst)
+			return false
+		end
+	end
+	return true
+end)())
+
+check("hazard density rises with depth", (function()
+	local previous = -1
+	for _, layer in ipairs(Layers.List) do
+		local density = HazardConfig.densityFor(layer)
+		if density < previous then
+			return false
+		end
+		previous = density
+	end
+	return previous >= 2
+end)())
+
+check("every hazard kind explains its counterplay", (function()
+	-- The hint is shown when you enter the zone. A hazard without one is a
+	-- hazard a player can only learn by dying to it twice.
+	for id, kind in pairs(HazardConfig.Kinds) do
+		if type(kind.hint) ~= "string" or #kind.hint < 12 or type(kind.name) ~= "string" then
+			print("       " .. id .. " has no usable hint")
+			return false
+		end
+	end
+	return true
+end)())
+
 print("\n== the live season (scarcity, kept honest) ==")
 
 local SeasonConfig = MODULES.Season

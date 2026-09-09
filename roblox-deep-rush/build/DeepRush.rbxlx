@@ -1,10 +1,10 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-  <Item class="Workspace" referent="RBX12">
+  <Item class="Workspace" referent="RBX14">
     <Properties>
       <string name="Name">Workspace</string>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="RBX13">
+  <Item class="Lighting" referent="RBX15">
     <Properties>
       <string name="Name">Lighting</string>
       <Color3 name="Ambient"><R>0</R><G>0</G><B>0</B></Color3>
@@ -17,19 +17,104 @@
       <Color3 name="FogColor"><R>0.06</R><G>0.06</G><B>0.08</B></Color3>
     </Properties>
   </Item>
-  <Item class="ReplicatedStorage" referent="RBX33">
+  <Item class="ReplicatedStorage" referent="RBX37">
     <Properties>
       <string name="Name">ReplicatedStorage</string>
     </Properties>
-    <Item class="Folder" referent="RBX14">
+    <Item class="Folder" referent="RBX16">
       <Properties>
         <string name="Name">Shared</string>
       </Properties>
-      <Item class="Folder" referent="RBX15">
+      <Item class="Folder" referent="RBX17">
         <Properties>
           <string name="Name">Config</string>
         </Properties>
-        <Item class="ModuleScript" referent="RBX16">
+        <Item class="ModuleScript" referent="RBX18">
+          <Properties>
+            <string name="Name">Audio</string>
+            <ProtectedString name="Source"><![CDATA[
+--!nonstrict
+--[[
+	Audio.luau — every sound in one place.
+
+	Two tiers, and the split matters:
+
+	  BUILTIN  `rbxasset://` sounds that ship inside the Roblox client. They
+	           always work, in every place, with no upload and no asset id.
+	           The game is fully scored with these, so it is never silent.
+
+	  CUSTOM   your own uploaded asset ids. Empty by default. Anything you
+	           fill in here overrides the built-in for that slot.
+
+	Why no ids are pre-filled: a made-up catalogue id either fails to load or
+	plays something unrelated, and there is no way to tell which without
+	testing it in a live place. Guessing them would have quietly shipped you
+	broken audio that looks configured. The built-ins are worse-sounding and
+	honest.
+
+	**The single biggest upgrade you can make to how this game feels** is
+	uploading three ambience loops and pasting them below. Audio ▸ Create in
+	the Creator Dashboard; the Roblox library also has thousands of free
+	loops you can take the ids from.
+]]
+
+local Audio = {}
+
+Audio.Custom = {
+	ambienceSurface = "", -- open air, wind, distant machinery
+	ambienceShallow = "", -- dripping water, close rock
+	ambienceDeep = "", -- low drone, pressure
+	ambienceAbyss = "", -- something wrong
+	music = "", -- optional loop; left empty on purpose, see below
+}
+
+--- Built-ins. Pitched and looped rather than used as one-shots, which is how
+--- a handful of short clips becomes an ambience bed.
+Audio.Builtin = {
+	rumble = "rbxasset://sounds/bass.wav",
+	wind = "rbxasset://sounds/swoosh.wav",
+	hit = "rbxasset://sounds/snap.wav",
+	ping = "rbxasset://sounds/electronicpingshort.wav",
+	click = "rbxasset://sounds/clickfast.wav",
+	impact = "rbxasset://sounds/impact_water.mp3",
+}
+
+--- The ambience bed, layered by depth. Each layer fades in over its own band,
+--- so descending is a continuous change in what you are hearing rather than
+--- four abrupt swaps.
+Audio.Ambience = {
+	{ id = "surface", custom = "ambienceSurface", from = 0, to = 120, volume = 0.30, pitch = 1.0 },
+	{ id = "shallow", custom = "ambienceShallow", from = 60, to = 700, volume = 0.38, pitch = 0.62 },
+	{ id = "deep", custom = "ambienceDeep", from = 500, to = 1600, volume = 0.46, pitch = 0.34 },
+	{ id = "abyss", custom = "ambienceAbyss", from = 1300, to = 3000, volume = 0.55, pitch = 0.2 },
+}
+
+--- Music is deliberately off by default. A loop a player hears for the
+--- fortieth time is worse than no loop, and this game already has a rhythm
+--- (swing, reveal, rift siren). Add one only if you have a track that earns
+--- its place.
+Audio.MusicVolume = 0.18
+
+Audio.MaxDepthForRumble = 3000
+
+function Audio.source(slot: string): string
+	local custom = Audio.Custom[slot]
+	if custom and custom ~= "" then
+		if tonumber(custom) then
+			return "rbxassetid://" .. custom
+		end
+		return custom
+	end
+	return ""
+end
+
+return Audio
+
+]]></ProtectedString>
+            <bool name="Disabled">false</bool>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="RBX19">
           <Properties>
             <string name="Name">Contracts</string>
             <ProtectedString name="Source"><![CDATA[
@@ -157,7 +242,7 @@ return Contracts
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX17">
+        <Item class="ModuleScript" referent="RBX20">
           <Properties>
             <string name="Name">Cosmetics</string>
             <ProtectedString name="Source"><![CDATA[
@@ -246,7 +331,7 @@ return Cosmetics
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX18">
+        <Item class="ModuleScript" referent="RBX21">
           <Properties>
             <string name="Name">Crew</string>
             <ProtectedString name="Source"><![CDATA[
@@ -300,7 +385,7 @@ return {
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX19">
+        <Item class="ModuleScript" referent="RBX22">
           <Properties>
             <string name="Name">Drones</string>
             <ProtectedString name="Source"><![CDATA[
@@ -435,7 +520,7 @@ return Drones
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX20">
+        <Item class="ModuleScript" referent="RBX23">
           <Properties>
             <string name="Name">Game</string>
             <ProtectedString name="Source"><![CDATA[
@@ -498,7 +583,10 @@ return {
 	-- Hazards ---------------------------------------------------------------
 	BaseOxygen = 60,
 	OxygenRegenRate = 18, -- per second at the surface
-	HazardTickRate = 1,
+	-- Fast enough that walking out of a gas cloud feels like it stopped the
+	-- moment you left. Oxygen is only replicated about once a second, though;
+	-- see Server/Hazards.luau.
+	HazardTickRate = 0.35,
 
 	-- Services --------------------------------------------------------------
 	AutosaveInterval = 120,
@@ -515,7 +603,185 @@ return {
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX21">
+        <Item class="ModuleScript" referent="RBX24">
+          <Properties>
+            <string name="Name">Hazards</string>
+            <ProtectedString name="Source"><![CDATA[
+--!nonstrict
+--[[
+	Hazards.luau — danger you can see coming.
+
+	The first version rolled a die every second and, on a hit, told the player
+	"the ceiling is cracking" one second before hurting them. It was fair on
+	paper — there was a telegraph — but it felt arbitrary, because the danger
+	had no PLACE. You could not look at the room and know where not to stand.
+
+	Now every hazard is an object in the world. A gas pocket is a green cloud
+	on a shelf. A magma vent is a glowing crack that flares before it fires.
+	You route around them, or you time them, and if you get hit it is because
+	you misread something visible rather than because a number came up.
+
+	Two behaviours cover all of it:
+
+	  PERSISTENT  hurts continuously while you are inside. Gas, ice, the
+	              Hollow. The counterplay is not being there.
+	  PULSING     cycles telegraph -> burst -> rest, forever, on a visible
+	              rhythm. Vents, pressure, collapse. The counterplay is timing,
+	              which means a hazard can also be a gate you learn to pass.
+]]
+
+local Hazards = {}
+
+Hazards.Kinds = {
+	gas = {
+		mode = "persistent",
+		name = "GAS POCKET",
+		icon = "☣",
+		dps = 7,
+		radius = 15,
+		height = 13,
+		color = { 120, 225, 95 },
+		transparency = 0.72,
+		particleRate = 26,
+		particleSpeed = 2.5,
+		hint = "Green means hold your breath and go around.",
+	},
+
+	freeze = {
+		mode = "persistent",
+		name = "FROST FIELD",
+		icon = "❄",
+		dps = 9,
+		radius = 16,
+		height = 10,
+		color = { 165, 225, 255 },
+		transparency = 0.66,
+		particleRate = 20,
+		particleSpeed = 1.2,
+		slow = 0.45, -- multiplies walkspeed while you stand in it
+		hint = "It slows you down before it hurts you.",
+	},
+
+	hollow = {
+		mode = "persistent",
+		name = "THE HOLLOW",
+		icon = "◉",
+		dps = 13,
+		radius = 19,
+		height = 22,
+		color = { 120, 60, 190 },
+		transparency = 0.6,
+		particleRate = 34,
+		particleSpeed = 3.5,
+		hint = "Whatever this is, it does not move. You do.",
+	},
+
+	cavein = {
+		mode = "pulsing",
+		name = "LOOSE CEILING",
+		icon = "⚠",
+		burst = 26,
+		radius = 14,
+		height = 16,
+		telegraph = 1.5,
+		active = 0.8,
+		rest = 4.5,
+		color = { 190, 150, 110 },
+		transparency = 0.85,
+		particleRate = 16,
+		particleSpeed = 6,
+		debris = true, -- drops real rocks during the burst
+		hint = "Dust falls first. That is your cue.",
+	},
+
+	heat = {
+		mode = "pulsing",
+		name = "MAGMA VENT",
+		icon = "🔥",
+		burst = 34,
+		radius = 12,
+		height = 26,
+		telegraph = 1.6,
+		active = 1.1,
+		rest = 4,
+		color = { 255, 120, 40 },
+		transparency = 0.8,
+		particleRate = 30,
+		particleSpeed = 14,
+		hint = "It glows before it fires. Count it out and walk through.",
+	},
+
+	pressure = {
+		mode = "pulsing",
+		name = "PRESSURE WELL",
+		icon = "◈",
+		burst = 42,
+		radius = 17,
+		height = 20,
+		telegraph = 1.3,
+		active = 1.0,
+		rest = 3.2,
+		color = { 90, 120, 255 },
+		transparency = 0.78,
+		particleRate = 22,
+		particleSpeed = 8,
+		hint = "The air folds inward, then it snaps.",
+	},
+
+	collapse = {
+		mode = "pulsing",
+		name = "COLLAPSE ZONE",
+		icon = "☠",
+		burst = 58,
+		radius = 20,
+		height = 26,
+		telegraph = 1.1,
+		active = 1.2,
+		rest = 2.8,
+		color = { 200, 60, 90 },
+		transparency = 0.75,
+		particleRate = 40,
+		particleSpeed = 10,
+		debris = true,
+		hint = "Down here the rock does not warn you twice.",
+	},
+}
+
+--- How many zones a chunk of this layer gets. Shallow layers stay clean so a
+--- new player learns the core loop before learning to dodge anything.
+function Hazards.densityFor(layer): number
+	if not layer.hazard then
+		return 0
+	end
+	if layer.minDepth < 100 then
+		return 1
+	end
+	if layer.minDepth < 700 then
+		return 2
+	end
+	return 3
+end
+
+function Hazards.kindOf(layer)
+	local hazard = layer.hazard
+	return hazard and Hazards.Kinds[hazard.kind] or nil
+end
+
+function Hazards.color(kindId: string): Color3
+	local kind = Hazards.Kinds[kindId]
+	if not kind then
+		return Color3.fromRGB(255, 255, 255)
+	end
+	return Color3.fromRGB(kind.color[1], kind.color[2], kind.color[3])
+end
+
+return Hazards
+
+]]></ProtectedString>
+            <bool name="Disabled">false</bool>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="RBX25">
           <Properties>
             <string name="Name">Layers</string>
             <ProtectedString name="Source"><![CDATA[
@@ -710,7 +976,7 @@ return Layers
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX22">
+        <Item class="ModuleScript" referent="RBX26">
           <Properties>
             <string name="Name">Mutations</string>
             <ProtectedString name="Source"><![CDATA[
@@ -771,7 +1037,7 @@ return Mutations
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX23">
+        <Item class="ModuleScript" referent="RBX27">
           <Properties>
             <string name="Name">Ores</string>
             <ProtectedString name="Source"><![CDATA[
@@ -908,7 +1174,7 @@ return Ores
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX24">
+        <Item class="ModuleScript" referent="RBX28">
           <Properties>
             <string name="Name">Products</string>
             <ProtectedString name="Source"><![CDATA[
@@ -1073,7 +1339,7 @@ return Products
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX25">
+        <Item class="ModuleScript" referent="RBX29">
           <Properties>
             <string name="Name">Quests</string>
             <ProtectedString name="Source"><![CDATA[
@@ -1151,7 +1417,7 @@ return Quests
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX26">
+        <Item class="ModuleScript" referent="RBX30">
           <Properties>
             <string name="Name">Rebirth</string>
             <ProtectedString name="Source"><![CDATA[
@@ -1223,7 +1489,7 @@ return Rebirth
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX27">
+        <Item class="ModuleScript" referent="RBX31">
           <Properties>
             <string name="Name">Season</string>
             <ProtectedString name="Source"><![CDATA[
@@ -1354,7 +1620,7 @@ return Season
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX28">
+        <Item class="ModuleScript" referent="RBX32">
           <Properties>
             <string name="Name">Upgrades</string>
             <ProtectedString name="Source"><![CDATA[
@@ -1514,7 +1780,7 @@ return Upgrades
           </Properties>
         </Item>
       </Item>
-      <Item class="ModuleScript" referent="RBX29">
+      <Item class="ModuleScript" referent="RBX33">
         <Properties>
           <string name="Name">Format</string>
           <ProtectedString name="Source"><![CDATA[
@@ -1602,7 +1868,7 @@ return Format
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX30">
+      <Item class="ModuleScript" referent="RBX34">
         <Properties>
           <string name="Name">Net</string>
           <ProtectedString name="Source"><![CDATA[
@@ -1654,6 +1920,7 @@ Net.Events = {
 	EquipCosmetic = 6,
 	BuyCosmetic = 4,
 	WatchAd = 1,
+	IntroSeen = 1,
 }
 
 -- Server -> client only.
@@ -1837,7 +2104,7 @@ return Net
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX31">
+      <Item class="ModuleScript" referent="RBX35">
         <Properties>
           <string name="Name">Rarity</string>
           <ProtectedString name="Source"><![CDATA[
@@ -1940,7 +2207,7 @@ return Rarity
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX32">
+      <Item class="ModuleScript" referent="RBX36">
         <Properties>
           <string name="Name">Signal</string>
           <ProtectedString name="Source"><![CDATA[
@@ -1998,15 +2265,15 @@ return Signal
       </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="RBX59">
+  <Item class="ServerScriptService" referent="RBX63">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Folder" referent="RBX34">
+    <Item class="Folder" referent="RBX38">
       <Properties>
         <string name="Name">Server</string>
       </Properties>
-      <Item class="ModuleScript" referent="RBX35">
+      <Item class="ModuleScript" referent="RBX39">
         <Properties>
           <string name="Name">Ads</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2170,7 +2437,7 @@ return Ads
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX36">
+      <Item class="ModuleScript" referent="RBX40">
         <Properties>
           <string name="Name">AntiCheat</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2266,7 +2533,7 @@ return AntiCheat
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="Script" referent="RBX37">
+      <Item class="Script" referent="RBX41">
         <Properties>
           <string name="Name">Bootstrap</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2333,7 +2600,7 @@ print(string.format("[DEEP RUSH] %d services up in %.2fs", #SERVICES, os.clock()
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX38">
+      <Item class="ModuleScript" referent="RBX42">
         <Properties>
           <string name="Name">Cargo</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2484,7 +2751,7 @@ return Cargo
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX39">
+      <Item class="ModuleScript" referent="RBX43">
         <Properties>
           <string name="Name">Contracts</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2767,7 +3034,7 @@ return Contracts
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX40">
+      <Item class="ModuleScript" referent="RBX44">
         <Properties>
           <string name="Name">Cosmetics</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3086,7 +3353,7 @@ return Cosmetics
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX41">
+      <Item class="ModuleScript" referent="RBX45">
         <Properties>
           <string name="Name">Crew</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3478,7 +3745,7 @@ return Crew
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX42">
+      <Item class="ModuleScript" referent="RBX46">
         <Properties>
           <string name="Name">Data</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3553,6 +3820,9 @@ local function template()
 			cleanBanks = 0,
 		},
 		rewards = { lastLogin = "", streak = 0, chests = 0 },
+
+		-- The rules card shows once per account, not once per session.
+		seenIntro = false,
 
 		-- Weekly ladder. dayPoints enforces the daily cap that pushes play
 		-- DAYS rather than long single sessions.
@@ -3764,6 +4034,7 @@ function Data.snapshot(player: Player)
 		quests = profile.quests,
 		stats = profile.stats,
 		rewards = profile.rewards,
+		seenIntro = profile.seenIntro,
 		contract = profile.contract,
 		descent = profile.descent,
 		cosmetics = profile.cosmetics,
@@ -3874,7 +4145,7 @@ return Data
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX43">
+      <Item class="ModuleScript" referent="RBX47">
         <Properties>
           <string name="Name">Drones</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4048,7 +4319,7 @@ return Drones
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX44">
+      <Item class="ModuleScript" referent="RBX48">
         <Properties>
           <string name="Name">Economy</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4325,7 +4596,7 @@ return Economy
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX45">
+      <Item class="ModuleScript" referent="RBX49">
         <Properties>
           <string name="Name">Feedback</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4386,29 +4657,40 @@ return Feedback
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX46">
+      <Item class="ModuleScript" referent="RBX50">
         <Properties>
           <string name="Name">Hazards</string>
           <ProtectedString name="Source"><![CDATA[
 --!nonstrict
 --[[
-	Hazards.luau — why depth costs something.
+	Hazards.luau — oxygen, and standing in the wrong place.
 
-	Two pressures, both scaling with the layer:
-	  OXYGEN   a soft timer. It never kills you outright at first; it starts
-	           chewing health, which gives you a chance to run for a lift.
-	  EVENTS   cave-ins, gas, heat, the Hollow. Telegraphed one second before
-	           they land, so a paying-attention player can react and a
-	           tabbed-out one cannot.
+	Two pressures, and they work differently on purpose:
 
-	Everything here is resisted by the Coolant/Void drones, which is what
-	makes a drone feel like equipment rather than a stat stick.
+	  OXYGEN  a soft timer that scales with the layer. It never kills you
+	          outright at first, it chews health, which is your cue to run for
+	          a lift. This is the cost of depth itself.
+
+	  ZONES   damage for being somewhere specific. Every hazard is a visible
+	          object placed by Server/World.luau — a gas cloud, a magma vent,
+	          a frost field — and this module only asks "is the player inside
+	          one, and is it armed right now".
+
+	The zone rewrite replaced a per-second dice roll that hurt you from
+	nowhere. The old version was technically fair (it telegraphed) and felt
+	arbitrary, because danger had no location: you could not look at a room
+	and know where not to stand. Now you can, and every hit traces back to
+	something the player could see.
+
+	World owns the zones and their timing; this owns the consequences. Neither
+	requires the other, which is what keeps World out of the Economy cycle.
 ]]
 
 local Players = game:GetService("Players")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config.Game)
+local HazardConfig = require(Shared.Config.Hazards)
 local Layers = require(Shared.Config.Layers)
 
 local Data = require(script.Parent.Data)
@@ -4419,88 +4701,170 @@ local Hazards = {}
 
 local SURFACE_DEPTH = 15 -- above this, you are breathing normally
 local SUFFOCATION_DPS = 6
+local SCAN_RADIUS = 30 -- studs; bigger than the largest zone
+local BURST_DEBOUNCE = 1.6 -- one pulsing zone cannot hit twice inside this
 
-local HAZARD_TEXT = {
-	cavein = { warn = "The ceiling is cracking...", hit = "CAVE-IN" },
-	gas = { warn = "Something hisses nearby...", hit = "GAS POCKET" },
-	heat = { warn = "The rock is glowing...", hit = "HEAT BURST" },
-	freeze = { warn = "Your visor is frosting...", hit = "FLASH FREEZE" },
-	hollow = { warn = "Something down here noticed you...", hit = "THE HOLLOW" },
-	pressure = { warn = "Your suit is groaning...", hit = "PRESSURE CRUSH" },
-	collapse = { warn = "Everything goes quiet...", hit = "COLLAPSE" },
-}
-
-local rng = Random.new(os.time() + 777)
+-- player -> { [zone] = timestamp } of the last burst that landed.
+local lastBurst: { [Player]: { [Instance]: number } } = {}
+-- player -> zone they are currently inside, for enter/leave messaging.
+local inside: { [Player]: Instance? } = {}
+-- players whose walkspeed we have modified, so we can hand it back.
+local slowed: { [Player]: boolean } = {}
 
 local function humanoidOf(player: Player)
 	local character = player.Character
 	return character and character:FindFirstChildOfClass("Humanoid")
 end
 
-local function strike(player: Player, layer)
-	local hazard = layer.hazard
-	if not hazard then
+local function rootOf(player: Player)
+	local character = player.Character
+	return character and character:FindFirstChild("HumanoidRootPart")
+end
+
+--- The armed zone the player is standing in, if any.
+local function zoneAt(player: Player)
+	local root = rootOf(player)
+	if not root then
+		return nil, nil
+	end
+
+	for _, part in ipairs(workspace:GetPartBoundsInRadius(root.Position, SCAN_RADIUS)) do
+		local kindId = part:GetAttribute("HazardZone")
+		if kindId then
+			local radius = part:GetAttribute("HazardRadius") or 12
+			local height = part:GetAttribute("HazardHeight") or 12
+			local offset = root.Position - part.Position
+			local horizontal = Vector2.new(offset.X, offset.Z).Magnitude
+			if horizontal <= radius and math.abs(offset.Y) <= height / 2 then
+				return part, HazardConfig.Kinds[kindId]
+			end
+		end
+	end
+
+	return nil, nil
+end
+
+local function restoreSpeed(player: Player)
+	if slowed[player] then
+		slowed[player] = nil
+		Economy.applyCharacter(player)
+	end
+end
+
+local function applyZone(player: Player, zone: Instance?, kind, delta: number)
+	local humanoid = humanoidOf(player)
+	if not humanoid or humanoid.Health <= 0 then
 		return
 	end
 
-	local text = HAZARD_TEXT[hazard.kind] or { warn = "Something is wrong...", hit = "HAZARD" }
-	Feedback.effect(player, "hazardWarn", { kind = hazard.kind, text = text.warn })
+	local previous = inside[player]
+	inside[player] = zone
 
-	task.delay(1.1, function()
-		local humanoid = humanoidOf(player)
-		local session = Data.session(player)
-		if not humanoid or humanoid.Health <= 0 or not session then
-			return
+	if zone == nil then
+		if previous then
+			restoreSpeed(player)
 		end
-		-- Escaping the layer during the telegraph is a real out.
-		if Layers.at(session.depth) ~= layer then
-			return
-		end
+		return
+	end
 
-		local damage = hazard.damage * (1 - Economy.hazardResist(player))
-		humanoid:TakeDamage(damage)
-		Feedback.effect(player, "hazardHit", { kind = hazard.kind, text = text.hit, damage = damage })
-	end)
+	-- Entering is announced once, with the hint that tells you the counter.
+	if previous ~= zone then
+		Feedback.effect(player, "hazardWarn", { kind = kind.name, text = kind.hint })
+		Feedback.toast(player, {
+			title = `{kind.icon} {kind.name}`,
+			body = kind.hint,
+			kind = "error",
+			duration = 4,
+		})
+	end
+
+	local resist = 1 - Economy.hazardResist(player)
+
+	if kind.slow then
+		slowed[player] = true
+		humanoid.WalkSpeed = Economy.walkSpeed(player) * kind.slow
+	end
+
+	if not zone:GetAttribute("Armed") then
+		return
+	end
+
+	if kind.mode == "persistent" then
+		humanoid:TakeDamage(kind.dps * delta * resist)
+		Feedback.effect(player, "hazardTick", { kind = kind.name })
+		return
+	end
+
+	-- Pulsing: one burst is one hit, however long the window lasts.
+	local record = lastBurst[player]
+	if not record then
+		record = {}
+		lastBurst[player] = record
+	end
+
+	local now = os.clock()
+	if now - (record[zone] or 0) < BURST_DEBOUNCE then
+		return
+	end
+	record[zone] = now
+
+	humanoid:TakeDamage(kind.burst * resist)
+	Feedback.effect(player, "hazardHit", { kind = kind.name, text = kind.name, damage = kind.burst })
 end
 
-local function tick()
+local function tick(delta: number)
 	for _, player in ipairs(Players:GetPlayers()) do
 		local session = Data.session(player)
 		local humanoid = humanoidOf(player)
-		if session and humanoid and humanoid.Health > 0 then
-			local depth = session.depth or 0
-			local layer = Layers.at(depth)
-			local maxOxygen = Economy.maxOxygen(player)
 
-			if depth <= SURFACE_DEPTH then
-				session.oxygen = math.min(maxOxygen, (session.oxygen or maxOxygen) + Config.OxygenRegenRate)
-			else
-				session.oxygen = (session.oxygen or maxOxygen) - layer.oxygenDrain
-				if session.oxygen <= 0 then
-					session.oxygen = 0
-					humanoid:TakeDamage(SUFFOCATION_DPS * (1 - Economy.hazardResist(player)))
-					Feedback.effect(player, "suffocating", {})
-				end
-			end
+		if not session or not humanoid or humanoid.Health <= 0 then
+			inside[player] = nil
+			continue
+		end
 
-			Data.push(player, { oxygen = session.oxygen, oxygenMax = maxOxygen })
+		local depth = session.depth or 0
+		local layer = Layers.at(depth)
+		local maxOxygen = Economy.maxOxygen(player)
 
-			-- Layer hazard roll. The per-layer chance is a per-encounter
-			-- number, so we scale it down to a per-second probability.
-			if layer.hazard and depth > SURFACE_DEPTH then
-				if rng:NextNumber() < layer.hazard.chance * 0.05 then
-					strike(player, layer)
-				end
+		if depth <= SURFACE_DEPTH then
+			session.oxygen = math.min(maxOxygen, (session.oxygen or maxOxygen) + Config.OxygenRegenRate * delta)
+		else
+			session.oxygen = (session.oxygen or maxOxygen) - layer.oxygenDrain * delta
+			if session.oxygen <= 0 then
+				session.oxygen = 0
+				humanoid:TakeDamage(SUFFOCATION_DPS * delta * (1 - Economy.hazardResist(player)))
+				Feedback.effect(player, "suffocating", {})
 			end
 		end
+
+		-- The tick is fast so zones feel responsive; the oxygen bar does not
+		-- need that rate, so it is replicated about once a second.
+		session.oxygenPushed = (session.oxygenPushed or 0) + delta
+		if session.oxygenPushed >= 1 then
+			session.oxygenPushed = 0
+			Data.push(player, { oxygen = session.oxygen, oxygenMax = maxOxygen })
+		end
+
+		local zone, kind = zoneAt(player)
+		applyZone(player, zone, kind, delta)
 	end
 end
 
 function Hazards.start()
+	Players.PlayerRemoving:Connect(function(player)
+		lastBurst[player] = nil
+		inside[player] = nil
+		slowed[player] = nil
+	end)
+
 	task.spawn(function()
+		local last = os.clock()
 		while true do
 			task.wait(Config.HazardTickRate)
-			tick()
+			local now = os.clock()
+			local delta = now - last
+			last = now
+			tick(delta)
 		end
 	end)
 end
@@ -4511,7 +4875,7 @@ return Hazards
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX47">
+      <Item class="ModuleScript" referent="RBX51">
         <Properties>
           <string name="Name">Leaderboards</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4752,7 +5116,7 @@ return Leaderboards
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX48">
+      <Item class="ModuleScript" referent="RBX52">
         <Properties>
           <string name="Name">Mining</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5093,7 +5457,7 @@ return Mining
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX49">
+      <Item class="ModuleScript" referent="RBX53">
         <Properties>
           <string name="Name">Monetization</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5320,7 +5684,7 @@ return Monetization
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX50">
+      <Item class="ModuleScript" referent="RBX54">
         <Properties>
           <string name="Name">Quests</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5599,6 +5963,16 @@ function Quests.start()
 		Quests.reroll(player)
 	end)
 
+	-- The rules card lives with onboarding: it teaches the same six things the
+	-- onboarding chain then makes you do.
+	Net.on("IntroSeen", function(player)
+		local profile = Data.get(player)
+		if profile and not profile.seenIntro then
+			profile.seenIntro = true
+			Data.push(player, { seenIntro = true })
+		end
+	end)
+
 	Data.loaded:connect(function(player)
 		ensureDaily(player)
 		-- Milestones read lifetime metrics, so a returning player may already
@@ -5633,7 +6007,7 @@ return Quests
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX51">
+      <Item class="ModuleScript" referent="RBX55">
         <Properties>
           <string name="Name">Rebirth</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5727,7 +6101,7 @@ return Rebirth
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX52">
+      <Item class="ModuleScript" referent="RBX56">
         <Properties>
           <string name="Name">Rewards</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5835,7 +6209,7 @@ return Rewards
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX53">
+      <Item class="ModuleScript" referent="RBX57">
         <Properties>
           <string name="Name">Rift</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6002,7 +6376,7 @@ return Rift
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX54">
+      <Item class="ModuleScript" referent="RBX58">
         <Properties>
           <string name="Name">Season</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6194,7 +6568,7 @@ return Season
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX55">
+      <Item class="ModuleScript" referent="RBX59">
         <Properties>
           <string name="Name">Steal</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6582,7 +6956,7 @@ return Steal
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX56">
+      <Item class="ModuleScript" referent="RBX60">
         <Properties>
           <string name="Name">Surface</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6767,7 +7141,7 @@ return Surface
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX57">
+      <Item class="ModuleScript" referent="RBX61">
         <Properties>
           <string name="Name">Upgrades</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6843,7 +7217,7 @@ return Upgrades
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX58">
+      <Item class="ModuleScript" referent="RBX62">
         <Properties>
           <string name="Name">World</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6869,9 +7243,11 @@ return Upgrades
 ]]
 
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config.Game)
+local HazardConfig = require(Shared.Config.Hazards)
 local Layers = require(Shared.Config.Layers)
 
 local World = {}
@@ -6952,6 +7328,29 @@ local function spawnNode(parent: Instance, position: Vector3, depth: number, lay
 	light.Color = layerColor(layer):Lerp(Color3.fromRGB(255, 220, 150), 0.5)
 	light.Parent = part
 
+	-- Shards around the main block. A single cube reads as a placeholder; a
+	-- cluster reads as a vein someone has to dig out. They carry no NodeId, so
+	-- targeting and mining still see exactly one node.
+	for shard = 1, rng:NextInteger(2, 4) do
+		local shardSize = size * rng:NextNumber(0.3, 0.55)
+		local offset = Vector3.new(
+			rng:NextNumber(-size * 0.6, size * 0.6),
+			rng:NextNumber(-size * 0.5, size * 0.5),
+			rng:NextNumber(-size * 0.6, size * 0.6)
+		)
+		local piece = makePart(
+			"Shard" .. shard,
+			Vector3.new(shardSize, shardSize * rng:NextNumber(1.1, 2.2), shardSize),
+			CFrame.new(position + offset)
+				* CFrame.Angles(rng:NextNumber(0, 6), rng:NextNumber(0, 6), rng:NextNumber(0, 6)),
+			part.Color:Lerp(Color3.fromRGB(255, 255, 255), 0.25),
+			Enum.Material.Glass
+		)
+		piece.CanCollide = false
+		piece.Transparency = 0.15
+		piece.Parent = part
+	end
+
 	nodes[id] = { id = id, part = part, depth = depth, alive = true }
 	return id
 end
@@ -6976,6 +7375,11 @@ function World.consumeNode(nodeId: string)
 	local part = node.part
 	if part.Parent then
 		part.Transparency = 1
+		for _, piece in ipairs(part:GetChildren()) do
+			if piece:IsA("BasePart") then
+				piece.Transparency = 1
+			end
+		end
 		local light = part:FindFirstChildOfClass("PointLight")
 		if light then
 			light.Enabled = false
@@ -6986,6 +7390,11 @@ function World.consumeNode(nodeId: string)
 		if node.part.Parent then
 			node.alive = true
 			node.part.Transparency = 0
+			for _, piece in ipairs(node.part:GetChildren()) do
+				if piece:IsA("BasePart") then
+					piece.Transparency = 0.15
+				end
+			end
 			local light = node.part:FindFirstChildOfClass("PointLight")
 			if light then
 				light.Enabled = true
@@ -7057,6 +7466,259 @@ local function buildLiftPad(parent: Instance, cframe: CFrame)
 	label.Parent = billboard
 end
 
+-- Hazard zones ------------------------------------------------------------
+
+--- A danger zone you can see. Persistent kinds sit armed forever; pulsing
+--- kinds run their own telegraph -> burst -> rest loop and flip an `Armed`
+--- attribute, which is the only thing Server/Hazards.luau reads. Keeping the
+--- animation here and the damage there means neither module has to know about
+--- the other, which is what stops World and Economy forming a require cycle.
+local function buildHazardZone(parent: Instance, cframe: CFrame, layer)
+	local kind = HazardConfig.kindOf(layer)
+	if not kind then
+		return
+	end
+
+	local kindId = layer.hazard.kind
+	local color = HazardConfig.color(kindId)
+
+	local zone = makePart(
+		"HazardZone",
+		Vector3.new(kind.radius * 2, kind.height, kind.radius * 2),
+		cframe * CFrame.new(0, kind.height / 2 - 2, 0),
+		color,
+		Enum.Material.ForceField
+	)
+	zone.CanCollide = false
+	zone.Transparency = kind.transparency
+	zone:SetAttribute("HazardZone", kindId)
+	zone:SetAttribute("HazardRadius", kind.radius)
+	zone:SetAttribute("HazardHeight", kind.height)
+	zone:SetAttribute("Armed", kind.mode == "persistent")
+	zone.Parent = parent
+
+	local attachment = Instance.new("Attachment")
+	attachment.Parent = zone
+
+	local particles = Instance.new("ParticleEmitter")
+	particles.Color = ColorSequence.new(color)
+	particles.Size = NumberSequence.new(kind.mode == "pulsing" and 3.5 or 2.2)
+	particles.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.35),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	particles.Lifetime = NumberRange.new(1.4, 2.8)
+	particles.Rate = kind.particleRate
+	particles.Speed = NumberRange.new(kind.particleSpeed * 0.5, kind.particleSpeed)
+	particles.SpreadAngle = Vector2.new(50, 50)
+	particles.LightEmission = 0.7
+	particles.Parent = attachment
+
+	local light = Instance.new("PointLight")
+	light.Color = color
+	light.Range = kind.radius * 1.6
+	light.Brightness = kind.mode == "persistent" and 1.6 or 0.5
+	light.Parent = zone
+
+	-- A floating sign, because a player should be able to name the thing that
+	-- is about to hurt them before it does.
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.fromScale(11, 3)
+	billboard.StudsOffset = Vector3.new(0, kind.height / 2 + 3, 0)
+	billboard.AlwaysOnTop = false
+	billboard.MaxDistance = 220
+	billboard.Parent = zone
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.GothamBlack
+	label.Text = `{kind.icon} {kind.name}`
+	label.TextColor3 = color
+	label.TextScaled = true
+	label.TextStrokeTransparency = 0.35
+	label.Parent = billboard
+
+	if kind.mode ~= "pulsing" then
+		return
+	end
+
+	-- Pulsing zones are a rhythm, not a coin flip. Same period every cycle so
+	-- a player can learn to walk through one.
+	task.spawn(function()
+		task.wait(rng:NextNumber(0, kind.rest))
+		while zone.Parent do
+			zone:SetAttribute("Armed", false)
+			zone.Transparency = kind.transparency
+			light.Brightness = 0.5
+			particles.Rate = kind.particleRate * 0.4
+			task.wait(kind.rest)
+			if not zone.Parent then
+				return
+			end
+
+			-- Telegraph: it gets brighter and louder before anything lands.
+			particles.Rate = kind.particleRate * 1.6
+			TweenService:Create(zone, TweenInfo.new(kind.telegraph), {
+				Transparency = math.max(0, kind.transparency - 0.35),
+			}):Play()
+			TweenService:Create(light, TweenInfo.new(kind.telegraph), { Brightness = 5 }):Play()
+			task.wait(kind.telegraph)
+			if not zone.Parent then
+				return
+			end
+
+			zone:SetAttribute("Armed", true)
+			particles.Rate = kind.particleRate * 4
+			zone.Transparency = math.max(0, kind.transparency - 0.5)
+
+			if kind.debris then
+				for _ = 1, 5 do
+					local rock = makePart(
+						"Debris",
+						Vector3.new(rng:NextNumber(1.4, 3.4), rng:NextNumber(1.4, 3), rng:NextNumber(1.4, 3.4)),
+						zone.CFrame * CFrame.new(
+							rng:NextNumber(-kind.radius, kind.radius),
+							kind.height / 2,
+							rng:NextNumber(-kind.radius, kind.radius)
+						),
+						layerColor(layer),
+						Enum.Material.Rock
+					)
+					rock.Anchored = false
+					rock.CanCollide = false
+					rock.Parent = zone.Parent
+					task.delay(3, function()
+						if rock.Parent then
+							rock:Destroy()
+						end
+					end)
+				end
+			end
+
+			task.wait(kind.active)
+		end
+	end)
+end
+
+-- Set dressing ------------------------------------------------------------
+
+--- Rubble, a crate and a dropped lamp on a shelf. None of it is interactive;
+--- all of it is the difference between "a ledge" and "somewhere people work".
+local function dressShelf(parent: Instance, cframe: CFrame, layer)
+	local color = layerColor(layer)
+
+	for _ = 1, rng:NextInteger(3, 6) do
+		local size = rng:NextNumber(1.2, 3.2)
+		local rubble = makePart(
+			"Rubble",
+			Vector3.new(size, size * rng:NextNumber(0.5, 0.9), size * rng:NextNumber(0.7, 1.3)),
+			cframe * CFrame.new(rng:NextNumber(-16, 16), 2 + size / 2, rng:NextNumber(-10, 10))
+				* CFrame.Angles(0, rng:NextNumber(0, 6), 0),
+			color:Lerp(Color3.fromRGB(0, 0, 0), rng:NextNumber(0.1, 0.35)),
+			Enum.Material.Rock
+		)
+		rubble.CanCollide = false
+		rubble.Parent = parent
+	end
+
+	if rng:NextNumber() < 0.45 then
+		local crate = makePart(
+			"Prop",
+			Vector3.new(3.4, 3.4, 3.4),
+			cframe * CFrame.new(rng:NextNumber(-14, 14), 3.7, rng:NextNumber(-8, 8))
+				* CFrame.Angles(0, rng:NextNumber(0, 6), 0),
+			Color3.fromRGB(122, 88, 46),
+			Enum.Material.WoodPlanks
+		)
+		crate.Parent = parent
+	end
+
+	if rng:NextNumber() < 0.5 then
+		local lamp = makePart(
+			"Prop",
+			Vector3.new(1.2, 1.6, 1.2),
+			cframe * CFrame.new(rng:NextNumber(-15, 15), 2.8, rng:NextNumber(-9, 9)),
+			Color3.fromRGB(255, 226, 170),
+			Enum.Material.Neon
+		)
+		lamp.CanCollide = false
+		lamp.Parent = parent
+
+		local glow = Instance.new("PointLight")
+		glow.Color = Color3.fromRGB(255, 214, 150)
+		glow.Range = 26
+		glow.Brightness = 2.2
+		glow.Parent = lamp
+	end
+end
+
+--- Timber frames and hanging lamps down the shaft wall. These do most of the
+--- work of making the shaft feel built rather than generated: they give the
+--- eye a repeating vertical rhythm to measure the fall against.
+local function buildSupports(parent: Instance, chunkIndex: number)
+	local baseY = -chunkIndex * CHUNK_HEIGHT
+	local timber = Color3.fromRGB(96, 68, 38)
+
+	for frame = 0, 1 do
+		local y = baseY - 30 - frame * 78
+		local angle = (chunkIndex * 1.1 + frame * 2.4) % (math.pi * 2)
+		local outward = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		local at = outward * (SHAFT_RADIUS - 2)
+		local facing = CFrame.lookAt(Vector3.new(at.X, y, at.Z), Vector3.new(0, y, 0))
+
+		local post = makePart("Support", Vector3.new(2.2, 26, 2.2), facing * CFrame.new(-9, 0, 0), timber, Enum.Material.Wood)
+		post.CanCollide = false
+		post.Parent = parent
+
+		local post2 = makePart("Support", Vector3.new(2.2, 26, 2.2), facing * CFrame.new(9, 0, 0), timber, Enum.Material.Wood)
+		post2.CanCollide = false
+		post2.Parent = parent
+
+		local beam = makePart("Support", Vector3.new(20, 2.2, 2.2), facing * CFrame.new(0, 13, 0), timber, Enum.Material.Wood)
+		beam.CanCollide = false
+		beam.Parent = parent
+
+		local lamp = makePart(
+			"ShaftLamp",
+			Vector3.new(1.6, 1.6, 1.6),
+			facing * CFrame.new(0, 10, 1.4),
+			Color3.fromRGB(255, 210, 140),
+			Enum.Material.Neon
+		)
+		lamp.CanCollide = false
+		lamp.Parent = parent
+
+		local light = Instance.new("PointLight")
+		light.Color = Color3.fromRGB(255, 200, 130)
+		light.Range = 44
+		light.Brightness = 2.6
+		light.Parent = lamp
+	end
+end
+
+--- Stalactites hanging into the shaft. Cheap, and they break up the ring
+--- silhouette that otherwise reads as a stack of hoops.
+local function buildStalactites(parent: Instance, chunkIndex: number, layer)
+	local baseY = -chunkIndex * CHUNK_HEIGHT
+	for _ = 1, 5 do
+		local angle = rng:NextNumber(0, math.pi * 2)
+		local y = baseY - rng:NextNumber(4, CHUNK_HEIGHT - 4)
+		local reach = rng:NextNumber(6, 18)
+		local at = Vector3.new(math.cos(angle), 0, math.sin(angle)) * (SHAFT_RADIUS - 4)
+		local spike = makePart(
+			"Spike",
+			Vector3.new(rng:NextNumber(1.6, 3.6), reach, rng:NextNumber(1.6, 3.6)),
+			CFrame.new(Vector3.new(at.X, y, at.Z))
+				* CFrame.Angles(rng:NextNumber(-0.3, 0.3), 0, rng:NextNumber(-0.3, 0.3)),
+			layerColor(layer):Lerp(Color3.fromRGB(0, 0, 0), 0.25),
+			Enum.Material.Slate
+		)
+		spike.CanCollide = false
+		spike.Parent = parent
+	end
+end
+
 local function buildChunk(chunkIndex: number)
 	if chunks[chunkIndex] then
 		return
@@ -7087,11 +7749,34 @@ local function buildChunk(chunkIndex: number)
 		wall.Parent = folder
 	end
 
+	buildSupports(folder, chunkIndex)
+	buildStalactites(folder, chunkIndex, layer)
+
+	local hazardsWanted = HazardConfig.densityFor(layer)
+	local hazardsPlaced = 0
+
 	for slot = 1, SHELVES_PER_CHUNK do
 		local _, cframe = buildShelf(folder, chunkIndex, slot)
+		dressShelf(folder, cframe, layer)
+
 		if slot == 1 and chunkIndex % LIFT_EVERY_CHUNKS == 0 and chunkIndex > 0 then
 			buildLiftPad(folder, cframe)
+		elseif hazardsPlaced < hazardsWanted then
+			-- Never on the same shelf as a lift: the way out must always be
+			-- somewhere a player can stand safely.
+			buildHazardZone(folder, cframe * CFrame.new(rng:NextNumber(-10, 10), 0, 0), layer)
+			hazardsPlaced += 1
 		end
+	end
+
+	-- Any hazards the shelves could not hold go in the open shaft, where they
+	-- are something to fall past rather than something to walk into.
+	while hazardsPlaced < hazardsWanted do
+		local angle = rng:NextNumber(0, math.pi * 2)
+		local y = centerY + rng:NextNumber(-CHUNK_HEIGHT / 2, CHUNK_HEIGHT / 2)
+		local at = Vector3.new(math.cos(angle), 0, math.sin(angle)) * rng:NextNumber(10, SHAFT_RADIUS - 22)
+		buildHazardZone(folder, CFrame.new(Vector3.new(at.X, y, at.Z)), layer)
+		hazardsPlaced += 1
 	end
 
 	-- The floor of the world.
@@ -7216,6 +7901,131 @@ local function buildSurface()
 	signLabel.TextScaled = true
 	signLabel.TextStrokeTransparency = 0.3
 	signLabel.Parent = signGui
+
+	-- Headframe over the shaft mouth. This is the silhouette every real mine
+	-- has, and it is what turns "a hole in a platform" into a place.
+	local steel = Color3.fromRGB(72, 76, 86)
+	for leg = 1, 4 do
+		local angle = (leg / 4) * math.pi * 2 + math.pi / 4
+		local at = Vector3.new(math.cos(angle), 0, math.sin(angle)) * (SHAFT_RADIUS + 12)
+		local tower = makePart(
+			"Headframe",
+			Vector3.new(3, 78, 3),
+			CFrame.new(at.X, 38, at.Z) * CFrame.Angles(math.rad(math.sin(angle) * 6), 0, math.rad(-math.cos(angle) * 6)),
+			steel,
+			Enum.Material.Metal
+		)
+		tower.Parent = hub
+
+		local brace = makePart(
+			"Headframe",
+			Vector3.new(3, 2.4, 2.4),
+			CFrame.new(at.X * 0.62, 62, at.Z * 0.62),
+			steel,
+			Enum.Material.Metal
+		)
+		brace.CanCollide = false
+		brace.Parent = hub
+	end
+
+	local wheelHouse = makePart("Headframe", Vector3.new(26, 4, 26), CFrame.new(0, 78, 0), steel, Enum.Material.Metal)
+	wheelHouse.CanCollide = false
+	wheelHouse.Parent = hub
+
+	local wheel = makePart("Wheel", Vector3.new(3, 22, 22), CFrame.new(0, 88, 0), Color3.fromRGB(198, 96, 40), Enum.Material.Metal)
+	wheel.Shape = Enum.PartType.Cylinder
+	wheel.CanCollide = false
+	wheel.Parent = hub
+
+	-- Railing around the mouth, so the drop reads as deliberate rather than
+	-- like the floor simply stops.
+	for post = 1, 28 do
+		local angle = (post / 28) * math.pi * 2
+		local at = Vector3.new(math.cos(angle), 0, math.sin(angle)) * (SHAFT_RADIUS + 4)
+		local rail = makePart("Rail", Vector3.new(0.7, 4.2, 0.7), CFrame.new(at.X, 2.1, at.Z), Color3.fromRGB(216, 170, 60), Enum.Material.Metal)
+		rail.CanCollide = false
+		rail.Parent = hub
+	end
+
+	-- Floodlights. The surface should be the brightest place in the game, so
+	-- that descending visibly costs you light.
+	for mast = 1, 4 do
+		local angle = (mast / 4) * math.pi * 2 + 0.4
+		local at = Vector3.new(math.cos(angle), 0, math.sin(angle)) * (SHAFT_RADIUS + 40)
+		local pole = makePart("Mast", Vector3.new(1.6, 30, 1.6), CFrame.new(at.X, 15, at.Z), steel, Enum.Material.Metal)
+		pole.Parent = hub
+
+		local head = makePart("Floodlight", Vector3.new(5, 3, 5), CFrame.new(at.X, 30, at.Z), Color3.fromRGB(255, 246, 214), Enum.Material.Neon)
+		head.CanCollide = false
+		head.Parent = hub
+
+		local beam = Instance.new("SpotLight")
+		beam.Color = Color3.fromRGB(255, 240, 205)
+		beam.Range = 90
+		beam.Brightness = 3
+		beam.Angle = 110
+		beam.Face = Enum.NormalId.Bottom
+		beam.Parent = head
+	end
+
+	-- The upgrade shack, opposite the vault. It has no function; it is there
+	-- so the surface has two landmarks instead of one, which is what makes it
+	-- possible to say "meet me by the shack".
+	local shack = makePart("Shack", Vector3.new(20, 12, 16), CFrame.new(-46, 4, SHAFT_RADIUS + 22), Color3.fromRGB(108, 74, 44), Enum.Material.WoodPlanks)
+	shack.Parent = hub
+
+	local roof = makePart("Shack", Vector3.new(24, 1.4, 20), CFrame.new(-46, 10.6, SHAFT_RADIUS + 22), Color3.fromRGB(150, 62, 42), Enum.Material.Metal)
+	roof.CanCollide = false
+	roof.Parent = hub
+
+	local shackSign = Instance.new("BillboardGui")
+	shackSign.Size = UDim2.fromScale(14, 3.5)
+	shackSign.StudsOffset = Vector3.new(0, 9, 0)
+	shackSign.MaxDistance = 300
+	shackSign.Parent = shack
+
+	local shackLabel = Instance.new("TextLabel")
+	shackLabel.Size = UDim2.fromScale(1, 1)
+	shackLabel.BackgroundTransparency = 1
+	shackLabel.Font = Enum.Font.GothamBlack
+	shackLabel.Text = "⛏️ UPGRADES"
+	shackLabel.TextColor3 = Color3.fromRGB(120, 230, 255)
+	shackLabel.TextScaled = true
+	shackLabel.TextStrokeTransparency = 0.35
+	shackLabel.Parent = shackSign
+
+	-- Vault door, so the vault looks like something you put things into.
+	local door = makePart("VaultDoor", Vector3.new(9, 11, 1.4), CFrame.new(0, 5, SHAFT_RADIUS + 26.6), Color3.fromRGB(52, 44, 24), Enum.Material.Metal)
+	door.CanCollide = false
+	door.Parent = hub
+
+	local dial = makePart("VaultDial", Vector3.new(1, 4, 4), CFrame.new(0, 6, SHAFT_RADIUS + 25.8), Color3.fromRGB(255, 226, 150), Enum.Material.Metal)
+	dial.Shape = Enum.PartType.Cylinder
+	dial.CanCollide = false
+	dial.Parent = hub
+
+	-- Scattered props. Cheap, and they carry most of the "people work here".
+	local propRng = Random.new(4242)
+	for _ = 1, 22 do
+		local angle = propRng:NextNumber(0, math.pi * 2)
+		local distance = propRng:NextNumber(SHAFT_RADIUS + 12, SHAFT_RADIUS + 62)
+		local at = Vector3.new(math.cos(angle) * distance, 0, math.sin(angle) * distance)
+		local roll = propRng:NextNumber()
+
+		if roll < 0.45 then
+			local crate = makePart("Prop", Vector3.new(4, 4, 4), CFrame.new(at.X, 2, at.Z) * CFrame.Angles(0, propRng:NextNumber(0, 6), 0), Color3.fromRGB(122, 88, 46), Enum.Material.WoodPlanks)
+			crate.Parent = hub
+		elseif roll < 0.75 then
+			local barrel = makePart("Prop", Vector3.new(3.6, 5, 3.6), CFrame.new(at.X, 2.5, at.Z), Color3.fromRGB(70, 96, 78), Enum.Material.Metal)
+			barrel.Shape = Enum.PartType.Cylinder
+			barrel.CFrame = CFrame.new(at.X, 2.5, at.Z) * CFrame.Angles(0, 0, math.rad(90))
+			barrel.Parent = hub
+		else
+			local pile = makePart("Prop", Vector3.new(propRng:NextNumber(2, 5), propRng:NextNumber(1.4, 3), propRng:NextNumber(2, 5)), CFrame.new(at.X, 1.4, at.Z) * CFrame.Angles(0, propRng:NextNumber(0, 6), 0), Color3.fromRGB(96, 88, 78), Enum.Material.Rock)
+			pile.CanCollide = false
+			pile.Parent = hub
+		end
+	end
 
 	hub.Parent = container
 end
@@ -7373,7 +8183,7 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="RBX60">
+  <Item class="StarterPlayer" referent="RBX64">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
@@ -7385,7 +8195,188 @@ return World
         <Properties>
           <string name="Name">Client</string>
         </Properties>
-        <Item class="LocalScript" referent="RBX2">
+        <Item class="ModuleScript" referent="RBX2">
+          <Properties>
+            <string name="Name">Atmosphere</string>
+            <ProtectedString name="Source"><![CDATA[
+--!nonstrict
+--[[
+	Atmosphere.luau — what depth sounds and looks like.
+
+	The world geometry says where you are; this says how far down. Three
+	things move together as you descend:
+
+	  LIGHT     fog closes in, ambient drops, the tint cools then goes wrong.
+	            By the Abyss you can see about forty studs, which is what makes
+	            a headlamp upgrade feel like a purchase rather than a stat.
+	  SOUND     four ambience layers cross-fade by depth. Nothing switches;
+	            everything bleeds, so the change is felt rather than noticed.
+	  TENSION   a separate layer that rises when oxygen is low or a hazard has
+	            you. It is the only audio that reacts to state rather than
+	            position, which is why it reads as danger.
+
+	All of it runs on the client. The server has no opinion about your fog.
+]]
+
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local AudioConfig = require(Shared.Config.Audio)
+local Layers = require(Shared.Config.Layers)
+local Net = require(Shared.Net)
+
+local State = require(script.Parent.State)
+
+local Atmosphere = {}
+
+local layers: { [string]: Sound } = {}
+local tension: Sound
+local colorCorrection: ColorCorrectionEffect
+local haze
+
+local tensionTarget = 0
+local hazardUntil = 0
+
+local function lerp(a: number, b: number, t: number): number
+	return a + (b - a) * math.clamp(t, 0, 1)
+end
+
+--- 0 at `from`, 1 at `to`, and it fades back out past the band so a layer
+--- does not stack forever once you are below it.
+local function bandVolume(depth: number, band): number
+	if depth < band.from then
+		return 0
+	end
+	local span = math.max(band.to - band.from, 1)
+	local ramp = math.clamp((depth - band.from) / (span * 0.35), 0, 1)
+	local falloff = depth > band.to and math.clamp(1 - (depth - band.to) / (span * 0.5), 0, 1) or 1
+	return ramp * falloff
+end
+
+local function buildAudio()
+	local group = Instance.new("SoundGroup")
+	group.Name = "DeepRushAmbience"
+	group.Volume = 1
+	group.Parent = SoundService
+
+	for _, band in ipairs(AudioConfig.Ambience) do
+		local custom = AudioConfig.source(band.custom)
+		local sound = Instance.new("Sound")
+		sound.Name = "Ambience_" .. band.id
+		sound.SoundId = custom ~= "" and custom or AudioConfig.Builtin.rumble
+		-- Built-ins are short one-shots; looping them at low pitch is what
+		-- turns a snare of a clip into a bed. A real uploaded loop plays at
+		-- its own pitch instead.
+		sound.PlaybackSpeed = custom ~= "" and 1 or band.pitch
+		sound.Looped = true
+		sound.Volume = 0
+		sound.SoundGroup = group
+		sound.Parent = SoundService
+		sound:Play()
+		layers[band.id] = sound
+	end
+
+	tension = Instance.new("Sound")
+	tension.Name = "Tension"
+	tension.SoundId = AudioConfig.Builtin.wind
+	tension.PlaybackSpeed = 0.45
+	tension.Looped = true
+	tension.Volume = 0
+	tension.SoundGroup = group
+	tension.Parent = SoundService
+	tension:Play()
+
+	local music = AudioConfig.source("music")
+	if music ~= "" then
+		local track = Instance.new("Sound")
+		track.Name = "Music"
+		track.SoundId = music
+		track.Looped = true
+		track.Volume = AudioConfig.MusicVolume
+		track.SoundGroup = group
+		track.Parent = SoundService
+		track:Play()
+	end
+end
+
+local function buildLighting()
+	colorCorrection = Lighting:FindFirstChild("DeepRushGrade") or Instance.new("ColorCorrectionEffect")
+	colorCorrection.Name = "DeepRushGrade"
+	colorCorrection.Parent = Lighting
+
+	haze = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
+	haze.Density = 0.3
+	haze.Offset = 0.2
+	haze.Glare = 0.1
+	haze.Haze = 1
+	haze.Parent = Lighting
+end
+
+local function step(delta: number)
+	local depth = State.data.depth or 0
+	local layer = Layers.at(depth)
+	local blend = math.clamp(delta * 1.8, 0, 1)
+
+	-- Lighting follows the layer the player is actually in.
+	local ambient = Color3.fromRGB(layer.ambient[1], layer.ambient[2], layer.ambient[3])
+	Lighting.Ambient = Lighting.Ambient:Lerp(ambient, blend)
+	Lighting.OutdoorAmbient = Lighting.OutdoorAmbient:Lerp(ambient, blend)
+	Lighting.FogEnd = lerp(Lighting.FogEnd, layer.fog, blend)
+	Lighting.FogStart = lerp(Lighting.FogStart, layer.fog * 0.12, blend)
+
+	local rock = Color3.fromRGB(layer.rock[1], layer.rock[2], layer.rock[3])
+	Lighting.FogColor = Lighting.FogColor:Lerp(rock:Lerp(Color3.fromRGB(0, 0, 0), 0.72), blend)
+	Lighting.Brightness = lerp(Lighting.Brightness, math.max(0.35, 2 - depth / 700), blend)
+
+	-- The deep is desaturated and cold; the surface is not.
+	local descent = math.clamp(depth / 1800, 0, 1)
+	colorCorrection.Saturation = lerp(colorCorrection.Saturation, -0.12 - descent * 0.28, blend)
+	colorCorrection.Contrast = lerp(colorCorrection.Contrast, 0.08 + descent * 0.22, blend)
+	colorCorrection.TintColor = colorCorrection.TintColor:Lerp(
+		Color3.fromRGB(255, 250, 240):Lerp(Color3.fromRGB(170, 190, 235), descent),
+		blend
+	)
+	haze.Density = lerp(haze.Density, 0.3 + descent * 0.32, blend)
+
+	-- Ambience.
+	for _, band in ipairs(AudioConfig.Ambience) do
+		local sound = layers[band.id]
+		if sound then
+			sound.Volume = lerp(sound.Volume, bandVolume(depth, band) * band.volume, blend)
+		end
+	end
+
+	-- Tension: low oxygen, or a hazard within the last few seconds.
+	local oxygenRatio = (State.data.oxygen or 60) / math.max(State.data.oxygenMax or 60, 1)
+	local fromOxygen = oxygenRatio < 0.35 and (1 - oxygenRatio / 0.35) or 0
+	local fromHazard = os.clock() < hazardUntil and 1 or 0
+	tensionTarget = math.max(fromOxygen, fromHazard)
+	tension.Volume = lerp(tension.Volume, tensionTarget * 0.5, blend * 0.8)
+	tension.PlaybackSpeed = lerp(tension.PlaybackSpeed, 0.35 + tensionTarget * 0.5, blend)
+end
+
+function Atmosphere.start()
+	buildAudio()
+	buildLighting()
+
+	Net.listen("Effect", function(kind)
+		if kind == "hazardWarn" or kind == "hazardHit" or kind == "hazardTick" or kind == "suffocating" then
+			hazardUntil = os.clock() + 3
+		end
+	end)
+
+	RunService.Heartbeat:Connect(step)
+end
+
+return Atmosphere
+
+]]></ProtectedString>
+            <bool name="Disabled">false</bool>
+          </Properties>
+        </Item>
+        <Item class="LocalScript" referent="RBX3">
           <Properties>
             <string name="Name">Client</string>
             <ProtectedString name="Source"><![CDATA[
@@ -7400,11 +8391,13 @@ return World
 local CONTROLLERS = {
 	"State",
 	"Effects",
+	"Atmosphere",
 	"Mining",
 	"Panels",
 	"Notify",
 	"Hud",
 	"Crew",
+	"Intro",
 	"Onboarding",
 }
 
@@ -7433,7 +8426,7 @@ end
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX3">
+        <Item class="ModuleScript" referent="RBX4">
           <Properties>
             <string name="Name">Crew</string>
             <ProtectedString name="Source"><![CDATA[
@@ -7808,7 +8801,7 @@ return Crew
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX4">
+        <Item class="ModuleScript" referent="RBX5">
           <Properties>
             <string name="Name">Effects</string>
             <ProtectedString name="Source"><![CDATA[
@@ -8003,6 +8996,12 @@ handlers.suffocating = function()
 	Effects.shake(1.2, 0.6)
 end
 
+handlers.hazardTick = function()
+	-- Persistent zones tick several times a second. Anything louder than this
+	-- turns standing in gas into a jackhammer.
+	Effects.shake(0.35, 0.15)
+end
+
 handlers.lift = function()
 	Effects.sound("whoosh", 0.6, 0.8)
 end
@@ -8047,7 +9046,7 @@ return Effects
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX5">
+        <Item class="ModuleScript" referent="RBX6">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[
@@ -8684,7 +9683,276 @@ return Hud
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX6">
+        <Item class="ModuleScript" referent="RBX7">
+          <Properties>
+            <string name="Name">Intro</string>
+            <ProtectedString name="Source"><![CDATA[
+--!nonstrict
+--[[
+	Intro.luau — the rules card, shown before the first dig.
+
+	Six lines, each one a rule a player would otherwise have to lose something
+	to learn. It is the cheapest retention work in the game: the platform
+	grades a new experience hardest on whether anyone comes back the next day,
+	and most of the reasons they do not are simply not knowing what the game
+	wanted from them.
+
+	Rules for the rules:
+	  * Six lines, no paragraphs. Anything longer gets skipped, and a skipped
+	    tutorial is worse than none because it costs the click as well.
+	  * Every line is a verb. "Hold to mine", not "Mining is done by holding".
+	  * It appears once. The flag lives on the profile, so it does not come
+	    back on a new device or after a rejoin.
+	  * It stays reachable. The "?" button re-opens it, because the person who
+	    needs it most is the one who skipped it.
+]]
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Net = require(Shared.Net)
+
+local State = require(script.Parent.State)
+local Ui = require(script.Parent.Ui)
+
+local Intro = {}
+
+local player = Players.LocalPlayer
+local theme = Ui.THEME
+
+local gui: ScreenGui
+local card: Frame
+local shown = false
+
+local RULES = {
+	{ icon = "⛏️", title = "HOLD TO MINE", body = "Look at a rock and hold. The highlighted one is the one you get." },
+	{ icon = "⬇️", title = "DEEPER PAYS MORE", body = "Every metre multiplies what the rock is worth. 1,400m ore is not 1,400m of walking — it is a different game." },
+	{ icon = "💰", title = "BANK IT OR LOSE IT", body = "Cargo is not yours until you ride a lift up and deposit it at the vault." },
+	{ icon = "⚠️", title = "A FULL HOLD MAKES YOU A TARGET", body = "Past 60% you glow, and other miners can snatch from you. Bank early and nobody can touch you." },
+	{ icon = "☣️", title = "WALK AROUND THE GLOWING ZONES", body = "Gas, vents and frost are visible and named. The pulsing ones have a rhythm you can walk through." },
+	{ icon = "▲", title = "LIFTS ARE THE ONLY WAY UP", body = "Falling is free and fast. Climbing back is the part you pay for — plan the trip." },
+}
+
+local function buildCard(parent)
+	local holder = Ui.frame({
+		parent = parent,
+		size = UDim2.new(0.62, 0, 0.86, 0),
+		position = UDim2.fromScale(0.5, 0.5),
+		anchor = Vector2.new(0.5, 0.5),
+		color = theme.bg,
+		radius = 20,
+	})
+	Ui.stroke(holder, theme.gold, 3)
+
+	local constraint = Instance.new("UISizeConstraint")
+	constraint.MinSize = Vector2.new(340, 380)
+	constraint.MaxSize = Vector2.new(720, 860)
+	constraint.Parent = holder
+
+	Ui.text({
+		parent = holder,
+		size = UDim2.new(1, -40, 0, 32),
+		position = UDim2.fromOffset(28, 22),
+		text = "⛏ DEEP RUSH",
+		color = theme.gold,
+		align = Enum.TextXAlignment.Left,
+		font = Enum.Font.GothamBold,
+		scaled = false,
+		textSize = 22,
+	})
+
+	Ui.text({
+		parent = holder,
+		size = UDim2.new(1, -40, 0, 46),
+		position = UDim2.fromOffset(28, 52),
+		text = "SIX THINGS AND YOU'RE READY",
+		color = theme.text,
+		align = Enum.TextXAlignment.Left,
+		font = Enum.Font.GothamBlack,
+		scaled = false,
+		textSize = 34,
+	})
+
+	local list = Instance.new("ScrollingFrame")
+	list.Size = UDim2.new(1, -48, 1, -190)
+	list.Position = UDim2.fromOffset(24, 108)
+	list.BackgroundTransparency = 1
+	list.BorderSizePixel = 0
+	list.ScrollBarThickness = 5
+	list.ScrollBarImageColor3 = theme.panelLight
+	list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	list.CanvasSize = UDim2.new()
+	list.Parent = holder
+
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, 8)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = list
+
+	for index, rule in ipairs(RULES) do
+		local row = Ui.frame({
+			parent = list,
+			size = UDim2.new(1, -6, 0, 74),
+			color = theme.panel,
+		})
+		row.LayoutOrder = index
+		Ui.stroke(row, theme.panelLight, 2)
+		Ui.padding(row, 10)
+
+		Ui.text({
+			parent = row,
+			size = UDim2.fromOffset(44, 44),
+			position = UDim2.fromOffset(0, 4),
+			text = rule.icon,
+			scaled = true,
+		})
+
+		Ui.text({
+			parent = row,
+			size = UDim2.new(1, -56, 0, 22),
+			position = UDim2.fromOffset(54, 0),
+			text = rule.title,
+			color = theme.gold,
+			align = Enum.TextXAlignment.Left,
+			scaled = false,
+			textSize = 18,
+		})
+
+		Ui.text({
+			parent = row,
+			size = UDim2.new(1, -56, 0, 32),
+			position = UDim2.fromOffset(54, 22),
+			text = rule.body,
+			color = theme.muted,
+			align = Enum.TextXAlignment.Left,
+			valign = Enum.TextYAlignment.Top,
+			scaled = false,
+			textSize = 14,
+			wrap = true,
+		})
+	end
+
+	Ui.button({
+		parent = holder,
+		size = UDim2.new(1, -48, 0, 60),
+		position = UDim2.new(0.5, 0, 1, -20),
+		anchor = Vector2.new(0.5, 1),
+		text = "⛏  START DIGGING",
+		color = theme.gold,
+		textColor = Color3.fromRGB(28, 22, 8),
+		scaled = false,
+		onClick = function()
+			Intro.hide(true)
+		end,
+	})
+
+	return holder
+end
+
+function Intro.show()
+	if shown then
+		return
+	end
+	shown = true
+	gui.Enabled = true
+
+	card.Size = UDim2.new(0.55, 0, 0.78, 0)
+	card.BackgroundTransparency = 1
+	TweenService:Create(card, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Size = UDim2.new(0.62, 0, 0.86, 0),
+		BackgroundTransparency = 0,
+	}):Play()
+end
+
+function Intro.hide(remember: boolean?)
+	if not shown then
+		return
+	end
+	shown = false
+
+	local out = TweenService:Create(card, TweenInfo.new(0.22), {
+		BackgroundTransparency = 1,
+		Size = UDim2.new(0.55, 0, 0.78, 0),
+	})
+	out:Play()
+	out.Completed:Once(function()
+		gui.Enabled = false
+	end)
+
+	if remember then
+		Net.fire("IntroSeen")
+	end
+end
+
+function Intro.start()
+	gui = Instance.new("ScreenGui")
+	gui.Name = "DeepRushIntro"
+	gui.ResetOnSpawn = false
+	gui.DisplayOrder = 20
+	gui.IgnoreGuiInset = true
+	gui.Enabled = false
+	gui.Parent = player:WaitForChild("PlayerGui")
+
+	local dim = Ui.frame({
+		parent = gui,
+		size = UDim2.fromScale(1, 1),
+		color = Color3.fromRGB(0, 0, 0),
+		transparency = 0.35,
+		radius = false,
+	})
+	dim.ZIndex = 1
+
+	card = buildCard(gui)
+	card.ZIndex = 2
+
+	-- The person who most needs the rules is the one who skipped them, so
+	-- they stay one tap away.
+	local help = Instance.new("ScreenGui")
+	help.Name = "DeepRushHelpButton"
+	help.ResetOnSpawn = false
+	help.DisplayOrder = 4
+	help.Parent = player:WaitForChild("PlayerGui")
+
+	Ui.button({
+		parent = help,
+		size = UDim2.fromOffset(44, 44),
+		position = UDim2.new(0, 258, 0, 16),
+		text = "?",
+		color = theme.panel,
+		stroke = theme.panelLight,
+		onClick = function()
+			if shown then
+				Intro.hide(false)
+			else
+				Intro.show()
+			end
+		end,
+	})
+
+	-- Wait for the first state snapshot before deciding: showing the card to a
+	-- returning player who already dismissed it is the exact opposite of the
+	-- point.
+	task.spawn(function()
+		for _ = 1, 60 do
+			if State.data.seenIntro ~= nil then
+				break
+			end
+			task.wait(0.25)
+		end
+		if not State.data.seenIntro then
+			Intro.show()
+		end
+	end)
+end
+
+return Intro
+
+]]></ProtectedString>
+            <bool name="Disabled">false</bool>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="RBX8">
           <Properties>
             <string name="Name">Mining</string>
             <ProtectedString name="Source"><![CDATA[
@@ -8874,7 +10142,7 @@ return Mining
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX7">
+        <Item class="ModuleScript" referent="RBX9">
           <Properties>
             <string name="Name">Notify</string>
             <ProtectedString name="Source"><![CDATA[
@@ -9126,7 +10394,7 @@ return Notify
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX8">
+        <Item class="ModuleScript" referent="RBX10">
           <Properties>
             <string name="Name">Onboarding</string>
             <ProtectedString name="Source"><![CDATA[
@@ -9359,7 +10627,7 @@ return Onboarding
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX9">
+        <Item class="ModuleScript" referent="RBX11">
           <Properties>
             <string name="Name">Panels</string>
             <ProtectedString name="Source"><![CDATA[
@@ -10116,7 +11384,7 @@ return Panels
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX10">
+        <Item class="ModuleScript" referent="RBX12">
           <Properties>
             <string name="Name">State</string>
             <ProtectedString name="Source"><![CDATA[
@@ -10154,6 +11422,7 @@ State.data = {
 	buffs = {},
 	gamepasses = {},
 	streak = 0,
+	seenIntro = nil, -- nil until the first snapshot; see Client/Intro.luau
 	contract = { week = "", points = 0, dayPoints = 0, claimed = {} },
 	descent = { days = 0, lastDay = "", claimed = {} },
 	cosmetics = { owned = {}, equipped = {} },
@@ -10218,7 +11487,7 @@ return State
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX11">
+        <Item class="ModuleScript" referent="RBX13">
           <Properties>
             <string name="Name">Ui</string>
             <ProtectedString name="Source"><![CDATA[

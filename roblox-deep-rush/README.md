@@ -67,6 +67,8 @@ src/shared/          ReplicatedStorage/Shared — von Server UND Client genutzt
     Quests.luau      Onboarding-Kette, Daily-Pool, Meilensteine
     Contracts.luau   Wochen-Leiter und 28-Tage-Log (Langzeitbindung)
     Season.luau      das Wochenend-Fenster mit dem exklusiven Badge
+    Hazards.luau     die sichtbaren Gefahrenzonen
+    Audio.luau       alle Sounds — hier deine eigenen Asset-IDs eintragen
     Crew.luau        Co-Play: Bonus, Pings, Rettung
     Cosmetics.luau   Lampen, Trails, Titel — die Status-Ebene
     Rebirth.luau     Prestige-Anforderungen und Boni
@@ -89,6 +91,7 @@ src/server/          ServerScriptService/Server — autoritativ
   Quests.luau        alle Aufgaben, ein Eintrittspunkt
   Contracts.luau     Wochen-Contract und Descent Log
   Season.luau        Live-Fenster, Season-Core, permanentes Badge
+  Hazards.luau       Sauerstoff und Zonenschaden
   Crew.luau          Crew-Bildung, Ping-Broadcast, Nähe-Bonus
   Cosmetics.luau     sichtbarer Status auf dem Charakter
   Ads.luau           Rewarded Video (aus, bis konfiguriert)
@@ -107,6 +110,8 @@ src/client/          StarterPlayerScripts/Client — nur Darstellung + Absicht
   Notify.luau        Toasts und die Rare-Pull-Karte
   Onboarding.luau    die ersten zwei Minuten
   Crew.luau          Crew-Leiste, Ping-Reihe, Einladen-Knopf
+  Atmosphere.luau    Licht, Nebel und Ambient-Ton nach Tiefe
+  Intro.luau         die Regelkarte beim ersten Start
   Effects.luau       Shake, Partikel, schwebende Zahlen
   Ui.luau            das kleinstmögliche UI-Kit
 
@@ -170,6 +175,7 @@ wären:
 | **Private Server aktivieren** | Game Settings — zahlt aufs Co-Play-Signal ein |
 | Balancing anpassen | `src/shared/Config/Game.luau` |
 | Season-Fenster verschieben | `src/shared/Config/Season.luau` |
+| **Eigene Sounds eintragen** | `src/shared/Config/Audio.luau` |
 | Werbung schalten | [`ADS_PLAYBOOK.md`](ADS_PLAYBOOK.md) |
 
 Alle Produkte sind mit `assetId = 0` vorkonfiguriert und werden dann schlicht
@@ -193,6 +199,13 @@ Fracht dabei hast. Das ist Absicht: sichtbare Knöpfe sind immer nutzbare Knöpf
 und 100 m Tiefe sind vollständig immun, und stehlen kann man nur von Spielern,
 deren Frachtraum über 60 % voll ist.
 
+**"Ich sterbe und weiß nicht warum"** — sollte nicht mehr passieren. Jede
+Gefahr ist ein sichtbares, benanntes Objekt: leuchtende Zonen mit Schild
+darüber. Grüne Wolken und Frostfelder tun weh, solange du drinstehst; die
+pulsierenden (Vents, Druck, Einsturz) leuchten erst auf und feuern dann — die
+haben einen festen Rhythmus, durch den man laufen kann. Die erste Schicht hat
+gar keine Gefahren, damit man erst das Spiel lernt und dann das Ausweichen.
+
 **"Der Crew-Bonus kommt nicht an"** — er wird fürs Zusammengraben gezahlt, nicht
 fürs Zusammensein auf einer Liste: ihr müsst innerhalb von 120 Studs
 voneinander sein. Die Crew-Leiste sagt "too far apart", wenn es nicht zählt.
@@ -200,6 +213,14 @@ voneinander sein. Die Crew-Leiste sagt "too far apart", wenn es nicht zählt.
 **"Der Werbe-Knopf erscheint nie"** — das ist so gebaut. Er kommt erst, wenn du
 eine Produkt-ID in `Products.RewardedVideo` einträgst *und* Roblox tatsächlich
 eine Anzeige liefert. Voraussetzung sind u. a. 2.000 eindeutige Besucher/Monat.
+
+**"Der Sound ist okay, aber nicht toll"** — stimmt. Das Spiel ist komplett mit
+Roblox' eingebauten `rbxasset://`-Sounds vertont, damit es überall sofort läuft,
+ohne dass du etwas hochladen musst. Ich habe bewusst **keine Asset-IDs
+geraten** — eine erfundene ID lädt entweder nicht oder spielt irgendwas
+Fremdes ab, und das merkst du erst im Livebetrieb. Drei eigene Ambient-Loops in
+`src/shared/Config/Audio.luau` eintragen ist der größte einzelne Sprung, den du
+beim Spielgefühl machen kannst.
 
 **"Ich finde den Season Core nicht"** — der existiert nur im Live-Fenster
 (Samstag und Sonntag UTC) und ist aus allen normalen Drop-Tabellen

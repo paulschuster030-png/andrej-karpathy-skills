@@ -346,6 +346,37 @@ der eine 1-zu-4,3-Millionen trägt, ist der Grund, weiterzugraben.
 
 ---
 
+## 10d. Gefahren: von Würfel zu Ort
+
+Die erste Fassung würfelte jede Sekunde und sagte bei einem Treffer eine
+Sekunde vorher „die Decke knackt". Auf dem Papier fair — es gab ein Telegraph —
+und es fühlte sich trotzdem willkürlich an. Der Grund: **die Gefahr hatte
+keinen Ort.** Man konnte einen Raum ansehen und nicht wissen, wo man nicht
+stehen sollte.
+
+Jetzt ist jede Gefahr ein Objekt in der Welt, mit Namen und Schild:
+
+| Zone | Verhalten | Gegenmittel |
+|---|---|---|
+| **Gaswolke** | Schaden, solange du drin bist | nicht drin sein |
+| **Frostfeld** | bremst dich erst, dann Schaden | nicht drin sein |
+| **The Hollow** | stärkster Dauerschaden | nicht drin sein |
+| **Lose Decke** | Telegraph → Steinschlag | Timing |
+| **Magma-Vent** | leuchtet auf → Feuersäule | Timing |
+| **Druckschacht / Einsturz** | schneller Rhythmus, hoher Schaden | Timing |
+
+Zwei Verhaltensweisen, und beide haben ein klares Gegenmittel. Bei den
+pulsierenden ist die sichere Hälfte immer die längere — sonst wäre der
+Rhythmus keine Lösung, sondern nur eine Wartezeit. Der Balance-Check erzwingt
+das, ebenso wie: kein einzelner Ausbruch tötet aus voller Gesundheit, jede
+Dauerzone lässt dir mindestens fünf Sekunden zum Rauslaufen, und **die erste
+Schicht ist gefahrenfrei** — man lernt erst den Loop, dann das Ausweichen.
+
+Nebenwirkung, die genauso viel wert ist: Der Schacht sah vorher leer aus.
+Sichtbare Gefahren sind Deko, die weh tut.
+
+---
+
 ## 11. Ökonomie in Zahlen
 
 Aus `tools/balance-check.py`, nicht geschätzt:
