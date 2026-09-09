@@ -118,8 +118,16 @@ src/client/          StarterPlayerScripts/Client — nur Darstellung + Absicht
 tools/
   build-rbxlx.mjs    Quellbaum → Place-Datei
   balance-check.py   fährt die Ökonomie außerhalb von Roblox
-  balance-spec.luau  43 Design-Zusagen als Assertions
+  balance-spec.luau  57 Design-Zusagen als Assertions
   protocol-check.py  prüft, ob Client und Server dieselben Remotes benutzen
+  sim-check.py       startet den echten Server headless
+  sim-spec.luau      25 Laufzeit-Checks: Mining, Bank, Lift, Gefahren, Crew
+  robloxstub.luau    genug Roblox-API, um den Server ohne Roblox laufen zu lassen
+  make-audio.py      erzeugt die Sounds in audio/
+  audio-check.py     misst, ob die Loops wirklich nahtlos sind
+
+audio/
+  *.ogg              9 fertige Sounds zum Hochladen (siehe audio/README.md)
 
 cover/
   render.mjs         HTML → fertige PNGs (nur Node + Chromium)
@@ -136,7 +144,7 @@ cover/
 Der Code ist nicht nur geschrieben, sondern geprüft:
 
 ```bash
-# Syntax/Compile aller 49 Luau-Dateien (braucht die Luau-CLI)
+# Syntax/Compile aller 55 Luau-Dateien (braucht die Luau-CLI)
 find src -name '*.luau' -exec luau-compile --null -O2 {} \;
 
 # Die Ökonomie tatsächlich ausrechnen, nicht schätzen
@@ -144,7 +152,23 @@ python3 tools/balance-check.py /pfad/zu/luau
 
 # Benutzen Client und Server dieselben Remotes?
 python3 tools/protocol-check.py
+
+# Den echten Server headless starten und durchspielen
+python3 tools/sim-check.py /pfad/zu/luau
+
+# Sind die Audio-Loops nahtlos?
+python3 tools/audio-check.py
 ```
+
+**`sim-check.py` ist der wichtigste davon.** Er stubbt die Roblox-API so weit,
+dass die echten Server-Module wirklich laufen: ein Spieler tritt bei, stellt
+sich an einen Stein, feuert `Mine`, und der Test prüft die Fracht. Der Lift
+wird tatsächlich benutzt und die Landeposition gemessen. Zeit ist virtuell,
+also dauert ein Node-Respawn von 9 Sekunden Millisekunden.
+
+Grenzen, damit niemand mehr hineinliest als drin ist: CFrame trägt nur
+Position, keine Rotation; es gibt keine Physik; Kollisionen werden geprüft,
+nicht simuliert.
 
 `balance-spec.luau` prüft Zusagen, keine Implementierungsdetails — z. B.
 "tiefer graben lohnt sich immer", "Luck erhöht seltene Quoten streng monoton",
@@ -214,13 +238,14 @@ voneinander sein. Die Crew-Leiste sagt "too far apart", wenn es nicht zählt.
 eine Produkt-ID in `Products.RewardedVideo` einträgst *und* Roblox tatsächlich
 eine Anzeige liefert. Voraussetzung sind u. a. 2.000 eindeutige Besucher/Monat.
 
-**"Der Sound ist okay, aber nicht toll"** — stimmt. Das Spiel ist komplett mit
-Roblox' eingebauten `rbxasset://`-Sounds vertont, damit es überall sofort läuft,
-ohne dass du etwas hochladen musst. Ich habe bewusst **keine Asset-IDs
-geraten** — eine erfundene ID lädt entweder nicht oder spielt irgendwas
-Fremdes ab, und das merkst du erst im Livebetrieb. Drei eigene Ambient-Loops in
-`src/shared/Config/Audio.luau` eintragen ist der größte einzelne Sprung, den du
-beim Spielgefühl machen kannst.
+**"Der Sound ist okay, aber nicht toll"** — bis du hochlädst, ja. Ohne
+eingetragene IDs läuft alles auf Roblox' eingebauten `rbxasset://`-Sounds,
+damit das Spiel überall sofort funktioniert. Die **fertigen Dateien liegen in
+[`audio/`](audio/)**: vier Ambient-Loops, drei positionale Loops für
+Gefahrenzonen und Lifte, zwei One-Shots. Hochladen, IDs in
+`src/shared/Config/Audio.luau` eintragen, fertig — Anleitung in
+[`audio/README.md`](audio/README.md). Das ist der größte einzelne Sprung beim
+Spielgefühl.
 
 **"Ich finde den Season Core nicht"** — der existiert nur im Live-Fenster
 (Samstag und Sonntag UTC) und ist aus allen normalen Drop-Tabellen
