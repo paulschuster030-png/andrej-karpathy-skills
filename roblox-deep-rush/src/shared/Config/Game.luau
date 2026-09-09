@@ -57,7 +57,10 @@ return {
 	-- Hazards ---------------------------------------------------------------
 	BaseOxygen = 60,
 	OxygenRegenRate = 18, -- per second at the surface
-	HazardTickRate = 1,
+	-- Fast enough that walking out of a gas cloud feels like it stopped the
+	-- moment you left. Oxygen is only replicated about once a second, though;
+	-- see Server/Hazards.luau.
+	HazardTickRate = 0.35,
 
 	-- Services --------------------------------------------------------------
 	AutosaveInterval = 120,

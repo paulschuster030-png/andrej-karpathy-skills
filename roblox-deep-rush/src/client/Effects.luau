@@ -189,6 +189,12 @@ handlers.suffocating = function()
 	Effects.shake(1.2, 0.6)
 end
 
+handlers.hazardTick = function()
+	-- Persistent zones tick several times a second. Anything louder than this
+	-- turns standing in gas into a jackhammer.
+	Effects.shake(0.35, 0.15)
+end
+
 handlers.lift = function()
 	Effects.sound("whoosh", 0.6, 0.8)
 end
