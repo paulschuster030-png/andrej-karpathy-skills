@@ -47,21 +47,26 @@ npm-Installation: der PNG-Zuschnitt und das Herunterskalieren stecken in
 - **Tunnel:** `assets/shaft.js` — Mündung, Kern, Ringzahl, Farbton.
 - **Figur:** `assets/figures.js`.
 
-### Deinen eigenen Avatar einsetzen
+### Deinen echten Avatar einsetzen
 
-Die Figur ist bewusst gezeichnet statt gerendert: eine Avatar-Aufnahme
-veraltet, sobald du dein Outfit wechselst, und eine texturierte Figur
-verschwindet bei 150 px zu Matsch, wo eine Silhouette noch steht.
-
-Wenn du trotzdem deinen Avatar willst: exportiere ihn aus Studio als
-transparentes PNG und ersetze in `thumb-depth.html` die Zeile
-
-```js
-document.getElementById('figure').innerHTML = minerFalling({ size: 460 });
+```bash
+node cover/avatar.mjs DEIN_ROBLOX_NAME
+node cover/render.mjs
 ```
 
-durch ein `<img>` auf deine Datei. Die Figur liegt auf einer eigenen Ebene,
-genau dafür.
+Holt einen transparenten Ganzkörper-Render deines aktuellen Avatars über die
+offizielle Roblox-Thumbnails-API nach `assets/avatar.png`. Richte das nur auf
+einen Account, der dir gehört.
+
+**Warum trotzdem eine gezeichnete Figur die Voreinstellung ist:** sie
+funktioniert immer, braucht keinen Account, kann nicht versehentlich die
+Ähnlichkeit einer fremden Person sein — und sie lässt sich posen. Ein
+API-Render kommt in fester Standardpose; der gezeichnete R6-Miner hier hält
+eine Spitzhacke, fällt, und guckt erschrocken.
+
+Der Vorteil deines echten Avatars ist **Wiedererkennung**: dasselbe Outfit auf
+jedem Thumbnail, das du je machst, so wie Roblox-Kanäle aufgebaut werden. Wenn
+du regelmäßig postest, ist das den Tausch wert.
 
 ## Was beim Bauen gelernt wurde
 
@@ -77,3 +82,9 @@ Ankündigung.
 Diebstahl-Thumbnail definierten `<filter id="rimlight">`; die erste Definition
 gewann für beide, und der magenta markierte Spieler bekam die amber Kontur des
 Diebs. Jede Instanz hängt jetzt einen Zähler an ihre IDs.
+
+**Gelenkwinkel sind leicht zu spiegeln.** In `robloxian.js` hängt ein Glied vom
+Gelenk mit Offset (0,−1,0); eine Z-Drehung um θ schwingt sein Ende nach
+(sin θ, −cos θ). 0 hängt nach unten, 180 zeigt nach oben. Beim ersten Versuch
+hatte ich das umgekehrt im Kopf — beide Arme lagen vor der Brust und die Beine
+verschmolzen zu einem Klotz.

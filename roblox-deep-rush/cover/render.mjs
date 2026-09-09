@@ -35,6 +35,7 @@ const FLAGS = [
 
 const TARGETS = [
   { file: 'thumb-depth.html',  out: 'deeprush-thumbnail-1-depth.png',  w: 1920, h: 1080 },
+  { file: 'thumb-depth-silhouette.html', out: 'alt-silhouette.png',      w: 1920, h: 1080 },
   { file: 'thumb-rarity.html', out: 'deeprush-thumbnail-2-rarity.png', w: 1920, h: 1080 },
   { file: 'thumb-steal.html',  out: 'deeprush-thumbnail-3-steal.png',  w: 1920, h: 1080 },
   { file: 'icon.html',         out: 'deeprush-icon-512.png',           w: 512,  h: 512 },

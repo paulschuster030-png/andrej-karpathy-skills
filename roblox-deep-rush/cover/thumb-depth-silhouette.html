@@ -47,7 +47,7 @@
         rgba(4,4,7,0.97) 0%, rgba(4,4,7,0.93) 26%,
         rgba(4,4,7,0.55) 40%, rgba(4,4,7,0) 54%);
     }
-    .figure { position: absolute; left: 64%; top: 4%; transform: translateX(-50%); z-index: 62; }
+    .figure { position: absolute; left: 60%; top: 21%; transform: translateX(-50%); z-index: 62; }
   </style>
 </head>
 <body>
@@ -75,14 +75,9 @@
 
   <script src="assets/shaft.js"></script>
   <script src="assets/figures.js"></script>
-  <script src="assets/robloxian.js"></script>
   <script>
     buildShaft(document.getElementById('shaft'), { mouthX: 38, mouthY: 22, coreX: 73, coreY: 66 });
-    // A blocky R6 rig rather than a smooth silhouette: a thumbnail's first job
-    // is to say "this is Roblox", and every top thumbnail on the platform does
-    // it with an avatar. Drop a real avatar render in by running
-    // `node cover/avatar.mjs <username>` — see cover/README.md.
-    document.getElementById('figure').innerHTML = robloxMiner({ width: 880, lean: -12, uid: 'hero' });
+    document.getElementById('figure').innerHTML = minerFalling({ size: 460 });
   </script>
 </body>
 </html>

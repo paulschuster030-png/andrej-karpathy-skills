@@ -12,7 +12,7 @@
     */
     html, body { width: 512px; height: 512px; }
     .figure {
-      position: absolute; left: 50%; top: 46%;
+      position: absolute; left: 52%; top: 44%;
       transform: translate(-50%,-50%); z-index: 62;
     }
     .edge {
@@ -33,12 +33,13 @@
 
   <script src="assets/shaft.js"></script>
   <script src="assets/figures.js"></script>
+  <script src="assets/robloxian.js"></script>
   <script>
     buildShaft(document.getElementById('shaft'), {
       mouthX: 44, mouthY: 30, coreX: 54, coreY: 62,
       rings: 16, start: 900, ratio: 0.855, maxLightness: 15,
     });
-    document.getElementById('figure').innerHTML = minerFalling({ size: 250 });
+    document.getElementById('figure').innerHTML = robloxMiner({ width: 470, lean: -10, uid: 'icon' });
   </script>
 </body>
 </html>
