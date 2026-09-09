@@ -263,6 +263,10 @@ function Mining.begin(player: Player, nodeId: string)
 		endsAt = os.clock() + duration,
 		duration = duration,
 	}
+
+	-- The pickaxe chop is timed to the same duration, so the hit lands when
+	-- the bar fills rather than on its own schedule.
+	require(script.Parent.Tools).swing(player, duration)
 	Feedback.effect(player, "swing", { duration = duration, nodeId = nodeId })
 end
 

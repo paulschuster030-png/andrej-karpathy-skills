@@ -14,6 +14,7 @@ local SERVICES = {
 	"Economy",
 	"Cargo",
 	"Cosmetics",
+	"Tools",
 	"Contracts",
 	"Quests",
 	"Rift",

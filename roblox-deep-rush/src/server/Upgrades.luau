@@ -48,6 +48,12 @@ function Upgrades.buy(player: Player, upgradeId: string)
 	Quests.record(player, "upgrade", 1)
 	Economy.applyCharacter(player)
 
+	-- Drill Power is the one upgrade with a visible form. Rebuild the pickaxe
+	-- so crossing a tier is something the player and everyone near them sees.
+	if upgradeId == "drill" then
+		require(script.Parent.Tools).equip(player)
+	end
+
 	Feedback.effect(player, "upgrade", { id = upgradeId })
 	Feedback.toast(player, {
 		title = `{upgrade.name} Lv{level + 1}`,
