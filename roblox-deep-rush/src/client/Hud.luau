@@ -358,6 +358,21 @@ local function buildActions(parent)
 		end,
 	})
 
+	-- Always there once you are underground. It is the answer to "I am stuck",
+	-- and a player who has ever needed it will look for it again.
+	widgets.escapeButton = Ui.button({
+		parent = holder,
+		size = UDim2.fromOffset(176, 48),
+		text = "🆘 EMERGENCY UP",
+		color = theme.panelLight,
+		stroke = theme.danger,
+		scaled = false,
+		visible = false,
+		onClick = function()
+			Net.fire("EmergencyAscent")
+		end,
+	})
+
 	widgets.grabButton = Ui.button({
 		parent = holder,
 		size = UDim2.fromOffset(176, 58),
@@ -515,6 +530,9 @@ local function renderContextual()
 		end
 	end
 	widgets.liftButton.Visible = onPad
+
+	-- Hidden on a pad, because there the fast option is right there.
+	widgets.escapeButton.Visible = (State.data.depth or 0) > 20 and not onPad
 
 	-- Dropped crates: the server has always accepted the pickup, but until
 	-- now nothing on screen asked for it.

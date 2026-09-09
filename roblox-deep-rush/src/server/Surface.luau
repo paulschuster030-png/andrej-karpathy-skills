@@ -119,6 +119,77 @@ function Surface.deposit(player: Player)
 	end
 end
 
+--- The way out that always exists.
+---
+--- Lift pads are on every chunk now, but "every chunk" is not "everywhere":
+--- a player can end up wedged, or on a ledge with nothing below, or simply
+--- lost. A mining game where getting stuck is possible is a mining game where
+--- someone loses an hour of cargo to level geometry.
+---
+--- It is deliberately worse than a lift: three times the channel, and any real
+--- movement cancels it. That keeps the pads worth finding.
+function Surface.emergencyAscent(player: Player)
+	local session = Data.session(player)
+	local root = rootOf(player)
+	if not session or not root or session.lifting then
+		return
+	end
+
+	if (session.depth or 0) < 20 then
+		Feedback.toast(player, {
+			title = "YOU ARE ALREADY UP",
+			body = "Emergency ascent only works underground.",
+			kind = "error",
+		})
+		return
+	end
+
+	session.lifting = true
+	local origin = root.Position
+	local seconds = Config.EmergencyAscentSeconds
+
+	Feedback.effect(player, "lift", { duration = seconds })
+	Feedback.toast(player, {
+		title = "EMERGENCY ASCENT",
+		body = `Hold still for {seconds}s. Moving cancels it.`,
+		kind = "quest",
+		duration = seconds,
+	})
+
+	task.spawn(function()
+		local elapsed = 0
+		while elapsed < seconds do
+			task.wait(0.5)
+			elapsed += 0.5
+
+			local current = rootOf(player)
+			if not player.Parent or not current then
+				session.lifting = false
+				return
+			end
+
+			if (current.Position - origin).Magnitude > Config.EmergencyAscentDrift then
+				session.lifting = false
+				Feedback.toast(player, {
+					title = "ASCENT CANCELLED",
+					body = "You moved. Stand still and try again.",
+					kind = "error",
+				})
+				return
+			end
+		end
+
+		session.lifting = false
+		local current = rootOf(player)
+		if not current or not World.spawnPosition then
+			return
+		end
+		current.CFrame = CFrame.new(World.spawnPosition + Vector3.new(0, 3, 0))
+		session.depth = 0
+		Feedback.effect(player, "lifted", {})
+	end)
+end
+
 --- Ride a lift pad back to the surface. The channel time is the real cost of
 --- being deep; the Express Lift pass removes it, which is exactly the kind
 --- of thing a pass should sell — time, not power.
@@ -168,6 +239,10 @@ function Surface.start()
 
 	Net.on("UseLift", function(player)
 		Surface.useLift(player)
+	end)
+
+	Net.on("EmergencyAscent", function(player)
+		Surface.emergencyAscent(player)
 	end)
 
 	-- Track the deepest point of the current trip for the streak rule.

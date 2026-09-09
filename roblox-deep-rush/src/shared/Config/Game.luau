@@ -25,6 +25,11 @@ return {
 	SurfaceY = 0, -- y=0 is depth 0
 	BankRadius = 26, -- studs around the vault that count as "at the surface"
 
+	-- The guarantee that nobody is ever stuck. Slower than a lift pad and
+	-- interruptible, so lift pads keep their value, but available anywhere.
+	EmergencyAscentSeconds = 12,
+	EmergencyAscentDrift = 22, -- studs you may move before it cancels
+
 	-- The spawn pad's colour, as RGB. Home base needs to be distinct from the
 	-- gold vault, the green lifts and the red gate beacons, so change this
 	-- together with those if you retheme the surface.

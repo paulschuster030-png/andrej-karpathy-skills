@@ -35,7 +35,7 @@ local SHAFT_RADIUS = 62
 local WALL_SEGMENTS = 10
 local SHELVES_PER_CHUNK = 2
 local NODES_PER_SHELF = 6
-local LIFT_EVERY_CHUNKS = 2
+local LIFT_EVERY_CHUNKS = 1 -- every chunk: see the bedrock note in buildChunk
 local KEEP_RADIUS = 2 -- chunks around a player kept alive
 local MAX_DEPTH_METERS = 3000
 
@@ -220,7 +220,7 @@ local function buildShelf(parent: Instance, chunkIndex: number, slot: number)
 	local shelfCenter = outward * (SHAFT_RADIUS - 17)
 	local cframe = CFrame.lookAt(Vector3.new(shelfCenter.X, y, shelfCenter.Z), Vector3.new(0, y, 0))
 
-	local shelf = makePart("Shelf", Vector3.new(38, 3, 26), cframe, layerColor(layer), Enum.Material.Rock)
+	local shelf = makePart("Shelf", Vector3.new(54, 3, 36), cframe, layerColor(layer), Enum.Material.Rock)
 	shelf.Parent = parent
 
 	for _ = 1, NODES_PER_SHELF do
@@ -587,16 +587,33 @@ local function buildChunk(chunkIndex: number)
 		hazardsPlaced += 1
 	end
 
-	-- The floor of the world.
+	-- The floor of the world, and the way off it.
+	--
+	-- This used to be bedrock and nothing else, which made the bottom of the
+	-- shaft a permanent trap: the nearest lift pad sat below the floor, the
+	-- next two were 172 and 536 studs overhead, and a Roblox character jumps
+	-- about seven. Anyone who fell the whole way was stuck for good.
 	if depth >= MAX_DEPTH_METERS then
+		local floorY = World.yForDepth(MAX_DEPTH_METERS) - 6
 		local floor = makePart(
 			"Bedrock",
 			Vector3.new(SHAFT_RADIUS * 2.4, 12, SHAFT_RADIUS * 2.4),
-			CFrame.new(0, World.yForDepth(MAX_DEPTH_METERS) - 6, 0),
+			CFrame.new(0, floorY, 0),
 			Color3.fromRGB(8, 6, 12),
 			Enum.Material.Basalt
 		)
 		floor.Parent = folder
+
+		local dais = makePart(
+			"BedrockDais",
+			Vector3.new(30, 2, 30),
+			CFrame.new(0, floorY + 7, 0),
+			Color3.fromRGB(22, 18, 30),
+			Enum.Material.Slate
+		)
+		dais.Parent = folder
+
+		buildLiftPad(folder, CFrame.new(0, floorY + 6, 0))
 	end
 
 	folder.Parent = container
@@ -1003,6 +1020,12 @@ local function streamChunks()
 end
 
 function World.start()
+	-- Roblox destroys anything that falls below FallenPartsDestroyHeight, and
+	-- the default is -500. This shaft bottoms out at -9,000. Left alone, the
+	-- entire lower two thirds of the world — and every player and dropped
+	-- cargo crate in it — would be deleted on arrival.
+	workspace.FallenPartsDestroyHeight = World.yForDepth(MAX_DEPTH_METERS) - 400
+
 	container = Instance.new("Folder")
 	container.Name = "DeepRushWorld"
 	container.Parent = workspace

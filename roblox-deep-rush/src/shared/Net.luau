@@ -30,6 +30,7 @@ Net.Events = {
 	RerollDaily = 2,
 	Rebirth = 2,
 	UseLift = 3,
+	EmergencyAscent = 2,
 
 	-- Co-play. Ping is the only one with real traffic; it is the entire
 	-- coordination vocabulary now that chat is age-gated.
