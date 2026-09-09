@@ -77,6 +77,11 @@ Ores.List = {
 	-- The Singularity -------------------------------------------------------
 	{ id = "fragment", name = "Singularity Fragment", tier = "Singularity", value = 4200000, minDepth = 2000, maxDepth = 3000 },
 	{ id = "origin", name = "Origin Shard", tier = "Singularity", value = 9000000, minDepth = 2200, maxDepth = 3000 },
+
+	-- Event-only. `seasonOnly` keeps it out of Ores.poolAt entirely, so it
+	-- cannot be rolled outside a live window no matter how much luck is
+	-- stacked. Server/Season.luau injects it directly.
+	{ id = "seasoncore", name = "Season Core", tier = "Abyssal", value = 260000, minDepth = 120, maxDepth = 3000, seasonOnly = true },
 }
 
 Ores.ById = {}
@@ -97,7 +102,7 @@ function Ores.poolAt(depth: number)
 
 	local byTier = {}
 	for _, ore in ipairs(Ores.List) do
-		if bucket >= ore.minDepth and bucket <= ore.maxDepth then
+		if not ore.seasonOnly and bucket >= ore.minDepth and bucket <= ore.maxDepth then
 			local list = byTier[ore.tier]
 			if not list then
 				list = {}

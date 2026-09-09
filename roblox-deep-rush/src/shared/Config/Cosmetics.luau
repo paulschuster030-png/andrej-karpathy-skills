@@ -37,6 +37,19 @@ Cosmetics.List = {
 	{ id = "title_bedrock", kind = "title", name = "BEDROCK CLUB", text = "BEDROCK CLUB", color = { 110, 230, 255 }, source = "descent" },
 	{ id = "title_pirate", kind = "title", name = "SHAFT PIRATE", text = "SHAFT PIRATE", color = { 255, 88, 120 }, source = "milestone" },
 	{ id = "title_codex", kind = "title", name = "CODEX COMPLETE", text = "CODEX COMPLETE", color = { 255, 255, 255 }, source = "milestone" },
+
+	-- Season badges. Earned only inside a live window, never sold, never
+	-- repeated. A player wearing one was demonstrably there that weekend, and
+	-- that is the entire value.
+	{ id = "season_1", kind = "title", name = "S1 · FIRST DESCENT", text = "S1 · FIRST DESCENT", color = { 255, 205, 90 }, source = "season" },
+	{ id = "season_2", kind = "title", name = "S2 · COLD SEAM", text = "S2 · COLD SEAM", color = { 150, 220, 255 }, source = "season" },
+	{ id = "season_3", kind = "title", name = "S3 · HOLLOW SEASON", text = "S3 · HOLLOW SEASON", color = { 190, 110, 255 }, source = "season" },
+	{ id = "season_4", kind = "title", name = "S4 · PRESSURE SEASON", text = "S4 · PRESSURE SEASON", color = { 255, 88, 120 }, source = "season" },
+
+	{ id = "trail_season_1", kind = "trail", name = "S1 Trail", color = { 255, 205, 90 }, source = "season" },
+	{ id = "trail_season_2", kind = "trail", name = "S2 Trail", color = { 150, 220, 255 }, source = "season" },
+	{ id = "trail_season_3", kind = "trail", name = "S3 Trail", color = { 190, 110, 255 }, source = "season" },
+	{ id = "trail_season_4", kind = "trail", name = "S4 Trail", color = { 255, 88, 120 }, source = "season" },
 }
 
 Cosmetics.ById = {}

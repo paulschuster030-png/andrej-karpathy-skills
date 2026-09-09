@@ -59,6 +59,7 @@ Net.Signals = {
 	"Crew", -- crew roster and nearby beacons
 	"Pings", -- a teammate marked something in the world
 	"Ad", -- rewarded-video availability changed
+	"Season", -- live window state and badge progress
 }
 
 Net.Functions = {
