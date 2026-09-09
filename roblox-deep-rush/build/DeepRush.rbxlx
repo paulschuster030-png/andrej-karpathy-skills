@@ -1,10 +1,10 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-  <Item class="Workspace" referent="RBX11">
+  <Item class="Workspace" referent="RBX12">
     <Properties>
       <string name="Name">Workspace</string>
     </Properties>
   </Item>
-  <Item class="Lighting" referent="RBX12">
+  <Item class="Lighting" referent="RBX13">
     <Properties>
       <string name="Name">Lighting</string>
       <Color3 name="Ambient"><R>0</R><G>0</G><B>0</B></Color3>
@@ -17,19 +17,277 @@
       <Color3 name="FogColor"><R>0.06</R><G>0.06</G><B>0.08</B></Color3>
     </Properties>
   </Item>
-  <Item class="ReplicatedStorage" referent="RBX28">
+  <Item class="ReplicatedStorage" referent="RBX32">
     <Properties>
       <string name="Name">ReplicatedStorage</string>
     </Properties>
-    <Item class="Folder" referent="RBX13">
+    <Item class="Folder" referent="RBX14">
       <Properties>
         <string name="Name">Shared</string>
       </Properties>
-      <Item class="Folder" referent="RBX14">
+      <Item class="Folder" referent="RBX15">
         <Properties>
           <string name="Name">Config</string>
         </Properties>
-        <Item class="ModuleScript" referent="RBX15">
+        <Item class="ModuleScript" referent="RBX16">
+          <Properties>
+            <string name="Name">Contracts</string>
+            <ProtectedString name="Source"><![CDATA[
+--!nonstrict
+--[[
+	Contracts.luau — the weekly ladder, and the 28-day log.
+
+	These two exist because of one specific platform change: Roblox's
+	discovery model now measures retention across day 1, days 2-7 AND days
+	8-28, and counts "play days per user" rather than raw hours. A game can
+	no longer win by holding one player for six hours; it wins by being worth
+	opening on twenty-eight separate days.
+
+	Nothing else in DEEP RUSH had an arc longer than a day.
+
+	WEEKLY CONTRACT  one currency (Contract Points), seven tiers, resets
+	                 Monday. A daily point cap means the best play is to come
+	                 back tomorrow rather than to grind tonight — which is
+	                 also exactly what the 60-minute daily playtime cap in the
+	                 algorithm rewards.
+
+	DESCENT LOG      one-time milestones for the number of DISTINCT days you
+	                 have played. Deliberately spans 28 days, matching the
+	                 window the platform grades a new experience on.
+]]
+
+local Contracts = {}
+
+--- How Contract Points are earned.
+---
+--- Every source is an ACTION, never a cash amount. That is deliberate and it
+--- was a real bug first: paying points per 1,000 banked looks fair until you
+--- notice that payouts grow exponentially with depth and rebirths, so a
+--- late-game player emptied the entire daily budget with one deposit while a
+--- new player ground for an hour. Actions are scale-invariant — a deep trip
+--- is worth the same on day 1 and after ten rebirths.
+Contracts.Points = {
+	perDeepBank = 14, -- one completed trip from below the deep-bank depth
+	perRareOre = 4, -- Rare tier or better
+	perEpicOre = 12,
+	newCodexEntry = 60,
+	perDepthRecord = 2, -- per metre of new personal record
+	perCrewMinute = 12, -- mining within bond range of a crewmate
+	perRiftOre = 3,
+	perQuestClaimed = 25,
+}
+
+--- The cap is the point. Hitting it should read as "today is banked, see you
+--- tomorrow" rather than as a punishment, so it sits above what a casual
+--- session produces and below what a marathon does.
+Contracts.DailyPointCap = 1500
+
+-- Roughly one tier per day of play, with the last two needing a good week.
+Contracts.Tiers = {
+	{ points = 550, reward = { cash = 25000 } },
+	{ points = 1400, reward = { cash = 70000, luckMinutes = 15 } },
+	{ points = 2700, reward = { cash = 180000 } },
+	{ points = 4100, reward = { cash = 400000, cosmetic = "lamp_amber" } },
+	{ points = 5700, reward = { cash = 900000, luckMinutes = 30 } },
+	{ points = 7500, reward = { cash = 2200000, cosmetic = "trail_ember" } },
+	{ points = 9600, reward = { cash = 6000000, cosmetic = "title_contractor", drone = "coolant" } },
+}
+
+--- Rotating flavour so the same ladder does not feel identical every Monday.
+Contracts.Names = {
+	"Deepcore Contract",
+	"Blacklight Contract",
+	"Cold Seam Contract",
+	"Pressure Contract",
+	"Hollow Contract",
+	"Ashfall Contract",
+}
+
+--- Distinct-day milestones. These are one-time and intentionally back-loaded:
+--- the day-21 and day-28 prizes exist to be visible on day 2.
+Contracts.DescentLog = {
+	{ days = 2, reward = { cash = 15000 }, label = "Second Descent" },
+	{ days = 3, reward = { cash = 40000, luckMinutes = 20 }, label = "Three Days Down" },
+	{ days = 5, reward = { cash = 120000 }, label = "Regular" },
+	{ days = 7, reward = { cash = 350000, cosmetic = "lamp_cyan" }, label = "One Week Below" },
+	{ days = 10, reward = { cash = 900000 }, label = "Veteran Digger" },
+	{ days = 14, reward = { cash = 2500000, drone = "lung" }, label = "Fortnight" },
+	{ days = 21, reward = { cash = 9000000, cosmetic = "trail_void" }, label = "Deep Loyalty" },
+	{ days = 28, reward = { cash = 30000000, cosmetic = "title_bedrock", drone = "hollowpup" }, label = "Bedrock Club" },
+}
+
+--- Monday-anchored ISO-ish week key. UTC so every player rotates at once.
+function Contracts.weekKey(): string
+	local now = os.time()
+	local parts = os.date("!*t", now)
+	-- os.date wday: 1 = Sunday. Convert to days since Monday.
+	local sinceMonday = (parts.wday + 5) % 7
+	local monday = now - sinceMonday * 86400
+	local mondayParts = os.date("!*t", monday)
+	return string.format("%d-%03d", mondayParts.year, mondayParts.yday)
+end
+
+function Contracts.nameForWeek(): string
+	local key = Contracts.weekKey()
+	local digits = 0
+	for character in key:gmatch("%d") do
+		digits += tonumber(character)
+	end
+	return Contracts.Names[(digits % #Contracts.Names) + 1]
+end
+
+function Contracts.totalPoints(): number
+	return Contracts.Tiers[#Contracts.Tiers].points
+end
+
+--- Highest tier index fully earned at `points`.
+function Contracts.tierAt(points: number): number
+	local reached = 0
+	for index, tier in ipairs(Contracts.Tiers) do
+		if points >= tier.points then
+			reached = index
+		end
+	end
+	return reached
+end
+
+return Contracts
+
+]]></ProtectedString>
+            <bool name="Disabled">false</bool>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="RBX17">
+          <Properties>
+            <string name="Name">Cosmetics</string>
+            <ProtectedString name="Source"><![CDATA[
+--!nonstrict
+--[[
+	Cosmetics.luau — the status layer.
+
+	Added deliberately after the 2026 spending picture became clear: players
+	now put more into cosmetics, status items and rarity-flex than into
+	time-skips. DEEP RUSH sold only speed and convenience, which is the
+	category that has been losing share.
+
+	The rule that makes this work: a cosmetic must be visible TO OTHER
+	PLAYERS. A skin only you can see is a screenshot; a skin the shaft can see
+	is status. So all three kinds render on the character or above it.
+
+	Most are earned. The purchasable ones are never the best-looking ones.
+]]
+
+local Cosmetics = {}
+
+Cosmetics.List = {
+	-- Helmet lamps: the light cone you drag through the dark.
+	{ id = "lamp_white", kind = "lamp", name = "Standard Lamp", color = { 255, 244, 214 }, source = "default" },
+	{ id = "lamp_amber", kind = "lamp", name = "Amber Lamp", color = { 255, 176, 60 }, source = "contract" },
+	{ id = "lamp_cyan", kind = "lamp", name = "Ice Lamp", color = { 120, 230, 255 }, source = "descent" },
+	{ id = "lamp_violet", kind = "lamp", name = "Ultraviolet Lamp", color = { 190, 110, 255 }, source = "shop", cost = 750000 },
+	{ id = "lamp_blood", kind = "lamp", name = "Blood Lamp", color = { 255, 70, 70 }, source = "shop", cost = 3000000 },
+
+	-- Trails: what people see when you fall past them.
+	{ id = "trail_none", kind = "trail", name = "No Trail", color = { 255, 255, 255 }, source = "default" },
+	{ id = "trail_ember", kind = "trail", name = "Ember Trail", color = { 255, 130, 50 }, source = "contract" },
+	{ id = "trail_frost", kind = "trail", name = "Frost Trail", color = { 160, 225, 255 }, source = "shop", cost = 1500000 },
+	{ id = "trail_void", kind = "trail", name = "Void Trail", color = { 150, 60, 255 }, source = "descent" },
+	{ id = "trail_gold", kind = "trail", name = "Gold Trail", color = { 255, 205, 90 }, source = "milestone" },
+
+	-- Titles: shown on the nameplate above your head, next to your rebirth.
+	{ id = "title_none", kind = "title", name = "—", text = "", source = "default" },
+	{ id = "title_contractor", kind = "title", name = "CONTRACTOR", text = "CONTRACTOR", color = { 255, 205, 90 }, source = "contract" },
+	{ id = "title_bedrock", kind = "title", name = "BEDROCK CLUB", text = "BEDROCK CLUB", color = { 110, 230, 255 }, source = "descent" },
+	{ id = "title_pirate", kind = "title", name = "SHAFT PIRATE", text = "SHAFT PIRATE", color = { 255, 88, 120 }, source = "milestone" },
+	{ id = "title_codex", kind = "title", name = "CODEX COMPLETE", text = "CODEX COMPLETE", color = { 255, 255, 255 }, source = "milestone" },
+}
+
+Cosmetics.ById = {}
+for _, cosmetic in ipairs(Cosmetics.List) do
+	Cosmetics.ById[cosmetic.id] = cosmetic
+end
+
+Cosmetics.Defaults = { lamp = "lamp_white", trail = "trail_none", title = "title_none" }
+
+function Cosmetics.ofKind(kind: string)
+	local out = {}
+	for _, cosmetic in ipairs(Cosmetics.List) do
+		if cosmetic.kind == kind then
+			table.insert(out, cosmetic)
+		end
+	end
+	return out
+end
+
+function Cosmetics.color(id: string?): Color3
+	local cosmetic = id and Cosmetics.ById[id]
+	if not cosmetic or not cosmetic.color then
+		return Color3.fromRGB(255, 255, 255)
+	end
+	return Color3.fromRGB(cosmetic.color[1], cosmetic.color[2], cosmetic.color[3])
+end
+
+return Cosmetics
+
+]]></ProtectedString>
+            <bool name="Disabled">false</bool>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="RBX18">
+          <Properties>
+            <string name="Name">Crew</string>
+            <ProtectedString name="Source"><![CDATA[
+--!nonstrict
+--[[
+	Crew.luau — tuning for the co-play layer.
+
+	Roblox's Recommended For You algorithm names "7 day intentional co-play
+	days per user" as one of its six ranking signals, alongside play days and
+	spend days. A game where playing together is merely possible scores zero
+	on it; the bonus has to be big enough that a player actively wants a
+	second person in the shaft.
+
+	Everything here is designed to work WITHOUT text chat, because since the
+	January 2026 age-check rollout a large share of players cannot freely
+	chat with each other. Coordination happens through pings and proximity,
+	never through typing.
+]]
+
+return {
+	MaxSize = 4,
+	JoinRadius = 40, -- studs; how close you must be to join a beacon
+	BondRadius = 120, -- studs; how close members must stay to earn the bonus
+	BeaconLifetime = 45, -- seconds a beacon stays open for joiners
+
+	-- Per ADDITIONAL member beyond yourself. A full crew of 4 is +36% cash
+	-- and +0.75 luck — large enough to change behaviour, small enough that a
+	-- solo player is never locked out of content.
+	CashPerMember = 0.12,
+	LuckPerMember = 0.25,
+
+	-- Pings are the entire coordination vocabulary. Fixed set, no free text,
+	-- which is what keeps this compliant with the preset-communication rules.
+	PingTypes = {
+		{ id = "ore", label = "RICH VEIN", icon = "💎", color = { 255, 205, 90 } },
+		{ id = "danger", label = "DANGER", icon = "⚠️", color = { 255, 80, 80 } },
+		{ id = "lift", label = "LIFT HERE", icon = "▲", color = { 110, 235, 160 } },
+		{ id = "here", label = "ON ME", icon = "📍", color = { 110, 230, 255 } },
+	},
+	PingLifetime = 8,
+	PingCooldown = 1.5,
+
+	-- A downed crewmate's crate can be handed back instead of looted. Costs
+	-- the rescuer nothing and is the clearest possible "we are on the same
+	-- side" signal in a game otherwise built on theft.
+	RescueRadius = 16,
+	RescueReward = 0.10, -- rescuer gets 10% of the value as a finder's fee
+}
+
+]]></ProtectedString>
+            <bool name="Disabled">false</bool>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="RBX19">
           <Properties>
             <string name="Name">Drones</string>
             <ProtectedString name="Source"><![CDATA[
@@ -164,7 +422,7 @@ return Drones
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX16">
+        <Item class="ModuleScript" referent="RBX20">
           <Properties>
             <string name="Name">Game</string>
             <ProtectedString name="Source"><![CDATA[
@@ -244,7 +502,7 @@ return {
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX17">
+        <Item class="ModuleScript" referent="RBX21">
           <Properties>
             <string name="Name">Layers</string>
             <ProtectedString name="Source"><![CDATA[
@@ -439,7 +697,7 @@ return Layers
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX18">
+        <Item class="ModuleScript" referent="RBX22">
           <Properties>
             <string name="Name">Mutations</string>
             <ProtectedString name="Source"><![CDATA[
@@ -500,7 +758,7 @@ return Mutations
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX19">
+        <Item class="ModuleScript" referent="RBX23">
           <Properties>
             <string name="Name">Ores</string>
             <ProtectedString name="Source"><![CDATA[
@@ -632,7 +890,7 @@ return Ores
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX20">
+        <Item class="ModuleScript" referent="RBX24">
           <Properties>
             <string name="Name">Products</string>
             <ProtectedString name="Source"><![CDATA[
@@ -711,6 +969,47 @@ Products.DevProducts = {
 	{ id = "revive", assetId = 0, name = "Cargo Insurance", desc = "Recover the cargo you just lost.", icon = "🛟", grant = { restoreCargo = true } },
 }
 
+--- One cheap, rotating product per day.
+---
+--- This exists because of a specific ranking signal: Roblox counts "7 day
+--- spend days per user" separately from "7 day Robux spent per user". Five
+--- small purchases on five days are worth more to discovery than one large
+--- purchase on one day — and they are also friendlier to a player's wallet
+--- than a single expensive pass. Keep these cheap and genuinely useful.
+Products.DailyDeals = {
+	{ id = "deal_luck", assetId = 0, name = "Shift Luck", desc = "2x luck for 20 minutes.", icon = "🍀", robux = 25, grant = { luckMultiplier = 2, minutes = 20 } },
+	{ id = "deal_cash", assetId = 0, name = "Shift Bonus", desc = "A cash top-up scaled to your best haul.", icon = "💰", robux = 29, grant = { cashOfBest = 0.6 } },
+	{ id = "deal_rift", assetId = 0, name = "Pocket Rift", desc = "60 seconds of private rift, right where you stand.", icon = "🗝️", robux = 39, grant = { personalRift = 60 } },
+	{ id = "deal_air", assetId = 0, name = "Deep Lungs", desc = "Double air for 30 minutes.", icon = "🫁", robux = 25, grant = { oxygenMultiplier = 2, minutes = 30 } },
+	{ id = "deal_crew", assetId = 0, name = "Crew Rations", desc = "Your whole crew gets 2x cash for 15 minutes.", icon = "🤝", robux = 45, grant = { crewCash = 2, minutes = 15 } },
+	{ id = "deal_codex", assetId = 0, name = "Surveyor's Eye", desc = "3x luck for 10 minutes. Best odds in the game.", icon = "👁️", robux = 49, grant = { luckMultiplier = 3, minutes = 10 } },
+}
+
+--- Deterministic per UTC day, so every player sees the same deal and it is
+--- obvious the offer is a rotation rather than a targeted price.
+function Products.dealOfTheDay()
+	local day = os.date("!*t")
+	local index = ((day.year * 366 + day.yday) % #Products.DailyDeals) + 1
+	return Products.DailyDeals[index]
+end
+
+--- Rewarded Video, opened to all eligible creators in February 2026 and now
+--- worth roughly 8-15% of revenue for games that use it well.
+---
+--- Eligibility is not automatic: the experience needs 2FA, an ID-verified
+--- 13+ owner, public status and at least 2,000 unique visitors per month. So
+--- this stays switched off until you have those, and the button simply never
+--- appears until Roblox reports an ad is available.
+---
+--- AdService builds the reward from a Developer Product, so create one named
+--- after the boost and paste its id here. Ad rewards may never be Robux.
+Products.RewardedVideo = {
+	devProductId = 0,
+	rewardMinutes = 10,
+	rewardLuckMultiplier = 2,
+	cooldownSeconds = 3600,
+}
+
 Products.GamepassById = {}
 for _, pass in ipairs(Products.Gamepasses) do
 	Products.GamepassById[pass.id] = pass
@@ -720,13 +1019,21 @@ Products.DevProductById = {}
 for _, product in ipairs(Products.DevProducts) do
 	Products.DevProductById[product.id] = product
 end
+for _, product in ipairs(Products.DailyDeals) do
+	Products.DevProductById[product.id] = product
+end
 
 --- Reverse lookup used by the receipt handler, built lazily so re-configured
 --- asset ids during a live session still resolve.
 function Products.byAssetId(assetId: number)
-	for _, product in ipairs(Products.DevProducts) do
-		if product.assetId == assetId and assetId ~= 0 then
-			return product
+	if assetId == 0 then
+		return nil
+	end
+	for _, list in ipairs({ Products.DevProducts, Products.DailyDeals }) do
+		for _, product in ipairs(list) do
+			if product.assetId == assetId then
+				return product
+			end
 		end
 	end
 	return nil
@@ -748,7 +1055,7 @@ return Products
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX21">
+        <Item class="ModuleScript" referent="RBX25">
           <Properties>
             <string name="Name">Quests</string>
             <ProtectedString name="Source"><![CDATA[
@@ -794,6 +1101,8 @@ Quests.DailyPool = {
 	{ id = "d_steal", name = "Finders Keepers", desc = "Take 2 crates or snatches from other miners.", metric = "steal", mode = "count", target = 2, reward = { cash = 16000 } },
 	{ id = "d_upgrade", name = "Reinvest", desc = "Buy 5 upgrades.", metric = "upgrade", mode = "count", target = 5, reward = { cash = 11000 } },
 	{ id = "d_survive", name = "Clean Run", desc = "Bank 5 trips without dying in between.", metric = "clean_banks", mode = "max", target = 5, reward = { cash = 20000, luckMinutes = 15 } },
+	{ id = "d_crew", name = "Buddy System", desc = "Mine 10 minutes next to a crewmate.", metric = "crew_minutes", mode = "count", target = 10, reward = { cash = 24000 } },
+	{ id = "d_rescue", name = "Good Samaritan", desc = "Return a crewmate's dropped cargo.", metric = "rescue", mode = "count", target = 1, reward = { cash = 18000 } },
 }
 
 Quests.DailyCount = 3
@@ -805,9 +1114,10 @@ Quests.Milestones = {
 	{ id = "m_bank1m", name = "Millionaire", desc = "Bank 1,000,000 lifetime.", metric = "bank_alltime", mode = "count", target = 1000000, reward = { cash = 150000 } },
 	{ id = "m_bank100m", name = "Shaft Baron", desc = "Bank 100,000,000 lifetime.", metric = "bank_alltime", mode = "count", target = 100000000, reward = { cash = 12000000 } },
 	{ id = "m_codex15", name = "Half the Book", desc = "Find 15 different ores.", metric = "codex", mode = "max", target = 15, reward = { cash = 250000 } },
-	{ id = "m_codex30", name = "Complete Codex", desc = "Find all 30 ores.", metric = "codex", mode = "max", target = 30, reward = { cash = 25000000, drone = "void" } },
+	{ id = "m_codex30", name = "Complete Codex", desc = "Find all 30 ores.", metric = "codex", mode = "max", target = 30, reward = { cash = 25000000, drone = "void", cosmetic = "title_codex" } },
 	{ id = "m_rebirth5", name = "Five Lives", desc = "Rebirth 5 times.", metric = "rebirths", mode = "max", target = 5, reward = { cash = 1500000 } },
-	{ id = "m_steal50", name = "Shaft Pirate", desc = "Take 50 crates or snatches.", metric = "steal_alltime", mode = "count", target = 50, reward = { cash = 800000 } },
+	{ id = "m_steal50", name = "Shaft Pirate", desc = "Take 50 crates or snatches.", metric = "steal_alltime", mode = "count", target = 50, reward = { cash = 800000, cosmetic = "title_pirate" } },
+	{ id = "m_crew", name = "Never Alone", desc = "Mine 300 minutes alongside crewmates.", metric = "crew_minutes_alltime", mode = "count", target = 300, reward = { cash = 4000000, cosmetic = "trail_gold" } },
 }
 
 Quests.All = {}
@@ -823,7 +1133,7 @@ return Quests
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX22">
+        <Item class="ModuleScript" referent="RBX26">
           <Properties>
             <string name="Name">Rebirth</string>
             <ProtectedString name="Source"><![CDATA[
@@ -895,7 +1205,7 @@ return Rebirth
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX23">
+        <Item class="ModuleScript" referent="RBX27">
           <Properties>
             <string name="Name">Upgrades</string>
             <ProtectedString name="Source"><![CDATA[
@@ -1055,7 +1365,7 @@ return Upgrades
           </Properties>
         </Item>
       </Item>
-      <Item class="ModuleScript" referent="RBX24">
+      <Item class="ModuleScript" referent="RBX28">
         <Properties>
           <string name="Name">Format</string>
           <ProtectedString name="Source"><![CDATA[
@@ -1143,7 +1453,7 @@ return Format
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX25">
+      <Item class="ModuleScript" referent="RBX29">
         <Properties>
           <string name="Name">Net</string>
           <ProtectedString name="Source"><![CDATA[
@@ -1180,6 +1490,21 @@ Net.Events = {
 	Rebirth = 2,
 	UseLift = 3,
 	ReportDepth = 20,
+
+	-- Co-play. Ping is the only one with real traffic; it is the entire
+	-- coordination vocabulary now that chat is age-gated.
+	CrewBeacon = 2,
+	CrewJoin = 3,
+	CrewLeave = 3,
+	Ping = 3,
+	Rescue = 4,
+
+	-- Long-arc retention and status.
+	ClaimContract = 6,
+	ClaimDescent = 6,
+	EquipCosmetic = 6,
+	BuyCosmetic = 4,
+	WatchAd = 1,
 }
 
 -- Server -> client only.
@@ -1190,6 +1515,9 @@ Net.Signals = {
 	"Rift", -- rift start/stop/tick
 	"Effect", -- one-shot client feedback (shake, sfx, particles)
 	"Marked", -- another player crossed the greed threshold
+	"Crew", -- crew roster and nearby beacons
+	"Pings", -- a teammate marked something in the world
+	"Ad", -- rewarded-video availability changed
 }
 
 Net.Functions = {
@@ -1359,7 +1687,7 @@ return Net
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX26">
+      <Item class="ModuleScript" referent="RBX30">
         <Properties>
           <string name="Name">Rarity</string>
           <ProtectedString name="Source"><![CDATA[
@@ -1462,7 +1790,7 @@ return Rarity
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX27">
+      <Item class="ModuleScript" referent="RBX31">
         <Properties>
           <string name="Name">Signal</string>
           <ProtectedString name="Source"><![CDATA[
@@ -1520,15 +1848,179 @@ return Signal
       </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="RBX49">
+  <Item class="ServerScriptService" referent="RBX57">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Folder" referent="RBX29">
+    <Item class="Folder" referent="RBX33">
       <Properties>
         <string name="Name">Server</string>
       </Properties>
-      <Item class="ModuleScript" referent="RBX30">
+      <Item class="ModuleScript" referent="RBX34">
+        <Properties>
+          <string name="Name">Ads</string>
+          <ProtectedString name="Source"><![CDATA[
+--!nonstrict
+--[[
+	Ads.luau — opt-in Rewarded Video.
+
+	Roblox opened Rewarded Video to all eligible creators in February 2026,
+	and for games that place it well it now carries a real slice of revenue
+	without touching game balance. Ours pays a luck boost — never Robux,
+	never anything a player could not also earn.
+
+	Two boundaries this module holds deliberately:
+
+	  IT IS A BUTTON, NOT A LOOP. In August 2026 Roblox banned experiences
+	  that pair a media feed with autoplay/infinite-scroll and rewards gated
+	  on continuous viewing, after Steal an Egg's treadmill Reels. A single
+	  opt-in video behind an hour-long cooldown is the opposite shape, and we
+	  keep it that way: no feed, no autoplay, no reward that requires
+	  continued watching.
+
+	  IT NEVER APPEARS UNLESS IT WORKS. Availability is asked of Roblox first,
+	  so a player is never shown a button that fails. Before the experience is
+	  ads-eligible at all, the whole feature is silently absent.
+]]
+
+local AdService = game:GetService("AdService")
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local ProductConfig = require(Shared.Config.Products)
+local Net = require(Shared.Net)
+
+local Data = require(script.Parent.Data)
+local Economy = require(script.Parent.Economy)
+local Feedback = require(script.Parent.Feedback)
+
+local Ads = {}
+
+local settings = ProductConfig.RewardedVideo
+local available = false
+local showing: { [Player]: boolean } = {}
+
+local function isConfigured(): boolean
+	return settings.devProductId ~= 0
+end
+
+--- Roblox has reported this result object under more than one field name
+--- across engine releases, so accept either rather than pinning one and
+--- silently disabling the feature on the next update.
+local function checkAvailability(): boolean
+	if not isConfigured() then
+		return false
+	end
+
+	local ok, result = pcall(function()
+		return AdService:GetAdAvailabilityNowAsync(Enum.AdFormat.Rewarded)
+	end)
+	if not ok or result == nil then
+		return false
+	end
+
+	local status = result
+	if type(result) == "table" or typeof(result) == "Instance" then
+		status = result.AdAvailabilityResult or result.Result or result
+	end
+	return string.find(tostring(status), "Available") ~= nil
+end
+
+function Ads.offer(player: Player)
+	local profile = Data.get(player)
+	local session = Data.session(player)
+	if not profile or not session or not isConfigured() then
+		return
+	end
+
+	if showing[player] then
+		return
+	end
+
+	local since = os.time() - (session.lastAd or 0)
+	if since < settings.cooldownSeconds then
+		Feedback.toast(player, {
+			title = "ALREADY BOOSTED",
+			body = `Next free boost in {math.ceil((settings.cooldownSeconds - since) / 60)} min.`,
+			kind = "error",
+		})
+		return
+	end
+
+	if not available then
+		Feedback.toast(player, { title = "NO BOOST AVAILABLE", body = "Try again later.", kind = "error" })
+		return
+	end
+
+	showing[player] = true
+
+	local ok, result = pcall(function()
+		local reward = AdService:CreateAdRewardFromDevProductId(settings.devProductId)
+		return AdService:ShowRewardedVideoAdAsync(player, reward)
+	end)
+
+	showing[player] = nil
+
+	if not ok then
+		warn("DeepRush: rewarded video failed: " .. tostring(result))
+		return
+	end
+
+	if result ~= Enum.ShowAdResult.Succeeded then
+		return
+	end
+
+	session.lastAd = os.time()
+	Economy.addBuff(player, "luck", settings.rewardLuckMultiplier, settings.rewardMinutes * 60)
+	Feedback.effect(player, "purchase", {})
+	Feedback.toast(player, {
+		title = `{settings.rewardLuckMultiplier}x LUCK`,
+		body = `Active for {settings.rewardMinutes} minutes. Thanks for watching.`,
+		kind = "rift",
+	})
+	Net.to(player, "Ad", { available = false, nextAt = session.lastAd + settings.cooldownSeconds })
+end
+
+function Ads.start()
+	if not isConfigured() then
+		-- Nothing to do, and nothing shown to players. Set
+		-- Products.RewardedVideo.devProductId once the experience qualifies.
+		return
+	end
+
+	Net.on("WatchAd", function(player)
+		task.spawn(Ads.offer, player)
+	end)
+
+	task.spawn(function()
+		-- Asking before AdService has loaded returns a false "no fill".
+		if not AdService:IsLoaded() then
+			pcall(function()
+				AdService.Loaded:Wait()
+			end)
+		end
+
+		while true do
+			available = checkAvailability()
+			for _, player in ipairs(Players:GetPlayers()) do
+				local session = Data.session(player)
+				if session then
+					local ready = os.time() - (session.lastAd or 0) >= settings.cooldownSeconds
+					Net.to(player, "Ad", { available = available and ready })
+				end
+			end
+			task.wait(60)
+		end
+	end)
+end
+
+return Ads
+
+]]></ProtectedString>
+          <bool name="Disabled">false</bool>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX35">
         <Properties>
           <string name="Name">AntiCheat</string>
           <ProtectedString name="Source"><![CDATA[
@@ -1624,7 +2116,7 @@ return AntiCheat
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="Script" referent="RBX31">
+      <Item class="Script" referent="RBX36">
         <Properties>
           <string name="Name">Bootstrap</string>
           <ProtectedString name="Source"><![CDATA[
@@ -1639,9 +2131,12 @@ return AntiCheat
 
 local SERVICES = {
 	"Data",
+	"World",
+	"Crew",
 	"Economy",
 	"Cargo",
-	"World",
+	"Cosmetics",
+	"Contracts",
 	"Quests",
 	"Rift",
 	"Mining",
@@ -1654,6 +2149,7 @@ local SERVICES = {
 	"Rewards",
 	"Leaderboards",
 	"Monetization",
+	"Ads",
 	"AntiCheat",
 }
 
@@ -1686,7 +2182,7 @@ print(string.format("[DEEP RUSH] %d services up in %.2fs", #SERVICES, os.clock()
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX32">
+      <Item class="ModuleScript" referent="RBX37">
         <Properties>
           <string name="Name">Cargo</string>
           <ProtectedString name="Source"><![CDATA[
@@ -1837,7 +2333,970 @@ return Cargo
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX33">
+      <Item class="ModuleScript" referent="RBX38">
+        <Properties>
+          <string name="Name">Contracts</string>
+          <ProtectedString name="Source"><![CDATA[
+--!nonstrict
+--[[
+	Contracts.luau — the long arc.
+
+	Roblox grades a new experience across day 1, days 2-7 AND days 8-28, and
+	counts "play days per user" rather than hours. Before this module the
+	longest arc in DEEP RUSH was a daily quest, which means the game had
+	nothing to say to a player on day 12.
+
+	Two ladders, both about days rather than hours:
+
+	  WEEKLY CONTRACT  one currency, seven tiers, resets Monday. Points are
+	                   capped per day, so the correct play is to come back
+	                   tomorrow. That is not a monetisation lever — it is
+	                   pacing that happens to match the platform's own
+	                   60-minute daily playtime cap.
+
+	  DESCENT LOG      one-time rewards for the number of DISTINCT days you
+	                   have played, running out to 28. Back-loaded on purpose:
+	                   the day-28 prize is meant to be seen on day 2.
+]]
+
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Config = require(Shared.Config.Contracts)
+local Format = require(Shared.Format)
+local Net = require(Shared.Net)
+
+local Cosmetics = require(script.Parent.Cosmetics)
+local Crew = require(script.Parent.Crew)
+local Data = require(script.Parent.Data)
+local Economy = require(script.Parent.Economy)
+local Feedback = require(script.Parent.Feedback)
+
+local Contracts = {}
+
+local CREW_TICK_SECONDS = 60
+local CREW_MIN_DEPTH = 40 -- standing together at spawn is not co-play
+
+local function today(): string
+	local now = os.date("!*t")
+	return string.format("%d-%03d", now.year, now.yday)
+end
+
+--- Roll the weekly ladder over, and the daily point budget with it.
+local function ensureContract(player: Player)
+	local profile = Data.get(player)
+	if not profile then
+		return false
+	end
+
+	local changed = false
+	local week = Config.weekKey()
+	if profile.contract.week ~= week then
+		profile.contract = { week = week, points = 0, dayPoints = 0, day = today(), claimed = {} }
+		changed = true
+	end
+	if profile.contract.day ~= today() then
+		profile.contract.day = today()
+		profile.contract.dayPoints = 0
+		changed = true
+	end
+
+	if changed then
+		Data.push(player, { contract = Data.replace(table.clone(profile.contract)) })
+	end
+	return changed
+end
+
+--- Count today against the Descent Log if it is a day we have not seen.
+local function ensureDescent(player: Player)
+	local profile = Data.get(player)
+	if not profile then
+		return
+	end
+
+	local day = today()
+	if profile.descent.lastDay == day then
+		return
+	end
+
+	profile.descent.lastDay = day
+	profile.descent.days += 1
+	Data.push(player, { descent = Data.replace(table.clone(profile.descent)) })
+
+	local upcoming = nil
+	for _, milestone in ipairs(Config.DescentLog) do
+		if profile.descent.days < milestone.days then
+			upcoming = milestone
+			break
+		end
+	end
+
+	Feedback.toast(player, {
+		title = `DAY {profile.descent.days} BELOW`,
+		body = upcoming and `{upcoming.days - profile.descent.days} more days to "{upcoming.label}".`
+			or "You have finished the Descent Log. Respect.",
+		kind = "quest",
+		duration = 5,
+	})
+end
+
+--- The single entry point every other system uses to feed the ladder.
+function Contracts.award(player: Player, points: number, reason: string?)
+	local profile = Data.get(player)
+	if not profile or points <= 0 then
+		return
+	end
+	ensureContract(player)
+
+	local room = Config.DailyPointCap - profile.contract.dayPoints
+	if room <= 0 then
+		return
+	end
+
+	local granted = math.min(math.floor(points), room)
+	if granted <= 0 then
+		return
+	end
+
+	local before = Config.tierAt(profile.contract.points)
+	profile.contract.points += granted
+	profile.contract.dayPoints += granted
+	local after = Config.tierAt(profile.contract.points)
+
+	Data.push(player, {
+		contract = { points = profile.contract.points, dayPoints = profile.contract.dayPoints },
+	})
+
+	if after > before then
+		Feedback.effect(player, "contract", { tier = after })
+		Feedback.toast(player, {
+			title = `CONTRACT TIER {after}`,
+			body = "Open 📜 Contract to claim it.",
+			kind = "quest",
+			duration = 5,
+		})
+	end
+
+	-- Fires exactly on the tick that fills the budget: `granted == room` only
+	-- when this award consumed the last of it. Framed as finished, not as
+	-- blocked — there is no lockout, only a ceiling on this one ladder.
+	if granted == room then
+		Feedback.toast(player, {
+			title = "TODAY'S CONTRACT WORK IS DONE",
+			body = "Everything else still pays. The ladder refills at midnight UTC.",
+			kind = "cash",
+			duration = 6,
+		})
+	end
+end
+
+local function grant(player: Player, reward)
+	if not reward then
+		return
+	end
+	if reward.cash then
+		Economy.addCash(player, reward.cash)
+	end
+	if reward.luckMinutes then
+		Economy.addBuff(player, "luck", 2, reward.luckMinutes * 60)
+	end
+	if reward.cosmetic then
+		Cosmetics.unlock(player, reward.cosmetic)
+	end
+	if reward.drone then
+		local profile = Data.get(player)
+		if profile and not profile.drones.owned[reward.drone] then
+			profile.drones.owned[reward.drone] = true
+			Data.push(player, { drones = Data.replace(table.clone(profile.drones)) })
+		end
+	end
+end
+
+function Contracts.claimTier(player: Player, index: number)
+	local profile = Data.get(player)
+	if not profile then
+		return
+	end
+	ensureContract(player)
+
+	local tier = Config.Tiers[index]
+	if not tier or profile.contract.points < tier.points then
+		return
+	end
+	if profile.contract.claimed[tostring(index)] then
+		return
+	end
+
+	profile.contract.claimed[tostring(index)] = true
+	grant(player, tier.reward)
+	Data.push(player, { contract = Data.replace(table.clone(profile.contract)) })
+
+	Feedback.reveal(player, {
+		title = "CONTRACT TIER " .. index,
+		name = Config.nameForWeek(),
+		tier = index >= #Config.Tiers and "Mythic" or "Epic",
+		body = `+{Format.short(tier.reward.cash or 0)}`,
+		kind = "contract",
+	})
+end
+
+function Contracts.claimDescent(player: Player, index: number)
+	local profile = Data.get(player)
+	if not profile then
+		return
+	end
+
+	local milestone = Config.DescentLog[index]
+	if not milestone or profile.descent.days < milestone.days then
+		return
+	end
+	if profile.descent.claimed[tostring(index)] then
+		return
+	end
+
+	profile.descent.claimed[tostring(index)] = true
+	grant(player, milestone.reward)
+	Data.push(player, { descent = Data.replace(table.clone(profile.descent)) })
+
+	Feedback.reveal(player, {
+		title = milestone.label,
+		name = `{milestone.days} DAYS BELOW`,
+		tier = "Legendary",
+		body = `+{Format.short(milestone.reward.cash or 0)}`,
+		kind = "descent",
+	})
+end
+
+--- Crew points are paid on a timer rather than at an event, because the
+--- thing being rewarded is time spent digging together.
+local function crewLoop()
+	while true do
+		task.wait(CREW_TICK_SECONDS)
+		for _, player in ipairs(Players:GetPlayers()) do
+			local session = Data.session(player)
+			if session and (session.depth or 0) >= CREW_MIN_DEPTH and Crew.matesNear(player) > 0 then
+				Contracts.award(player, Config.Points.perCrewMinute, "crew")
+				require(script.Parent.Quests).record(player, "crew_minutes", 1)
+			end
+		end
+	end
+end
+
+function Contracts.start()
+	Net.on("ClaimContract", function(player, index)
+		if type(index) == "number" then
+			Contracts.claimTier(player, index)
+		end
+	end)
+
+	Net.on("ClaimDescent", function(player, index)
+		if type(index) == "number" then
+			Contracts.claimDescent(player, index)
+		end
+	end)
+
+	Data.loaded:connect(function(player)
+		ensureContract(player)
+		task.delay(5, ensureDescent, player)
+	end)
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if Data.isReady(player) then
+			ensureContract(player)
+			ensureDescent(player)
+		end
+	end
+
+	task.spawn(crewLoop)
+end
+
+return Contracts
+
+]]></ProtectedString>
+          <bool name="Disabled">false</bool>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX39">
+        <Properties>
+          <string name="Name">Cosmetics</string>
+          <ProtectedString name="Source"><![CDATA[
+--!nonstrict
+--[[
+	Cosmetics.luau — status you can see on someone else.
+
+	The 2026 spending picture is that cosmetics, status items and rarity-flex
+	out-earn time-skips, and DEEP RUSH sold only time-skips. This is the
+	correction.
+
+	The single rule that makes a cosmetic worth anything: it must be visible
+	to OTHER players. A skin only you can see is a screenshot; a skin the
+	shaft can see is status. So all three kinds render on the character —
+	the lamp lights the rock around you, the trail is what people see when
+	you fall past them, and the title sits on your nameplate.
+]]
+
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Config = require(Shared.Config.Cosmetics)
+local Format = require(Shared.Format)
+local Net = require(Shared.Net)
+local RebirthConfig = require(Shared.Config.Rebirth)
+
+local Data = require(script.Parent.Data)
+local Economy = require(script.Parent.Economy)
+local Feedback = require(script.Parent.Feedback)
+
+local Cosmetics = {}
+
+local function equippedId(profile, kind: string): string
+	return profile.cosmetics.equipped[kind] or Config.Defaults[kind]
+end
+
+local function applyLamp(character: Model, profile)
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+
+	local existing = head:FindFirstChild("DeepRushLamp")
+	if existing then
+		existing:Destroy()
+	end
+
+	local lamp = Instance.new("SpotLight")
+	lamp.Name = "DeepRushLamp"
+	lamp.Color = Config.color(equippedId(profile, "lamp"))
+	lamp.Range = 42
+	lamp.Angle = 75
+	lamp.Brightness = 2.4
+	lamp.Face = Enum.NormalId.Front
+	lamp.Parent = head
+end
+
+local function applyTrail(character: Model, profile)
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
+
+	local existing = root:FindFirstChild("DeepRushTrail")
+	if existing then
+		existing:Destroy()
+	end
+
+	local id = equippedId(profile, "trail")
+	if id == "trail_none" then
+		return
+	end
+
+	-- A Trail needs two attachments to stretch between.
+	local top = root:FindFirstChild("TrailTop") or Instance.new("Attachment")
+	top.Name = "TrailTop"
+	top.Position = Vector3.new(0, 1.4, 0)
+	top.Parent = root
+
+	local bottom = root:FindFirstChild("TrailBottom") or Instance.new("Attachment")
+	bottom.Name = "TrailBottom"
+	bottom.Position = Vector3.new(0, -1.4, 0)
+	bottom.Parent = root
+
+	local color = Config.color(id)
+	local trail = Instance.new("Trail")
+	trail.Name = "DeepRushTrail"
+	trail.Attachment0 = top
+	trail.Attachment1 = bottom
+	trail.Color = ColorSequence.new(color)
+	trail.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.15),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	trail.Lifetime = 0.7
+	trail.LightEmission = 0.8
+	trail.MinLength = 0
+	trail.Parent = root
+end
+
+local function applyNameplate(character: Model, profile, player: Player)
+	local head = character:FindFirstChild("Head")
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not head or not humanoid then
+		return
+	end
+
+	-- Replace Roblox's own name tag so the title and rebirth can sit with it.
+	-- NameDisplayDistance specifically, NOT DisplayDistanceType: the latter
+	-- would also hide the health bar, which players need while hazards are
+	-- chewing on them.
+	humanoid.NameDisplayDistance = 0
+
+	local existing = head:FindFirstChild("DeepRushPlate")
+	if existing then
+		existing:Destroy()
+	end
+
+	local plate = Instance.new("BillboardGui")
+	plate.Name = "DeepRushPlate"
+	plate.Size = UDim2.fromScale(11, 3.4)
+	plate.StudsOffset = Vector3.new(0, 2.6, 0)
+	plate.AlwaysOnTop = false
+	plate.MaxDistance = 160
+	plate.Parent = head
+
+	local titleId = equippedId(profile, "title")
+	local titleConfig = Config.ById[titleId]
+	local hasTitle = titleConfig ~= nil and titleConfig.text ~= nil and titleConfig.text ~= ""
+
+	local name = Instance.new("TextLabel")
+	name.Size = UDim2.new(1, 0, hasTitle and 0.55 or 1, 0)
+	name.Position = UDim2.new(0, 0, hasTitle and 0.45 or 0, 0)
+	name.BackgroundTransparency = 1
+	name.Font = Enum.Font.GothamBold
+	name.Text = player.DisplayName
+	name.TextColor3 = Color3.fromRGB(235, 235, 245)
+	name.TextScaled = true
+	name.TextStrokeTransparency = 0.4
+	name.Parent = plate
+
+	if hasTitle then
+		local title = Instance.new("TextLabel")
+		title.Size = UDim2.new(1, 0, 0.45, 0)
+		title.BackgroundTransparency = 1
+		title.Font = Enum.Font.GothamBlack
+		title.Text = titleConfig.text
+		title.TextColor3 = Config.color(titleId)
+		title.TextScaled = true
+		title.TextStrokeTransparency = 0.35
+		title.Parent = plate
+	end
+
+	local rank = Instance.new("TextLabel")
+	rank.Size = UDim2.new(1, 0, 0.3, 0)
+	rank.Position = UDim2.new(0, 0, 1, 0)
+	rank.BackgroundTransparency = 1
+	rank.Font = Enum.Font.GothamMedium
+	rank.Text = profile.rebirths > 0
+		and `R{profile.rebirths} · {RebirthConfig.title(profile.rebirths)}`
+		or RebirthConfig.title(0)
+	rank.TextColor3 = Color3.fromRGB(150, 150, 175)
+	rank.TextScaled = true
+	rank.TextStrokeTransparency = 0.5
+	rank.Parent = plate
+end
+
+function Cosmetics.apply(player: Player)
+	local profile = Data.get(player)
+	local character = player.Character
+	if not profile or not character then
+		return
+	end
+
+	applyLamp(character, profile)
+	applyTrail(character, profile)
+	applyNameplate(character, profile, player)
+end
+
+function Cosmetics.unlock(player: Player, id: string)
+	local profile = Data.get(player)
+	local cosmetic = Config.ById[id]
+	if not profile or not cosmetic or profile.cosmetics.owned[id] then
+		return
+	end
+
+	profile.cosmetics.owned[id] = true
+	profile.cosmetics.equipped[cosmetic.kind] = id
+	Data.push(player, { cosmetics = Data.replace(table.clone(profile.cosmetics)) })
+	Cosmetics.apply(player)
+
+	Feedback.reveal(player, {
+		title = "COSMETIC UNLOCKED",
+		name = cosmetic.name,
+		tier = "Epic",
+		body = "Equipped. Everyone in the shaft can see it.",
+		kind = "cosmetic",
+	})
+end
+
+function Cosmetics.equip(player: Player, id: string)
+	local profile = Data.get(player)
+	local cosmetic = Config.ById[id]
+	if not profile or not cosmetic then
+		return
+	end
+
+	local isDefault = cosmetic.source == "default"
+	if not isDefault and not profile.cosmetics.owned[id] then
+		return
+	end
+
+	profile.cosmetics.equipped[cosmetic.kind] = id
+	Data.push(player, { cosmetics = Data.replace(table.clone(profile.cosmetics)) })
+	Cosmetics.apply(player)
+end
+
+function Cosmetics.buy(player: Player, id: string)
+	local profile = Data.get(player)
+	local cosmetic = Config.ById[id]
+	if not profile or not cosmetic then
+		return
+	end
+
+	if profile.cosmetics.owned[id] then
+		Cosmetics.equip(player, id)
+		return
+	end
+
+	if cosmetic.source ~= "shop" or not cosmetic.cost then
+		Feedback.toast(player, {
+			title = "NOT FOR SALE",
+			body = `{cosmetic.name} is earned, not bought.`,
+			kind = "error",
+		})
+		return
+	end
+
+	if not Economy.spend(player, cosmetic.cost) then
+		Feedback.toast(player, {
+			title = "NOT ENOUGH CASH",
+			body = `{cosmetic.name} costs {Format.short(cosmetic.cost)}.`,
+			kind = "error",
+		})
+		return
+	end
+
+	profile.cosmetics.owned[id] = true
+	Data.push(player, { cosmetics = Data.replace(table.clone(profile.cosmetics)) })
+	Cosmetics.equip(player, id)
+end
+
+function Cosmetics.start()
+	Net.on("EquipCosmetic", function(player, id)
+		if type(id) == "string" then
+			Cosmetics.equip(player, id)
+		end
+	end)
+
+	Net.on("BuyCosmetic", function(player, id)
+		if type(id) == "string" then
+			Cosmetics.buy(player, id)
+		end
+	end)
+
+	local function hook(player: Player)
+		player.CharacterAdded:Connect(function()
+			task.wait(0.6)
+			Cosmetics.apply(player)
+		end)
+		if player.Character then
+			task.delay(1, Cosmetics.apply, player)
+		end
+	end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		hook(player)
+	end
+	Players.PlayerAdded:Connect(hook)
+end
+
+return Cosmetics
+
+]]></ProtectedString>
+          <bool name="Disabled">false</bool>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX40">
+        <Properties>
+          <string name="Name">Crew</string>
+          <ProtectedString name="Source"><![CDATA[
+--!nonstrict
+--[[
+	Crew.luau — the co-play layer.
+
+	Why this exists: Roblox's Recommended For You algorithm names "7 day
+	intentional co-play days per user" as one of six ranking signals. Before
+	this module, DEEP RUSH scored exactly zero on it — nothing in the game was
+	better with another person in it.
+
+	Two constraints shaped the design:
+
+	  NO TEXT. Since the January 2026 age-check rollout, a large share of
+	  players cannot freely chat with each other. So the entire coordination
+	  vocabulary is four pings and a proximity bonus. Nobody has to type
+	  anything, and nothing breaks when two crewmates are in age brackets that
+	  cannot talk.
+
+	  NO LOBBY. The bonus is paid for standing near each other in the shaft,
+	  not for being on a roster. A crew you never dig with is worth nothing,
+	  which keeps the signal honest rather than farmable.
+
+	This module deliberately depends on almost nothing (Data, World, Net,
+	Feedback) because Economy asks it for the bonus, and Economy is required
+	by half the server.
+]]
+
+local Players = game:GetService("Players")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local CrewConfig = require(Shared.Config.Crew)
+local Net = require(Shared.Net)
+
+local Data = require(script.Parent.Data)
+local Feedback = require(script.Parent.Feedback)
+local World = require(script.Parent.World)
+
+local Crew = {}
+
+local crews: { [string]: any } = {} -- id -> { id, members: {Player} }
+local memberOf: { [Player]: string } = {}
+local beacons: { [Player]: any } = {} -- owner -> { part, expiresAt }
+local lastPing: { [Player]: number } = {}
+
+local nextCrewId = 0
+
+local function rootOf(player: Player)
+	local character = player.Character
+	return character and character:FindFirstChild("HumanoidRootPart")
+end
+
+-- Membership --------------------------------------------------------------
+
+function Crew.of(player: Player)
+	local id = memberOf[player]
+	return id and crews[id] or nil
+end
+
+function Crew.size(player: Player): number
+	local crew = Crew.of(player)
+	return crew and #crew.members or 1
+end
+
+function Crew.isMate(a: Player, b: Player): boolean
+	local crew = Crew.of(a)
+	return crew ~= nil and crew == Crew.of(b)
+end
+
+--- Crew members other than `player` currently inside the bond radius. This is
+--- the number the bonus is actually paid on — being on the roster from
+--- across the map earns nothing.
+function Crew.matesNear(player: Player): number
+	local crew = Crew.of(player)
+	local root = rootOf(player)
+	if not crew or not root then
+		return 0
+	end
+
+	local count = 0
+	for _, member in ipairs(crew.members) do
+		if member ~= player then
+			local memberRoot = rootOf(member)
+			if memberRoot and (memberRoot.Position - root.Position).Magnitude <= CrewConfig.BondRadius then
+				count += 1
+			end
+		end
+	end
+	return count
+end
+
+--- Asked for by Economy on every luck and cash calculation.
+function Crew.bonus(player: Player)
+	local near = Crew.matesNear(player)
+	if near <= 0 then
+		return { cash = 0, luck = 0, near = 0 }
+	end
+	return {
+		cash = near * CrewConfig.CashPerMember,
+		luck = near * CrewConfig.LuckPerMember,
+		near = near,
+	}
+end
+
+local function syncCrew(crew)
+	local roster = {}
+	for _, member in ipairs(crew.members) do
+		local session = Data.session(member)
+		table.insert(roster, {
+			userId = member.UserId,
+			name = member.DisplayName,
+			depth = session and math.floor(session.depth or 0) or 0,
+		})
+	end
+
+	for _, member in ipairs(crew.members) do
+		Net.to(member, "Crew", { members = roster, bonusNear = Crew.matesNear(member) })
+	end
+end
+
+local function syncSolo(player: Player)
+	Net.to(player, "Crew", { members = {}, bonusNear = 0 })
+end
+
+function Crew.leave(player: Player, quiet: boolean?)
+	local crew = Crew.of(player)
+	if not crew then
+		return
+	end
+
+	memberOf[player] = nil
+	local index = table.find(crew.members, player)
+	if index then
+		table.remove(crew.members, index)
+	end
+
+	if not quiet then
+		syncSolo(player)
+		for _, member in ipairs(crew.members) do
+			Feedback.toast(member, {
+				title = "CREW LEFT",
+				body = `{player.DisplayName} surfaced.`,
+				kind = "quest",
+			})
+		end
+	end
+
+	if #crew.members <= 1 then
+		-- A crew of one is just a player. Dissolve it so the bonus and the
+		-- UI both read honestly.
+		for _, member in ipairs(crew.members) do
+			memberOf[member] = nil
+			syncSolo(member)
+		end
+		crews[crew.id] = nil
+	else
+		syncCrew(crew)
+	end
+end
+
+local function joinCrew(player: Player, owner: Player)
+	if player == owner then
+		return
+	end
+
+	local crew = Crew.of(owner)
+	if not crew then
+		nextCrewId += 1
+		crew = { id = "crew" .. nextCrewId, members = { owner } }
+		crews[crew.id] = crew
+		memberOf[owner] = crew.id
+	end
+
+	if #crew.members >= CrewConfig.MaxSize then
+		Feedback.toast(player, { title = "CREW FULL", body = `Crews cap at {CrewConfig.MaxSize}.`, kind = "error" })
+		return
+	end
+
+	Crew.leave(player, true)
+	table.insert(crew.members, player)
+	memberOf[player] = crew.id
+
+	for _, member in ipairs(crew.members) do
+		Feedback.toast(member, {
+			title = "CREW " .. #crew.members .. "/" .. CrewConfig.MaxSize,
+			body = `{player.DisplayName} joined. Stay close for the bonus.`,
+			kind = "quest",
+		})
+	end
+	Feedback.effect(player, "crewJoin", {})
+	syncCrew(crew)
+end
+
+-- Beacons -----------------------------------------------------------------
+
+local function clearBeacon(owner: Player)
+	local beacon = beacons[owner]
+	if beacon then
+		if beacon.part.Parent then
+			beacon.part:Destroy()
+		end
+		beacons[owner] = nil
+	end
+end
+
+function Crew.dropBeacon(player: Player)
+	local root = rootOf(player)
+	if not root then
+		return
+	end
+
+	clearBeacon(player)
+
+	local part = Instance.new("Part")
+	part.Name = "CrewBeacon"
+	part.Size = Vector3.new(3, 14, 3)
+	part.CFrame = CFrame.new(root.Position + Vector3.new(0, 5, 0))
+	part.Anchored = true
+	part.CanCollide = false
+	part.Material = Enum.Material.Neon
+	part.Color = Color3.fromRGB(110, 230, 255)
+	part.Transparency = 0.25
+	part:SetAttribute("CrewBeacon", player.UserId)
+	part.Parent = workspace
+
+	local light = Instance.new("PointLight")
+	light.Color = part.Color
+	light.Range = 40
+	light.Brightness = 3
+	light.Parent = part
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.fromScale(12, 4)
+	billboard.StudsOffset = Vector3.new(0, 9, 0)
+	billboard.AlwaysOnTop = true
+	billboard.MaxDistance = 300
+	billboard.Parent = part
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.GothamBlack
+	label.Text = `🤝 JOIN {string.upper(player.DisplayName)}`
+	label.TextColor3 = Color3.fromRGB(150, 240, 255)
+	label.TextScaled = true
+	label.TextStrokeTransparency = 0.3
+	label.Parent = billboard
+
+	beacons[player] = { part = part, expiresAt = os.time() + CrewConfig.BeaconLifetime }
+
+	Feedback.toast(player, {
+		title = "BEACON DROPPED",
+		body = `Anyone within {CrewConfig.JoinRadius} studs can join for {CrewConfig.BeaconLifetime}s.`,
+		kind = "quest",
+	})
+end
+
+--- Join the nearest live beacon. No menus, no invites to accept: you walk to
+--- the light and press one button.
+function Crew.joinNearest(player: Player)
+	local root = rootOf(player)
+	if not root then
+		return
+	end
+
+	local best, bestDistance = nil, CrewConfig.JoinRadius
+	for owner, beacon in pairs(beacons) do
+		if owner ~= player and beacon.part.Parent then
+			local distance = (beacon.part.Position - root.Position).Magnitude
+			if distance <= bestDistance then
+				best, bestDistance = owner, distance
+			end
+		end
+	end
+
+	if not best then
+		Feedback.toast(player, {
+			title = "NO BEACON NEARBY",
+			body = "Drop your own so others can find you.",
+			kind = "error",
+		})
+		return
+	end
+
+	joinCrew(player, best)
+end
+
+-- Pings -------------------------------------------------------------------
+
+--- The whole coordination vocabulary. The POSITION comes from the server's
+--- view of the character, never from the client, so a ping cannot be used to
+--- draw arbitrary marks anywhere in the world.
+function Crew.ping(player: Player, kind: string)
+	local valid = false
+	for _, pingType in ipairs(CrewConfig.PingTypes) do
+		if pingType.id == kind then
+			valid = true
+			break
+		end
+	end
+	if not valid then
+		return
+	end
+
+	local now = os.clock()
+	if now - (lastPing[player] or 0) < CrewConfig.PingCooldown then
+		return
+	end
+	lastPing[player] = now
+
+	local root = rootOf(player)
+	if not root then
+		return
+	end
+
+	local payload = {
+		kind = kind,
+		position = root.Position,
+		from = player.DisplayName,
+		lifetime = CrewConfig.PingLifetime,
+	}
+
+	local crew = Crew.of(player)
+	if crew then
+		for _, member in ipairs(crew.members) do
+			Net.to(member, "Pings", payload)
+		end
+		return
+	end
+
+	-- Solo players still get to signal: anyone close by sees it. This is how
+	-- a crew usually starts in the first place.
+	for _, other in ipairs(Players:GetPlayers()) do
+		local otherRoot = rootOf(other)
+		if otherRoot and (otherRoot.Position - root.Position).Magnitude <= 200 then
+			Net.to(other, "Pings", payload)
+		end
+	end
+end
+
+-- Lifecycle ---------------------------------------------------------------
+
+function Crew.start()
+	Net.on("CrewBeacon", function(player)
+		Crew.dropBeacon(player)
+	end)
+
+	Net.on("CrewJoin", function(player)
+		Crew.joinNearest(player)
+	end)
+
+	Net.on("CrewLeave", function(player)
+		Crew.leave(player)
+	end)
+
+	Net.on("Ping", function(player, kind)
+		if type(kind) == "string" then
+			Crew.ping(player, kind)
+		end
+	end)
+
+	Players.PlayerRemoving:Connect(function(player)
+		Crew.leave(player, true)
+		clearBeacon(player)
+		lastPing[player] = nil
+	end)
+
+	task.spawn(function()
+		while true do
+			task.wait(2)
+
+			for owner, beacon in pairs(beacons) do
+				if os.time() >= beacon.expiresAt or not beacon.part.Parent then
+					clearBeacon(owner)
+				end
+			end
+
+			for _, crew in pairs(crews) do
+				syncCrew(crew)
+			end
+		end
+	end)
+end
+
+return Crew
+
+]]></ProtectedString>
+          <bool name="Disabled">false</bool>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX41">
         <Properties>
           <string name="Name">Data</string>
           <ProtectedString name="Source"><![CDATA[
@@ -1909,6 +3368,17 @@ local function template()
 			cleanBanks = 0,
 		},
 		rewards = { lastLogin = "", streak = 0, chests = 0 },
+
+		-- Weekly ladder. dayPoints enforces the daily cap that pushes play
+		-- DAYS rather than long single sessions.
+		contract = { week = "", points = 0, dayPoints = 0, day = "", claimed = {} },
+
+		-- Distinct days played, which is the metric the 28-day discovery
+		-- window actually grades.
+		descent = { days = 0, lastDay = "", claimed = {} },
+
+		cosmetics = { owned = {}, equipped = {} },
+		deals = { day = "", bought = {} },
 		purchases = {},
 		createdAt = os.time(),
 		lastSeen = os.time(),
@@ -2105,6 +3575,10 @@ function Data.snapshot(player: Player)
 		quests = profile.quests,
 		stats = profile.stats,
 		rewards = profile.rewards,
+		contract = profile.contract,
+		descent = profile.descent,
+		cosmetics = profile.cosmetics,
+		deals = profile.deals,
 		cargo = { count = #session.cargo.items, value = session.cargo.value },
 		depth = session.depth,
 		oxygen = session.oxygen,
@@ -2210,7 +3684,7 @@ return Data
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX34">
+      <Item class="ModuleScript" referent="RBX42">
         <Properties>
           <string name="Name">Drones</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2384,7 +3858,7 @@ return Drones
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX35">
+      <Item class="ModuleScript" referent="RBX43">
         <Properties>
           <string name="Name">Economy</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2408,6 +3882,7 @@ local RebirthConfig = require(Shared.Config.Rebirth)
 local DroneConfig = require(Shared.Config.Drones)
 local ProductConfig = require(Shared.Config.Products)
 
+local Crew = require(script.Parent.Crew)
 local Data = require(script.Parent.Data)
 local Feedback = require(script.Parent.Feedback)
 
@@ -2488,6 +3963,10 @@ function Economy.luck(player: Player): number
 	luck += RebirthConfig.bonuses(profile.rebirths).luck
 	luck += DroneConfig.bonusesOf(profile.drones.equipped).luck
 
+	-- Paid for digging within bond range of a crewmate, not for being on a
+	-- roster. See Server/Crew.luau.
+	luck += Crew.bonus(player).luck
+
 	luck *= gamepassBonus(player, "luckMultiplier", 1)
 
 	for _, buff in ipairs(activeBuffs(player)) do
@@ -2507,6 +3986,7 @@ function Economy.cashMultiplier(player: Player): number
 
 	local multiplier = RebirthConfig.bonuses(profile.rebirths).cashMultiplier
 	multiplier *= 1 + DroneConfig.bonusesOf(profile.drones.equipped).cash
+	multiplier *= 1 + Crew.bonus(player).cash
 	multiplier *= gamepassBonus(player, "cashMultiplier", 1)
 
 	for _, buff in ipairs(activeBuffs(player)) do
@@ -2541,6 +4021,13 @@ function Economy.maxOxygen(player: Player): number
 	oxygen += UpgradeConfig.value("oxygen", profile.upgrades.oxygen or 0)
 	oxygen += RebirthConfig.bonuses(profile.rebirths).oxygen
 	oxygen += DroneConfig.bonusesOf(profile.drones.equipped).oxygen
+
+	for _, buff in ipairs(activeBuffs(player)) do
+		if buff.kind == "oxygen" then
+			oxygen *= buff.multiplier
+		end
+	end
+
 	return oxygen
 end
 
@@ -2648,7 +4135,7 @@ return Economy
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX36">
+      <Item class="ModuleScript" referent="RBX44">
         <Properties>
           <string name="Name">Feedback</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2709,7 +4196,7 @@ return Feedback
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX37">
+      <Item class="ModuleScript" referent="RBX45">
         <Properties>
           <string name="Name">Hazards</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2834,7 +4321,7 @@ return Hazards
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX38">
+      <Item class="ModuleScript" referent="RBX46">
         <Properties>
           <string name="Name">Leaderboards</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3075,7 +4562,7 @@ return Leaderboards
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX39">
+      <Item class="ModuleScript" referent="RBX47">
         <Properties>
           <string name="Name">Mining</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3107,6 +4594,8 @@ local Format = require(Shared.Format)
 local Net = require(Shared.Net)
 
 local Cargo = require(script.Parent.Cargo)
+local Contracts = require(script.Parent.Contracts)
+local ContractConfig = require(Shared.Config.Contracts)
 local Data = require(script.Parent.Data)
 local Economy = require(script.Parent.Economy)
 local Feedback = require(script.Parent.Feedback)
@@ -3238,6 +4727,15 @@ local function award(player: Player, node)
 	end
 	if riftActive then
 		Quests.record(player, "rift_mine", 1)
+		Contracts.award(player, ContractConfig.Points.perRiftOre)
+	end
+
+	if isNew then
+		Contracts.award(player, ContractConfig.Points.newCodexEntry)
+	elseif tierIndex >= 4 then
+		Contracts.award(player, ContractConfig.Points.perEpicOre)
+	elseif tierIndex >= 3 then
+		Contracts.award(player, ContractConfig.Points.perRareOre)
 	end
 
 	-- Feedback, scaled to how rare the thing actually was.
@@ -3344,9 +4842,11 @@ function Mining.start()
 
 		local profile = Data.get(player)
 		if profile and depth > profile.stats.bestDepth then
+			local gained = depth - profile.stats.bestDepth
 			profile.stats.bestDepth = depth
 			Data.push(player, { stats = { bestDepth = depth } })
 			Quests.record(player, "depth_alltime", depth, "max")
+			Contracts.award(player, gained * ContractConfig.Points.perDepthRecord)
 		end
 		Quests.record(player, "depth", depth, "max")
 		Data.push(player, { depth = depth })
@@ -3366,7 +4866,7 @@ return Mining
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX40">
+      <Item class="ModuleScript" referent="RBX48">
         <Properties>
           <string name="Name">Monetization</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3392,6 +4892,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local ProductConfig = require(Shared.Config.Products)
 local Format = require(Shared.Format)
 
+local Crew = require(script.Parent.Crew)
 local Data = require(script.Parent.Data)
 local Economy = require(script.Parent.Economy)
 local Feedback = require(script.Parent.Feedback)
@@ -3453,6 +4954,31 @@ local function applyProduct(player: Player, product): boolean
 			body = `Active for {grant.minutes} minutes.`,
 			kind = "rift",
 		})
+	end
+
+	if grant.oxygenMultiplier and grant.minutes then
+		Economy.addBuff(player, "oxygen", grant.oxygenMultiplier, grant.minutes * 60)
+		Feedback.toast(player, {
+			title = "DEEP LUNGS",
+			body = `Double air for {grant.minutes} minutes.`,
+			kind = "cash",
+		})
+	end
+
+	-- A deal that pays the buyer's whole crew. Bought by one person, felt by
+	-- four — which is the only kind of purchase that makes a group play
+	-- longer rather than shorter.
+	if grant.crewCash and grant.minutes then
+		local crew = Crew.of(player)
+		local members = crew and crew.members or { player }
+		for _, member in ipairs(members) do
+			Economy.addBuff(member, "cash", grant.crewCash, grant.minutes * 60)
+			Feedback.toast(member, {
+				title = `{grant.crewCash}x CREW CASH`,
+				body = `{player.DisplayName} bought rations for the crew.`,
+				kind = "cash",
+			})
+		end
 	end
 
 	if grant.personalRift then
@@ -3547,6 +5073,16 @@ function Monetization.start()
 
 		profile.purchases.receipts[receipt.PurchaseId] = os.time()
 		profile.purchases[product.id] = (profile.purchases[product.id] or 0) + 1
+
+		-- Mark today's deal as taken so the shop stops offering it.
+		local today = os.date("!*t")
+		local dayKey = string.format("%d-%03d", today.year, today.yday)
+		if profile.deals.day ~= dayKey then
+			profile.deals = { day = dayKey, bought = {} }
+		end
+		profile.deals.bought[product.id] = true
+		Data.push(player, { deals = Data.replace(table.clone(profile.deals)) })
+
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end
 end
@@ -3557,7 +5093,7 @@ return Monetization
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX41">
+      <Item class="ModuleScript" referent="RBX49">
         <Properties>
           <string name="Name">Quests</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3580,6 +5116,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local QuestConfig = require(Shared.Config.Quests)
 local Net = require(Shared.Net)
 
+local ContractConfig = require(Shared.Config.Contracts)
 local Data = require(script.Parent.Data)
 local Economy = require(script.Parent.Economy)
 local Feedback = require(script.Parent.Feedback)
@@ -3734,11 +5271,16 @@ local function grant(player: Player, reward)
 		return
 	end
 
+	require(script.Parent.Contracts).award(player, ContractConfig.Points.perQuestClaimed)
+
 	if reward.cash then
 		Economy.addCash(player, reward.cash)
 	end
 	if reward.luckMinutes then
 		Economy.addBuff(player, "luck", 2, reward.luckMinutes * 60)
+	end
+	if reward.cosmetic then
+		require(script.Parent.Cosmetics).unlock(player, reward.cosmetic)
 	end
 	if reward.drone and not profile.drones.owned[reward.drone] then
 		profile.drones.owned[reward.drone] = true
@@ -3864,7 +5406,7 @@ return Quests
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX42">
+      <Item class="ModuleScript" referent="RBX50">
         <Properties>
           <string name="Name">Rebirth</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3958,7 +5500,7 @@ return Rebirth
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX43">
+      <Item class="ModuleScript" referent="RBX51">
         <Properties>
           <string name="Name">Rewards</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4066,7 +5608,7 @@ return Rewards
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX44">
+      <Item class="ModuleScript" referent="RBX52">
         <Properties>
           <string name="Name">Rift</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4233,7 +5775,7 @@ return Rift
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX45">
+      <Item class="ModuleScript" referent="RBX53">
         <Properties>
           <string name="Name">Steal</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4258,16 +5800,18 @@ local Players = game:GetService("Players")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config.Game)
+local CrewConfig = require(Shared.Config.Crew)
 local DroneConfig = require(Shared.Config.Drones)
 local Format = require(Shared.Format)
 local Net = require(Shared.Net)
 
 local Cargo = require(script.Parent.Cargo)
+local Crew = require(script.Parent.Crew)
 local Data = require(script.Parent.Data)
 local Economy = require(script.Parent.Economy)
+local World = require(script.Parent.World)
 local Feedback = require(script.Parent.Feedback)
 local Quests = require(script.Parent.Quests)
-local World = require(script.Parent.World)
 
 local Steal = {}
 
@@ -4490,6 +6034,47 @@ local function onDeath(player: Player)
 	session.lastLoss = { items = lost, crateId = crateId, at = os.time() }
 end
 
+--- The opposite of a snatch: give a crewmate's dropped crate back to them
+--- and take a finder's fee in cash. In a game built on theft, one clearly
+--- cooperative action is what makes a crew read as a crew.
+function Steal.rescue(player: Player)
+	local root = rootOf(player)
+	if not root then
+		return
+	end
+
+	for _, crate in ipairs(World.cratesNear(root.Position, CrewConfig.RescueRadius)) do
+		local owner = Players:GetPlayerByUserId(crate.owner)
+		if owner and owner ~= player and Crew.isMate(player, owner) then
+			local returned = Cargo.give(owner, crate.items)
+			World.removeCrate(crate.id)
+
+			local fee = math.floor(crate.value * CrewConfig.RescueReward)
+			Economy.addCash(player, fee)
+			Quests.record(player, "rescue", 1)
+
+			Feedback.effect(player, "crate", { amount = fee })
+			Feedback.toast(player, {
+				title = "CARGO RETURNED",
+				body = `Gave {owner.DisplayName} their haul back. Finder's fee: {Format.short(fee)}.`,
+				kind = "quest",
+			})
+			Feedback.toast(owner, {
+				title = "+" .. Format.short(returned) .. " RECOVERED",
+				body = `{player.DisplayName} brought your cargo back.`,
+				kind = "cash",
+			})
+			return
+		end
+	end
+
+	Feedback.toast(player, {
+		title = "NOTHING TO RETURN",
+		body = "Stand next to a crewmate's dropped crate.",
+		kind = "error",
+	})
+end
+
 --- Magnet Drone: hoover nearby crates without touching them.
 local function magnetSweep()
 	for _, player in ipairs(Players:GetPlayers()) do
@@ -4511,6 +6096,10 @@ end
 function Steal.start()
 	Net.on("Snatch", function(player)
 		Steal.snatch(player)
+	end)
+
+	Net.on("Rescue", function(player)
+		Steal.rescue(player)
 	end)
 
 	Net.on("GrabCrate", function(player, crateId)
@@ -4574,7 +6163,7 @@ return Steal
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX46">
+      <Item class="ModuleScript" referent="RBX54">
         <Properties>
           <string name="Name">Surface</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4599,6 +6188,8 @@ local Format = require(Shared.Format)
 local Net = require(Shared.Net)
 
 local Cargo = require(script.Parent.Cargo)
+local Contracts = require(script.Parent.Contracts)
+local ContractConfig = require(Shared.Config.Contracts)
 local Data = require(script.Parent.Data)
 local Economy = require(script.Parent.Economy)
 local Feedback = require(script.Parent.Feedback)
@@ -4669,6 +6260,10 @@ function Surface.deposit(player: Player)
 	Quests.record(player, "bank_runs", 1)
 	Quests.record(player, "bank_single", payout, "max")
 	Quests.record(player, "clean_banks", session.cleanBanks, "set")
+	-- Only trips that actually went down count, matching the streak rule.
+	if deepEnough then
+		Contracts.award(player, ContractConfig.Points.perDeepBank)
+	end
 
 	require(script.Parent.Leaderboards).submit(player, payout)
 
@@ -4753,7 +6348,7 @@ return Surface
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX47">
+      <Item class="ModuleScript" referent="RBX55">
         <Properties>
           <string name="Name">Upgrades</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4829,7 +6424,7 @@ return Upgrades
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX48">
+      <Item class="ModuleScript" referent="RBX56">
         <Properties>
           <string name="Name">World</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5359,7 +6954,7 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="RBX50">
+  <Item class="StarterPlayer" referent="RBX58">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
@@ -5390,6 +6985,7 @@ local CONTROLLERS = {
 	"Panels",
 	"Notify",
 	"Hud",
+	"Crew",
 	"Onboarding",
 }
 
@@ -5419,6 +7015,381 @@ end
           </Properties>
         </Item>
         <Item class="ModuleScript" referent="RBX3">
+          <Properties>
+            <string name="Name">Crew</string>
+            <ProtectedString name="Source"><![CDATA[
+--!nonstrict
+--[[
+	Crew.luau (client) — the co-play surface.
+
+	Three things live here, all of them designed to work with the sound off
+	and without anyone typing a word:
+
+	  CREW BAR    who is with you, how much bonus you are earning right now,
+	              and the one button that is currently relevant (drop a
+	              beacon / join the one you are standing next to / leave).
+	  PING WHEEL  four fixed signals. This is the entire coordination
+	              vocabulary, which is the point: since the January 2026
+	              age-check rollout, two players in different age brackets may
+	              not be able to chat at all, and a game that needs typing to
+	              be played together is a game that quietly excludes them.
+	  INVITE      Roblox's own invite prompt, offered at the moments a player
+	              actually wants a friend here rather than on a timer.
+]]
+
+local Players = game:GetService("Players")
+local SocialService = game:GetService("SocialService")
+local TweenService = game:GetService("TweenService")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local CrewConfig = require(Shared.Config.Crew)
+local Net = require(Shared.Net)
+
+local Ui = require(script.Parent.Ui)
+
+local Crew = {}
+
+local player = Players.LocalPlayer
+local theme = Ui.THEME
+
+local state = { members = {}, bonusNear = 0 }
+local widgets = {}
+local canInvite = false
+
+local function rootPart()
+	local character = player.Character
+	return character and character:FindFirstChild("HumanoidRootPart")
+end
+
+-- World markers ------------------------------------------------------------
+
+local function pingColor(kind: string): Color3
+	for _, pingType in ipairs(CrewConfig.PingTypes) do
+		if pingType.id == kind then
+			return Color3.fromRGB(pingType.color[1], pingType.color[2], pingType.color[3])
+		end
+	end
+	return theme.cyan
+end
+
+local function pingLabel(kind: string): string
+	for _, pingType in ipairs(CrewConfig.PingTypes) do
+		if pingType.id == kind then
+			return pingType.icon .. " " .. pingType.label
+		end
+	end
+	return "•"
+end
+
+--- Drop a marker in the world where a teammate pinged. Always on top, so it
+--- is findable through rock — the whole value of a ping is that it works when
+--- you cannot see each other.
+local function showPing(payload)
+	if typeof(payload) ~= "table" or typeof(payload.position) ~= "Vector3" then
+		return
+	end
+
+	local anchor = Instance.new("Part")
+	anchor.Size = Vector3.new(0.4, 0.4, 0.4)
+	anchor.Position = payload.position + Vector3.new(0, 4, 0)
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.Transparency = 1
+	anchor.Parent = workspace
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.fromScale(12, 3.5)
+	billboard.AlwaysOnTop = true
+	billboard.MaxDistance = 1000
+	billboard.Parent = anchor
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.GothamBlack
+	label.Text = pingLabel(payload.kind)
+	label.TextColor3 = pingColor(payload.kind)
+	label.TextScaled = true
+	label.TextStrokeTransparency = 0.25
+	label.Parent = billboard
+
+	local from = Instance.new("TextLabel")
+	from.Size = UDim2.fromScale(1, 0.4)
+	from.Position = UDim2.fromScale(0, 1)
+	from.BackgroundTransparency = 1
+	from.Font = Enum.Font.GothamMedium
+	from.Text = payload.from or ""
+	from.TextColor3 = theme.muted
+	from.TextScaled = true
+	from.TextStrokeTransparency = 0.4
+	from.Parent = billboard
+
+	TweenService:Create(anchor, TweenInfo.new(payload.lifetime or 8), {
+		Position = anchor.Position + Vector3.new(0, 3, 0),
+	}):Play()
+
+	task.delay(payload.lifetime or 8, function()
+		if anchor.Parent then
+			anchor:Destroy()
+		end
+	end)
+end
+
+-- UI -----------------------------------------------------------------------
+
+local function buildBar(parent)
+	-- Sits in the bottom-centre stack above the ping row and the cargo bar.
+	local bar = Ui.frame({
+		parent = parent,
+		size = UDim2.fromOffset(360, 96),
+		position = UDim2.new(0.5, 0, 1, -140),
+		anchor = Vector2.new(0.5, 1),
+		color = theme.panel,
+		transparency = 0.15,
+	})
+	Ui.stroke(bar, theme.panelLight, 2)
+	Ui.padding(bar, 8)
+	widgets.bar = bar
+	widgets.barStroke = bar:FindFirstChildOfClass("UIStroke")
+
+	widgets.title = Ui.text({
+		parent = bar,
+		size = UDim2.new(1, 0, 0, 20),
+		text = "SOLO",
+		color = theme.muted,
+		align = Enum.TextXAlignment.Left,
+		scaled = false,
+		textSize = 15,
+	})
+
+	widgets.roster = Ui.text({
+		parent = bar,
+		size = UDim2.new(1, 0, 0, 34),
+		position = UDim2.fromOffset(0, 20),
+		text = "Dig with someone for +cash and +luck.",
+		color = theme.muted,
+		align = Enum.TextXAlignment.Left,
+		valign = Enum.TextYAlignment.Top,
+		scaled = false,
+		textSize = 13,
+		wrap = true,
+	})
+
+	widgets.action = Ui.button({
+		parent = bar,
+		size = UDim2.new(1, 0, 0, 40),
+		position = UDim2.new(0, 0, 1, 0),
+		anchor = Vector2.new(0, 1),
+		text = "🤝 DROP BEACON",
+		color = theme.panelLight,
+		stroke = theme.cyan,
+		scaled = false,
+		onClick = function()
+			-- One button, three meanings, decided by what is around you.
+			if #state.members > 0 then
+				Net.fire("CrewLeave")
+			elseif widgets.beaconNear then
+				Net.fire("CrewJoin")
+			else
+				Net.fire("CrewBeacon")
+			end
+		end,
+	})
+end
+
+local function buildPingWheel(parent)
+	-- A horizontal row rather than a wheel: a radial menu needs a drag, and
+	-- a drag is exactly what you cannot spare while falling.
+	local wheel = Ui.frame({
+		parent = parent,
+		size = UDim2.fromOffset(372, 46),
+		position = UDim2.new(0.5, 0, 1, -86),
+		anchor = Vector2.new(0.5, 1),
+		transparency = 1,
+		radius = false,
+	})
+
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, 6)
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.Parent = wheel
+
+	for _, pingType in ipairs(CrewConfig.PingTypes) do
+		Ui.button({
+			parent = wheel,
+			size = UDim2.fromOffset(54, 46),
+			text = pingType.icon,
+			color = theme.panel,
+			stroke = Color3.fromRGB(pingType.color[1], pingType.color[2], pingType.color[3]),
+			onClick = function()
+				Net.fire("Ping", pingType.id)
+			end,
+		})
+	end
+
+	widgets.rescue = Ui.button({
+		parent = wheel,
+		size = UDim2.fromOffset(54, 46),
+		text = "🫱",
+		color = theme.green,
+		textColor = Color3.fromRGB(10, 30, 20),
+		visible = false,
+		onClick = function()
+			Net.fire("Rescue")
+		end,
+	})
+
+	widgets.invite = Ui.button({
+		parent = wheel,
+		size = UDim2.fromOffset(54, 46),
+		text = "➕",
+		color = theme.panelLight,
+		stroke = theme.accent,
+		visible = false,
+		onClick = function()
+			local ok, err = pcall(function()
+				SocialService:PromptGameInvite(player)
+			end)
+			if not ok then
+				warn("DeepRush: invite prompt failed: " .. tostring(err))
+			end
+		end,
+	})
+end
+
+local function render()
+	local count = #state.members
+	if count > 0 then
+		widgets.title.Text = `CREW {count}/{CrewConfig.MaxSize}`
+		widgets.title.TextColor3 = state.bonusNear > 0 and theme.green or theme.muted
+
+		local names = {}
+		for _, member in ipairs(state.members) do
+			if member.userId ~= player.UserId then
+				table.insert(names, `{member.name} · {member.depth}m`)
+			end
+		end
+		widgets.roster.Text = table.concat(names, "\n")
+
+		if state.bonusNear > 0 then
+			local cash = math.floor(state.bonusNear * CrewConfig.CashPerMember * 100)
+			local luck = state.bonusNear * CrewConfig.LuckPerMember
+			widgets.title.Text ..= `  ·  +{cash}% cash, +{string.format("%.2f", luck)} luck`
+		else
+			widgets.title.Text ..= "  ·  too far apart"
+		end
+
+		widgets.action.Text = "LEAVE CREW"
+		if widgets.barStroke then
+			widgets.barStroke.Color = state.bonusNear > 0 and theme.green or theme.panelLight
+		end
+	elseif widgets.beaconNear then
+		widgets.title.Text = "BEACON NEARBY"
+		widgets.title.TextColor3 = theme.cyan
+		widgets.roster.Text = "Someone is looking for a crew."
+		widgets.action.Text = "🤝 JOIN CREW"
+		if widgets.barStroke then
+			widgets.barStroke.Color = theme.cyan
+		end
+	else
+		widgets.title.Text = "SOLO"
+		widgets.title.TextColor3 = theme.muted
+		widgets.roster.Text = "Dig within 120 studs of a crewmate for +cash and +luck."
+		widgets.action.Text = "🤝 DROP BEACON"
+		if widgets.barStroke then
+			widgets.barStroke.Color = theme.panelLight
+		end
+	end
+
+	widgets.invite.Visible = canInvite and count < CrewConfig.MaxSize
+end
+
+--- Contextual scan: is there a beacon to join, or a crewmate's crate to hand
+--- back? Both change which button is on screen.
+local function scan()
+	local root = rootPart()
+	if not root then
+		return
+	end
+
+	local beaconNear = false
+	local crateNear = false
+	local mates = {}
+	for _, member in ipairs(state.members) do
+		mates[member.userId] = true
+	end
+
+	for _, part in ipairs(workspace:GetPartBoundsInRadius(root.Position, CrewConfig.JoinRadius)) do
+		local beaconOwner = part:GetAttribute("CrewBeacon")
+		if beaconOwner and beaconOwner ~= player.UserId then
+			beaconNear = true
+		end
+	end
+
+	for _, part in ipairs(workspace:GetPartBoundsInRadius(root.Position, CrewConfig.RescueRadius)) do
+		local crateOwner = part:GetAttribute("Owner")
+		if crateOwner and mates[crateOwner] and crateOwner ~= player.UserId then
+			crateNear = true
+		end
+	end
+
+	local changed = beaconNear ~= widgets.beaconNear
+	widgets.beaconNear = beaconNear
+	widgets.rescue.Visible = crateNear
+	if changed then
+		render()
+	end
+end
+
+function Crew.start()
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "DeepRushCrew"
+	gui.ResetOnSpawn = false
+	gui.DisplayOrder = 2
+	gui.Parent = player:WaitForChild("PlayerGui")
+
+	buildBar(gui)
+	buildPingWheel(gui)
+	render()
+
+	Net.listen("Crew", function(payload)
+		if typeof(payload) == "table" then
+			state = payload
+			render()
+		end
+	end)
+
+	Net.listen("Pings", showPing)
+
+	-- Asked once: the answer does not change during a session, and the call
+	-- yields.
+	task.spawn(function()
+		local ok, result = pcall(function()
+			return SocialService:CanSendGameInviteAsync(player)
+		end)
+		canInvite = ok and result == true
+		render()
+	end)
+
+	task.spawn(function()
+		while true do
+			task.wait(0.5)
+			local ok, err = pcall(scan)
+			if not ok then
+				warn("DeepRush: crew scan failed: " .. tostring(err))
+			end
+		end
+	end)
+end
+
+return Crew
+
+]]></ProtectedString>
+            <bool name="Disabled">false</bool>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="RBX4">
           <Properties>
             <string name="Name">Effects</string>
             <ProtectedString name="Source"><![CDATA[
@@ -5657,7 +7628,7 @@ return Effects
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX4">
+        <Item class="ModuleScript" referent="RBX5">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[
@@ -5850,6 +7821,8 @@ local function buildCargo(parent)
 	Ui.padding(holder, 8)
 
 	widgets.cargoStroke = holder:FindFirstChildOfClass("UIStroke")
+	-- Server/Crew.luau's client half stacks the ping row and crew strip
+	-- directly above this, so nothing here may grow downward.
 
 	local _, fill, label = Ui.bar({
 		parent = holder,
@@ -5875,37 +7848,43 @@ end
 local function buildMenu(parent)
 	local holder = Ui.frame({
 		parent = parent,
-		size = UDim2.fromOffset(72, 300),
+		size = UDim2.fromOffset(124, 236),
 		position = UDim2.new(0, 16, 1, -18),
 		anchor = Vector2.new(0, 1),
 		transparency = 1,
 		radius = false,
 	})
 
-	local layout = Instance.new("UIListLayout")
-	layout.Padding = UDim.new(0, 8)
+	local layout = Instance.new("UIGridLayout")
+	layout.CellSize = UDim2.fromOffset(58, 50)
+	layout.CellPadding = UDim2.fromOffset(6, 6)
 	layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = holder
 
 	local entries = {
 		{ icon = "⛏️", tab = "shop", color = theme.panelLight },
 		{ icon = "📋", tab = "tasks", color = theme.panelLight },
+		{ icon = "📜", tab = "contract", color = theme.gold },
+		{ icon = "📅", tab = "descent", color = theme.panelLight },
 		{ icon = "📖", tab = "codex", color = theme.panelLight },
+		{ icon = "✨", tab = "looks", color = theme.panelLight },
 		{ icon = "🛠️", tab = "drones", color = theme.panelLight },
 		{ icon = "🏆", tab = "boards", color = theme.panelLight },
 		{ icon = "🔥", tab = "rebirth", color = theme.accent },
 	}
 
-	for _, entry in ipairs(entries) do
+	for index, entry in ipairs(entries) do
 		local button = Ui.button({
 			parent = holder,
-			size = UDim2.fromOffset(64, 56),
+			size = UDim2.fromOffset(58, 50),
 			text = entry.icon,
 			color = entry.color,
 			onClick = function()
 				Panels.toggle(entry.tab)
 			end,
 		})
+		button.LayoutOrder = index
 
 		-- The tasks button carries the "you have something to claim" dot,
 		-- which is most of why anyone opens the panel at all.
@@ -5960,6 +7939,35 @@ local function buildActions(parent)
 		textColor = Color3.fromRGB(10, 30, 20),
 		onClick = function()
 			Net.fire("UseLift")
+		end,
+		visible = false,
+	})
+
+	-- Only ever present when Roblox actually has an ad to serve; see
+	-- Server/Ads.luau.
+	widgets.adButton = Ui.button({
+		parent = holder,
+		size = UDim2.fromOffset(176, 48),
+		text = "🎬 FREE 2x LUCK",
+		color = theme.cyan,
+		textColor = Color3.fromRGB(10, 20, 26),
+		scaled = false,
+		visible = false,
+		onClick = function()
+			Net.fire("WatchAd")
+		end,
+	})
+
+	widgets.grabButton = Ui.button({
+		parent = holder,
+		size = UDim2.fromOffset(176, 58),
+		text = "📦 GRAB CARGO",
+		color = theme.gold,
+		textColor = Color3.fromRGB(30, 24, 10),
+		onClick = function()
+			if widgets.nearestCrateId then
+				Net.fire("GrabCrate", widgets.nearestCrateId)
+			end
 		end,
 		visible = false,
 	})
@@ -6108,6 +8116,21 @@ local function renderContextual()
 	end
 	widgets.liftButton.Visible = onPad
 
+	-- Dropped crates: the server has always accepted the pickup, but until
+	-- now nothing on screen asked for it.
+	local nearestCrate, nearestDistance = nil, 14
+	for _, part in ipairs(workspace:GetPartBoundsInRadius(root.Position, 14)) do
+		local crateId = part:GetAttribute("CrateId")
+		if crateId then
+			local distance = (part.Position - root.Position).Magnitude
+			if distance < nearestDistance then
+				nearestCrate, nearestDistance = crateId, distance
+			end
+		end
+	end
+	widgets.nearestCrateId = nearestCrate
+	widgets.grabButton.Visible = nearestCrate ~= nil
+
 	-- Snatch shows only when a marked player is actually in range.
 	local snatchable = false
 	for _, other in ipairs(Players:GetPlayers()) do
@@ -6162,6 +8185,12 @@ function Hud.start()
 
 	findVault()
 
+	Net.listen("Ad", function(payload)
+		if typeof(payload) == "table" and widgets.adButton then
+			widgets.adButton.Visible = payload.available == true
+		end
+	end)
+
 	State.changed:connect(renderState)
 	State.riftChanged:connect(renderRift)
 	renderState()
@@ -6176,7 +8205,7 @@ return Hud
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX5">
+        <Item class="ModuleScript" referent="RBX6">
           <Properties>
             <string name="Name">Mining</string>
             <ProtectedString name="Source"><![CDATA[
@@ -6366,7 +8395,7 @@ return Mining
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX6">
+        <Item class="ModuleScript" referent="RBX7">
           <Properties>
             <string name="Name">Notify</string>
             <ProtectedString name="Source"><![CDATA[
@@ -6618,7 +8647,7 @@ return Notify
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX7">
+        <Item class="ModuleScript" referent="RBX8">
           <Properties>
             <string name="Name">Onboarding</string>
             <ProtectedString name="Source"><![CDATA[
@@ -6851,7 +8880,7 @@ return Onboarding
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX8">
+        <Item class="ModuleScript" referent="RBX9">
           <Properties>
             <string name="Name">Panels</string>
             <ProtectedString name="Source"><![CDATA[
@@ -6868,6 +8897,8 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local ContractConfig = require(Shared.Config.Contracts)
+local CosmeticConfig = require(Shared.Config.Cosmetics)
 local DroneConfig = require(Shared.Config.Drones)
 local Format = require(Shared.Format)
 local Layers = require(Shared.Config.Layers)
@@ -6892,6 +8923,9 @@ local content: ScrollingFrame
 local currentTab: string? = nil
 
 local TAB_TITLES = {
+	contract = "WEEKLY CONTRACT",
+	descent = "DESCENT LOG",
+	looks = "APPEARANCE",
 	shop = "UPGRADES",
 	tasks = "TASKS",
 	codex = "ORE CODEX",
@@ -6995,6 +9029,26 @@ end
 -- Tabs ---------------------------------------------------------------------
 
 local function renderShop()
+	local deal = ProductConfig.dealOfTheDay()
+	if deal and deal.assetId ~= 0 then
+		local bought = (State.data.deals and State.data.deals.bought or {})[deal.id] == true
+		header("TODAY'S DEAL — rotates at midnight UTC")
+		row({
+			icon = deal.icon,
+			title = deal.name,
+			body = deal.desc,
+			accent = bought and theme.green or theme.accent,
+			action = bought and "BOUGHT" or (deal.robux .. " R$"),
+			actionColor = bought and theme.green or theme.accent,
+			actionTextColor = Color3.fromRGB(255, 255, 255),
+			onAction = function()
+				if not bought then
+					MarketplaceService:PromptProductPurchase(player, deal.assetId)
+				end
+			end,
+		})
+	end
+
 	header("SPEND CASH — everything here is permanent")
 
 	for _, upgrade in ipairs(UpgradeConfig.List) do
@@ -7306,7 +9360,175 @@ local function renderRebirth()
 	end
 end
 
+local function renderContract()
+	local contract = State.data.contract or { points = 0, dayPoints = 0, claimed = {} }
+	local points = contract.points or 0
+	local dayPoints = contract.dayPoints or 0
+
+	header(`{string.upper(ContractConfig.nameForWeek())} — resets Monday, midnight UTC`)
+
+	local capped = dayPoints >= ContractConfig.DailyPointCap
+	row({
+		icon = capped and "✅" or "⚡",
+		title = `{Format.short(points)} / {Format.short(ContractConfig.totalPoints())} contract points`,
+		body = capped
+			and "Today's contract work is done. Everything else still pays — the ladder refills at midnight."
+			or `Today: {dayPoints} / {ContractConfig.DailyPointCap}. Banking, rare pulls, new ores, depth records and crew time all count.`,
+		progress = points / ContractConfig.totalPoints(),
+		accent = capped and theme.green or theme.gold,
+		height = 92,
+	})
+
+	for index, tier in ipairs(ContractConfig.Tiers) do
+		local reached = points >= tier.points
+		local claimed = (contract.claimed or {})[tostring(index)] == true
+		local extras = {}
+		if tier.reward.luckMinutes then
+			table.insert(extras, `{tier.reward.luckMinutes} min 2x luck`)
+		end
+		if tier.reward.cosmetic then
+			local cosmetic = CosmeticConfig.ById[tier.reward.cosmetic]
+			table.insert(extras, cosmetic and cosmetic.name or tier.reward.cosmetic)
+		end
+		if tier.reward.drone then
+			local drone = DroneConfig.ById[tier.reward.drone]
+			table.insert(extras, drone and drone.name or tier.reward.drone)
+		end
+
+		row({
+			icon = claimed and "✅" or (reached and "🎁" or "🔒"),
+			title = `Tier {index}  ·  {Format.short(tier.points)} pts`,
+			body = `{Format.short(tier.reward.cash or 0)} cash`
+				.. (#extras > 0 and ("  ·  " .. table.concat(extras, "  ·  ")) or ""),
+			progress = math.min(points / tier.points, 1),
+			accent = claimed and theme.panelLight or (reached and theme.gold or theme.panelLight),
+			action = claimed and "DONE" or (reached and "CLAIM" or "LOCKED"),
+			actionColor = (reached and not claimed) and theme.gold or theme.panelLight,
+			actionTextColor = (reached and not claimed) and Color3.fromRGB(30, 24, 10) or theme.muted,
+			onAction = function()
+				if reached and not claimed then
+					Net.fire("ClaimContract", index)
+					task.delay(0.35, function()
+						if currentTab == "contract" then
+							Panels.open("contract")
+						end
+					end)
+				end
+			end,
+		})
+	end
+end
+
+local function renderDescent()
+	local descent = State.data.descent or { days = 0, claimed = {} }
+	local days = descent.days or 0
+
+	header(`{days} DISTINCT DAYS PLAYED — these rewards are one-time`)
+	header("Coming back on a new day is what moves this. Playing longer today does not.")
+
+	for index, milestone in ipairs(ContractConfig.DescentLog) do
+		local reached = days >= milestone.days
+		local claimed = (descent.claimed or {})[tostring(index)] == true
+		local extras = {}
+		if milestone.reward.cosmetic then
+			local cosmetic = CosmeticConfig.ById[milestone.reward.cosmetic]
+			table.insert(extras, cosmetic and cosmetic.name or milestone.reward.cosmetic)
+		end
+		if milestone.reward.drone then
+			local drone = DroneConfig.ById[milestone.reward.drone]
+			table.insert(extras, drone and drone.name or milestone.reward.drone)
+		end
+
+		row({
+			icon = claimed and "✅" or (reached and "🎁" or "📅"),
+			title = `Day {milestone.days}  ·  {milestone.label}`,
+			body = `{Format.short(milestone.reward.cash or 0)} cash`
+				.. (#extras > 0 and ("  ·  " .. table.concat(extras, "  ·  ")) or ""),
+			progress = math.min(days / milestone.days, 1),
+			accent = claimed and theme.panelLight or (reached and theme.cyan or theme.panelLight),
+			action = claimed and "DONE" or (reached and "CLAIM" or `{milestone.days - days} DAYS`),
+			actionColor = (reached and not claimed) and theme.cyan or theme.panelLight,
+			actionTextColor = (reached and not claimed) and Color3.fromRGB(10, 20, 26) or theme.muted,
+			onAction = function()
+				if reached and not claimed then
+					Net.fire("ClaimDescent", index)
+					task.delay(0.35, function()
+						if currentTab == "descent" then
+							Panels.open("descent")
+						end
+					end)
+				end
+			end,
+		})
+	end
+end
+
+local function renderLooks()
+	local cosmetics = State.data.cosmetics or { owned = {}, equipped = {} }
+	local owned = cosmetics.owned or {}
+	local equipped = cosmetics.equipped or {}
+
+	header("EVERYONE IN THE SHAFT SEES THESE — that is the whole point")
+
+	local sections = {
+		{ kind = "lamp", label = "HELMET LAMPS — lights the rock around you" },
+		{ kind = "trail", label = "TRAILS — what people see when you fall past" },
+		{ kind = "title", label = "TITLES — sits on your nameplate" },
+	}
+
+	for _, section in ipairs(sections) do
+		header(section.label)
+		for _, cosmetic in ipairs(CosmeticConfig.ofKind(section.kind)) do
+			local isDefault = cosmetic.source == "default"
+			local isOwned = isDefault or owned[cosmetic.id] == true
+			local isEquipped = (equipped[section.kind] or CosmeticConfig.Defaults[section.kind]) == cosmetic.id
+
+			local action, actionColor
+			if isEquipped then
+				action, actionColor = "WORN", theme.green
+			elseif isOwned then
+				action, actionColor = "WEAR", theme.cyan
+			elseif cosmetic.source == "shop" then
+				action, actionColor = Format.short(cosmetic.cost or 0), theme.gold
+			elseif cosmetic.source == "contract" then
+				action, actionColor = "CONTRACT", theme.panelLight
+			elseif cosmetic.source == "descent" then
+				action, actionColor = "DESCENT LOG", theme.panelLight
+			else
+				action, actionColor = "MILESTONE", theme.panelLight
+			end
+
+			row({
+				height = 64,
+				icon = section.kind == "lamp" and "🔦" or (section.kind == "trail" and "💫" or "🏷️"),
+				title = cosmetic.name,
+				titleColor = CosmeticConfig.color(cosmetic.id),
+				body = isOwned and "Owned" or `Earned from: {cosmetic.source}`,
+				accent = isEquipped and theme.green or (isOwned and theme.cyan or theme.panelLight),
+				action = action,
+				actionColor = actionColor,
+				actionTextColor = Color3.fromRGB(15, 20, 25),
+				onAction = function()
+					if isOwned then
+						Net.fire("EquipCosmetic", cosmetic.id)
+					elseif cosmetic.source == "shop" then
+						Net.fire("BuyCosmetic", cosmetic.id)
+					end
+					task.delay(0.35, function()
+						if currentTab == "looks" then
+							Panels.open("looks")
+						end
+					end)
+				end,
+			})
+		end
+	end
+end
+
 local RENDERERS = {
+	contract = renderContract,
+	descent = renderDescent,
+	looks = renderLooks,
 	shop = renderShop,
 	tasks = renderTasks,
 	codex = renderCodex,
@@ -7415,7 +9637,7 @@ return Panels
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX9">
+        <Item class="ModuleScript" referent="RBX10">
           <Properties>
             <string name="Name">State</string>
             <ProtectedString name="Source"><![CDATA[
@@ -7453,6 +9675,11 @@ State.data = {
 	buffs = {},
 	gamepasses = {},
 	streak = 0,
+	contract = { week = "", points = 0, dayPoints = 0, claimed = {} },
+	descent = { days = 0, lastDay = "", claimed = {} },
+	cosmetics = { owned = {}, equipped = {} },
+	deals = { day = "", bought = {} },
+	crew = { members = {}, bonusNear = 0 },
 }
 
 State.changed = Signal.new()
@@ -7512,7 +9739,7 @@ return State
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX10">
+        <Item class="ModuleScript" referent="RBX11">
           <Properties>
             <string name="Name">Ui</string>
             <ProtectedString name="Source"><![CDATA[
