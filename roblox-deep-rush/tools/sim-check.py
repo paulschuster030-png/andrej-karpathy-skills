@@ -35,6 +35,7 @@ SHARED = [
     ("Contracts", "Config/Contracts.luau"),
     ("Season", "Config/Season.luau"),
     ("Hazards", "Config/Hazards.luau"),
+    ("Tools", "Config/Tools.luau"),
     ("Products", "Config/Products.luau"),
     ("Audio", "Config/Audio.luau"),
     ("Format", "Format.luau"),
@@ -50,7 +51,7 @@ SHARED = [
 # the server requires it, so it has to be in the registry before they load.
 SERVER = [
     "Feedback", "Data", "World", "Crew", "Economy", "Cargo", "Cosmetics",
-    "Contracts", "Quests", "Rift", "Season", "Mining", "Surface", "Steal",
+    "Tools", "Contracts", "Quests", "Rift", "Season", "Mining", "Surface", "Steal",
     "Hazards", "Upgrades", "Rebirth", "Drones", "Rewards", "Leaderboards",
     "Monetization", "Ads", "AntiCheat",
 ]

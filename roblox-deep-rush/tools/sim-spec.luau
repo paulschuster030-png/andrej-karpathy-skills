@@ -57,7 +57,7 @@ print("\n== boot ==")
 
 local SERVICES = {
 	"Data", "World", "Crew", "Economy", "Cargo", "Cosmetics", "Contracts",
-	"Quests", "Rift", "Season", "Mining", "Surface", "Steal", "Hazards",
+	"Tools", "Quests", "Rift", "Season", "Mining", "Surface", "Steal", "Hazards",
 	"Upgrades", "Rebirth", "Drones", "Rewards", "Leaderboards", "Monetization",
 	"Ads", "AntiCheat",
 }
@@ -79,6 +79,16 @@ check("the surface built a spawn", SERVER.World.spawnPosition ~= nil)
 
 local nodes = partsWithAttribute("NodeId")
 check("ore nodes exist", #nodes > 0, `found {#nodes}`)
+
+check("the world sits above Roblox's delete floor", (function()
+	-- Default FallenPartsDestroyHeight is -500 and the shaft bottoms out at
+	-- -9,000. Left at the default, the lower two thirds of the world and
+	-- everyone in it would be deleted on arrival.
+	local floor = workspace.FallenPartsDestroyHeight
+	local bedrock = SERVER.World.yForDepth(3000)
+	print(string.format("       destroy height %.0f, bedrock %.0f", floor, bedrock))
+	return floor < bedrock
+end)())
 
 check("ore nodes are solid", (function()
 	-- The bug a player spots in the first ten seconds: walking through rock.
@@ -212,6 +222,77 @@ check("the lift returns you to the surface", (function()
 	return distance < 12
 end)())
 
+check("the bottom of the shaft is not a trap", (function()
+	-- This was a real softlock. Bedrock sits at 3,000m and the nearest lift
+	-- pad used to be BELOW the floor, with the next two 172 and 536 studs
+	-- overhead. A Roblox character jumps about seven.
+	local bottom = ENV.Vector3.new(0, SERVER.World.yForDepth(3000) + 8, 0)
+	moveTo(alice, bottom)
+	advance(4)
+
+	local best = math.huge
+	local climb = nil
+	for _, pad in ipairs(partsWithAttribute("LiftPad")) do
+		local distance = (pad.Position - bottom).Magnitude
+		if distance < best then
+			best = distance
+			climb = pad.Position.Y - bottom.Y
+		end
+	end
+
+	print(string.format("       nearest pad %.0f studs away, %+.0f vertical", best, climb or 0))
+	-- Reachable means: close, and not above jump height.
+	return best < 40 and climb ~= nil and climb <= 7
+end)())
+
+check("emergency ascent works from the very bottom", (function()
+	local bottom = ENV.Vector3.new(0, SERVER.World.yForDepth(3000) + 8, 0)
+	moveTo(alice, bottom)
+	SERVER.Data.session(alice).lifting = false
+	advance(1) -- let the server measure the depth itself
+
+	fire("EmergencyAscent", alice)
+	advance(15)
+
+	local landed = alice.Character.HumanoidRootPart.Position
+	local distance = (landed - SERVER.World.spawnPosition).Magnitude
+	print(string.format("       landed %.1f studs from the spawn", distance))
+	return distance < 12
+end)())
+
+check("emergency ascent cancels when you walk away", (function()
+	local here = ENV.Vector3.new(0, -900, 0)
+	moveTo(alice, here)
+	SERVER.Data.session(alice).lifting = false
+	advance(1)
+
+	fire("EmergencyAscent", alice)
+	advance(2)
+	moveTo(alice, here + ENV.Vector3.new(0, 0, 400)) -- well past the drift limit
+	advance(15)
+
+	-- Still underground: the ascent must have aborted.
+	return alice.Character.HumanoidRootPart.Position.Y < -400
+end)())
+
+check("every depth has a lift within falling distance", (function()
+	for _, depth in ipairs({ 60, 300, 800, 1400, 2000, 2600 }) do
+		local at = ENV.Vector3.new(0, -depth * 3, 0)
+		moveTo(alice, at)
+		advance(3)
+
+		local best = math.huge
+		for _, pad in ipairs(partsWithAttribute("LiftPad")) do
+			best = math.min(best, (pad.Position - at).Magnitude)
+		end
+		if best > 260 then
+			print(string.format("       %dm: nearest lift %.0f studs away", depth, best))
+			return false
+		end
+	end
+	return true
+end)())
+
 print("\n== upgrades ==")
 
 check("an upgrade costs cash and changes the stat it advertises", (function()
@@ -236,6 +317,51 @@ check("an upgrade you cannot afford is refused", (function()
 	fire("BuyUpgrade", player, "backpack")
 	advance(1)
 	return (SERVER.Data.get(player).upgrades.backpack or 0) == level
+end)())
+
+print("\n== the pickaxe ==")
+
+check("a player is holding one", (function()
+	-- The game shipped without any tool at all: players swung nothing.
+	advance(2)
+	SERVER.Tools.equip(alice)
+	local pick = alice.Character:FindFirstChild("Pickaxe")
+	if not pick then
+		return false
+	end
+	local hand = alice.Character:FindFirstChild("RightHand")
+	return hand ~= nil and hand:FindFirstChild("PickaxeMotor") ~= nil
+end)())
+
+check("it is attached to the hand, not floating", (function()
+	local hand = alice.Character:FindFirstChild("RightHand")
+	local motor = hand and hand:FindFirstChild("PickaxeMotor")
+	local pick = alice.Character:FindFirstChild("Pickaxe")
+	return motor ~= nil and motor.Part0 == hand and motor.Part1 == pick
+end)())
+
+check("it visibly upgrades with Drill Power", (function()
+	-- The only upgrade in the game with a form you can see.
+	local ToolConfig = MODULES.Tools
+	local low = ToolConfig.tierFor(0).name
+	local high = ToolConfig.tierFor(50).name
+
+	SERVER.Data.get(alice).upgrades.drill = 40
+	SERVER.Tools.equip(alice)
+	local pick = alice.Character:FindFirstChild("Pickaxe")
+	local head = pick and pick:FindFirstChild("Head")
+
+	SERVER.Data.get(alice).upgrades.drill = 0
+	print(string.format("       level 0 = %s, level 50 = %s", low, high))
+	return low ~= high and head ~= nil
+end)())
+
+check("swinging it does not throw", (function()
+	local ok = pcall(function()
+		SERVER.Tools.swing(alice, 0.6)
+	end)
+	advance(1)
+	return ok
 end)())
 
 print("\n== crew ==")
@@ -286,19 +412,24 @@ check("a hazard zone hurts you, and only while you are in it", (function()
 		return false
 	end
 
+	-- Compare rates, not absolutes. At this depth the player is also losing
+	-- air, so "health stopped changing after leaving" was never going to be
+	-- true — the zone has to be dramatically worse than the background.
 	local humanoid = alice.Character:FindFirstChildOfClass("Humanoid")
+
 	humanoid.Health = 100
 	moveTo(alice, best.Position)
 	advance(4)
-	local hurt = humanoid.Health
+	local insideLoss = 100 - humanoid.Health
 
+	humanoid.Health = 100
 	moveTo(alice, best.Position + ENV.Vector3.new(0, 0, 900))
 	advance(4)
-	local afterLeaving = humanoid.Health
+	local outsideLoss = 100 - humanoid.Health
 
-	print(string.format("       %s: 100 -> %.0f inside -> %.0f after leaving",
-		tostring(best:GetAttribute("HazardZone")), hurt, afterLeaving))
-	return hurt < 100 and afterLeaving == hurt
+	print(string.format("       %s: %.0f damage inside vs %.0f outside over the same 4s",
+		tostring(best:GetAttribute("HazardZone")), insideLoss, outsideLoss))
+	return insideLoss > 10 and insideLoss > outsideLoss * 2
 end)())
 
 check("the surface is safe", (function()

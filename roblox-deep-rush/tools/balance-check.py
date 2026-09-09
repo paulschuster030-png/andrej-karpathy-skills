@@ -36,6 +36,7 @@ MODULES = [
     ("Contracts", "Config/Contracts.luau"),
     ("Season", "Config/Season.luau"),
     ("Hazards", "Config/Hazards.luau"),
+    ("Tools", "Config/Tools.luau"),
     ("Products", "Config/Products.luau"),
     ("Format", "Format.luau"),
     ("Rarity", "Rarity.luau"),

@@ -525,6 +525,12 @@ local function makePlayers()
 		humanoid.Name = "Humanoid"
 		humanoid.Parent = character
 
+		-- R15 naming; Server/Tools.luau also accepts the R6 "Right Arm".
+		local hand = newInstance("Part")
+		hand.Name = "RightHand"
+		hand.Position = position or vec(0, 5, 0)
+		hand.Parent = character
+
 		player.Character = character
 		player.Parent = players
 
@@ -545,6 +551,7 @@ end
 local function makeWorkspace()
 	local workspace = newInstance("Workspace")
 	workspace.Name = "Workspace"
+	workspace.FallenPartsDestroyHeight = -500 -- Roblox's default
 
 	function workspace:GetPartBoundsInRadius(position, radius)
 		local found = {}
