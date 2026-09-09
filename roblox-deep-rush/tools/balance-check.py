@@ -30,6 +30,11 @@ MODULES = [
     ("Rebirth", "Config/Rebirth.luau"),
     ("Drones", "Config/Drones.luau"),
     ("Game", "Config/Game.luau"),
+    ("Quests", "Config/Quests.luau"),
+    ("Crew", "Config/Crew.luau"),
+    ("Cosmetics", "Config/Cosmetics.luau"),
+    ("Contracts", "Config/Contracts.luau"),
+    ("Products", "Config/Products.luau"),
     ("Format", "Format.luau"),
     ("Rarity", "Rarity.luau"),
 ]

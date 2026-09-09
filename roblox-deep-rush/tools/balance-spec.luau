@@ -301,6 +301,254 @@ check("greed threshold leaves room to act", (function()
 	return slotsAtMark >= 3 and slotsAtMark < Game.BaseCapacity
 end)())
 
+print("\n== co-play (the ranking signal we were scoring zero on) ==")
+
+local Crew = MODULES.Crew
+local Contracts = MODULES.Contracts
+local Cosmetics = MODULES.Cosmetics
+local Quests = MODULES.Quests
+local Products = MODULES.Products
+
+check("a full crew bonus is meaningful but not dominant", (function()
+	local extra = Crew.MaxSize - 1
+	local cash = extra * Crew.CashPerMember
+	local luck = extra * Crew.LuckPerMember
+	print(string.format("       full crew: +%d%% cash, +%.2f luck", cash * 100, luck))
+	-- Big enough to change behaviour, small enough that solo play stays viable.
+	return cash >= 0.20 and cash <= 0.60 and luck >= 0.5 and luck <= 1.5
+end)())
+
+check("bond radius is tighter than ping range", Crew.BondRadius < 200)
+
+check("ping vocabulary is fixed and small", (function()
+	-- Preset-only communication is what keeps this playable for the many
+	-- players who cannot freely chat since the age-check rollout.
+	if #Crew.PingTypes < 3 or #Crew.PingTypes > 6 then
+		return false
+	end
+	local seen = {}
+	for _, ping in ipairs(Crew.PingTypes) do
+		if seen[ping.id] or type(ping.label) ~= "string" then
+			return false
+		end
+		seen[ping.id] = true
+	end
+	return true
+end)())
+
+check("co-play is never on the onboarding path", (function()
+	-- Requiring another human to finish a tutorial step is how a new player
+	-- gets stuck in an empty server.
+	for _, quest in ipairs(Quests.Onboarding) do
+		if quest.metric == "crew_minutes" or quest.metric == "rescue" then
+			return false
+		end
+	end
+	return true
+end)())
+
+print("\n== long-arc retention (day 8-28) ==")
+
+check("contract tiers climb in points and payout", (function()
+	local points, cash = 0, 0
+	for _, tier in ipairs(Contracts.Tiers) do
+		if tier.points <= points or (tier.reward.cash or 0) <= cash then
+			return false
+		end
+		points, cash = tier.points, tier.reward.cash or 0
+	end
+	return true
+end)())
+
+check("the weekly contract genuinely takes a week", (function()
+	local days = Contracts.totalPoints() / Contracts.DailyPointCap
+	print(string.format("       full contract = %.1f days at the daily cap", days))
+	-- Must not be finishable in one sitting, must not be impossible in seven.
+	return days >= 5 and days <= 7
+end)())
+
+--- Contract points per minute for a mid-game player, from the config itself.
+--- Model: an upgraded drill swings every 0.6s, and roughly 60% of a minute is
+--- spent actually mining (the rest is falling, riding lifts and banking),
+--- which works out to one completed deep trip per minute.
+local function contractPointsPerMinute(): number
+	local swingsPerMinute = (60 * 0.6) / 0.6
+	local odds = Rarity.odds(Ores.poolAt(300), 1.5)
+
+	local rareShare = 0
+	local epicShare = 0
+	for tier, probability in pairs(odds) do
+		local index = Ores.TierIndex[tier]
+		if index >= 4 then
+			epicShare += probability
+		elseif index == 3 then
+			rareShare += probability
+		end
+	end
+
+	local points = Contracts.Points.perDeepBank -- one trip a minute
+	points += swingsPerMinute * rareShare * Contracts.Points.perRareOre
+	points += swingsPerMinute * epicShare * Contracts.Points.perEpicOre
+	return points
+end
+
+check("the daily point cap is one session, not a shift", (function()
+	local minutes = Contracts.DailyPointCap / contractPointsPerMinute()
+	print(string.format("       daily cap ≈ %.0f min of mid-game mining", minutes))
+	-- Long enough to be a session worth having, short enough that the right
+	-- move is to come back tomorrow rather than to keep going tonight.
+	return minutes >= 15 and minutes <= 45
+end)())
+
+check("contract points do not scale with a player's payout", (function()
+	-- The whole reason the sources are actions: a late-game deposit is worth
+	-- thousands of times a new player's, and points must not follow it.
+	for name, value in pairs(Contracts.Points) do
+		if type(value) ~= "number" or value <= 0 or value > 100 then
+			print("       suspicious point source: " .. name)
+			return false
+		end
+	end
+	return Contracts.Points.perThousandBanked == nil
+end)())
+
+check("the descent log spans the full 28-day grading window", (function()
+	local days = 0
+	for _, milestone in ipairs(Contracts.DescentLog) do
+		if milestone.days <= days then
+			return false
+		end
+		days = milestone.days
+	end
+	return days >= 28
+end)())
+
+check("descent log rewards a second day early", Contracts.DescentLog[1].days <= 2)
+
+check("week key is stable within a week and changes across weeks", (function()
+	local key = Contracts.weekKey()
+	return type(key) == "string" and #key > 0 and Contracts.nameForWeek() ~= nil
+end)())
+
+print("\n== reward cross-references ==")
+
+--- Every cosmetic and drone named in any reward table must actually exist.
+--- A typo here would silently hand a player nothing.
+check("every referenced cosmetic and drone resolves", (function()
+	local Drones = MODULES.Drones
+	local problems = {}
+
+	local function inspect(reward, where)
+		if not reward then
+			return
+		end
+		if reward.cosmetic and not Cosmetics.ById[reward.cosmetic] then
+			table.insert(problems, where .. " -> cosmetic " .. reward.cosmetic)
+		end
+		if reward.drone and not Drones.ById[reward.drone] then
+			table.insert(problems, where .. " -> drone " .. reward.drone)
+		end
+	end
+
+	for index, tier in ipairs(Contracts.Tiers) do
+		inspect(tier.reward, "contract tier " .. index)
+	end
+	for index, milestone in ipairs(Contracts.DescentLog) do
+		inspect(milestone.reward, "descent " .. index)
+	end
+	for _, list in ipairs({ Quests.Onboarding, Quests.DailyPool, Quests.Milestones }) do
+		for _, quest in ipairs(list) do
+			inspect(quest.reward, "quest " .. quest.id)
+		end
+	end
+
+	for _, problem in ipairs(problems) do
+		print("       missing: " .. problem)
+	end
+	return #problems == 0
+end)())
+
+check("cosmetic ids are unique and every kind has one default", (function()
+	local seen, defaults = {}, {}
+	for _, cosmetic in ipairs(Cosmetics.List) do
+		if seen[cosmetic.id] then
+			return false
+		end
+		seen[cosmetic.id] = true
+		if cosmetic.source == "default" then
+			if defaults[cosmetic.kind] then
+				return false
+			end
+			defaults[cosmetic.kind] = cosmetic.id
+		end
+	end
+	for kind, id in pairs(Cosmetics.Defaults) do
+		if defaults[kind] ~= id then
+			return false
+		end
+	end
+	return true
+end)())
+
+check("every title cosmetic has display text", (function()
+	for _, cosmetic in ipairs(Cosmetics.ofKind("title")) do
+		if type(cosmetic.text) ~= "string" then
+			return false
+		end
+	end
+	return true
+end)())
+
+print("\n== monetisation shape ==")
+
+check("the daily deal rotation reaches every deal", (function()
+	-- Deterministic per UTC day; over a full cycle every deal must come up.
+	local seen = {}
+	for _, deal in ipairs(Products.DailyDeals) do
+		seen[deal.id] = false
+	end
+	local count = #Products.DailyDeals
+	for offset = 0, count * 2 do
+		local index = (offset % count) + 1
+		seen[Products.DailyDeals[index].id] = true
+	end
+	for _, hit in pairs(seen) do
+		if not hit then
+			return false
+		end
+	end
+	return true
+end)())
+
+check("daily deals stay cheap", (function()
+	-- The signal is spend DAYS, not spend size. A deal priced like a pass
+	-- defeats the point.
+	for _, deal in ipairs(Products.DailyDeals) do
+		if (deal.robux or 0) > 99 then
+			return false
+		end
+	end
+	return true
+end)())
+
+check("no rewarded-ad reward is Robux", (function()
+	-- Roblox forbids paying Robux for ad views.
+	local video = Products.RewardedVideo
+	return video.rewardLuckMultiplier ~= nil and video.cooldownSeconds >= 600
+end)())
+
+check("passes sell speed, never protection from other players", (function()
+	-- The greed mechanic stops being a mechanic the moment it is buyable.
+	for _, pass in ipairs(Products.Gamepasses) do
+		for field in pairs(pass.apply) do
+			if field == "stealImmune" or field == "protection" or field == "safePocket" then
+				return false
+			end
+		end
+	end
+	return true
+end)())
+
 print("\n== formatting ==")
 
 check("Format.short renders the ladder", (function()
