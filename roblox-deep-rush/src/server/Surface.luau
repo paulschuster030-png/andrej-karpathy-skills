@@ -96,8 +96,12 @@ function Surface.deposit(player: Player)
 		Contracts.award(player, ContractConfig.Points.perDeepBank)
 	end
 
-	require(script.Parent.Leaderboards).submit(player, payout)
-
+	-- Feedback first, and the leaderboard write is allowed to fail.
+	--
+	-- This order is not cosmetic. Net wraps every handler in pcall, so when
+	-- the leaderboard threw — as it does whenever the DataStore is unhappy —
+	-- the player had already been paid and then got no toast, no sound and no
+	-- effect. Banking looked broken while working perfectly.
 	Feedback.effect(player, "bank", { amount = payout, streak = streakBonus })
 	Feedback.toast(player, {
 		title = "+" .. Format.short(payout),
@@ -106,6 +110,13 @@ function Surface.deposit(player: Player)
 			or `Banked. x{string.format("%.2f", multiplier)} multiplier.`,
 		kind = "cash",
 	})
+
+	local ok, err = pcall(function()
+		require(script.Parent.Leaderboards).submit(player, payout)
+	end)
+	if not ok then
+		warn("DeepRush: leaderboard submit failed: " .. tostring(err))
+	end
 end
 
 --- Ride a lift pad back to the surface. The channel time is the real cost of
