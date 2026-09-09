@@ -9,7 +9,9 @@ unten multipliziert deine Beute *und* dein Risiko — bring sie hoch und bunkere
 sie, oder verliere alles an die Tiefe oder an einen anderen Spieler.
 
 Fertige Store-Grafiken liegen in [`cover/`](cover/). Was sich seit der ersten
-Fassung geändert hat und warum, steht in [`TRENDS.md`](TRENDS.md).
+Fassung geändert hat und warum, steht in [`TRENDS.md`](TRENDS.md). Wie man
+bezahlte Reichweite kauft, ohne Geld zu verbrennen, in
+[`ADS_PLAYBOOK.md`](ADS_PLAYBOOK.md).
 
 ---
 
@@ -64,6 +66,7 @@ src/shared/          ReplicatedStorage/Shared — von Server UND Client genutzt
     Upgrades.luau    7 Upgrade-Linien mit Kostenkurven
     Quests.luau      Onboarding-Kette, Daily-Pool, Meilensteine
     Contracts.luau   Wochen-Leiter und 28-Tage-Log (Langzeitbindung)
+    Season.luau      das Wochenend-Fenster mit dem exklusiven Badge
     Crew.luau        Co-Play: Bonus, Pings, Rettung
     Cosmetics.luau   Lampen, Trails, Titel — die Status-Ebene
     Rebirth.luau     Prestige-Anforderungen und Boni
@@ -85,6 +88,7 @@ src/server/          ServerScriptService/Server — autoritativ
   Steal.luau         Kisten und Snatch — die soziale Mechanik
   Quests.luau        alle Aufgaben, ein Eintrittspunkt
   Contracts.luau     Wochen-Contract und Descent Log
+  Season.luau        Live-Fenster, Season-Core, permanentes Badge
   Crew.luau          Crew-Bildung, Ping-Broadcast, Nähe-Bonus
   Cosmetics.luau     sichtbarer Status auf dem Charakter
   Ads.luau           Rewarded Video (aus, bis konfiguriert)
@@ -114,7 +118,9 @@ tools/
 
 cover/
   render.mjs         HTML → fertige PNGs (nur Node + Chromium)
+  avatar.mjs         holt deinen echten Roblox-Avatar als PNG
   png.mjs            Zuschnitt und Verkleinerung, ohne Abhängigkeiten
+  assets/robloxian.js  der blockige R6-Charakter, als echte 3D-Boxen
   out/               die Dateien, die du hochlädst
 ```
 
@@ -163,6 +169,8 @@ wären:
 | API-Zugriff für DataStores aktivieren | Game Settings ▸ Security |
 | **Private Server aktivieren** | Game Settings — zahlt aufs Co-Play-Signal ein |
 | Balancing anpassen | `src/shared/Config/Game.luau` |
+| Season-Fenster verschieben | `src/shared/Config/Season.luau` |
+| Werbung schalten | [`ADS_PLAYBOOK.md`](ADS_PLAYBOOK.md) |
 
 Alle Produkte sind mit `assetId = 0` vorkonfiguriert und werden dann schlicht
 nicht angezeigt. Das Spiel ist ohne einen einzigen Robux vollständig
@@ -192,6 +200,11 @@ voneinander sein. Die Crew-Leiste sagt "too far apart", wenn es nicht zählt.
 **"Der Werbe-Knopf erscheint nie"** — das ist so gebaut. Er kommt erst, wenn du
 eine Produkt-ID in `Products.RewardedVideo` einträgst *und* Roblox tatsächlich
 eine Anzeige liefert. Voraussetzung sind u. a. 2.000 eindeutige Besucher/Monat.
+
+**"Ich finde den Season Core nicht"** — der existiert nur im Live-Fenster
+(Samstag und Sonntag UTC) und ist aus allen normalen Drop-Tabellen
+ausgeschlossen. Außerhalb des Fensters kann er mit keinem Luck-Wert fallen. Der
+HUD-Chip oben rechts zeigt, wann das nächste Fenster öffnet.
 
 ---
 

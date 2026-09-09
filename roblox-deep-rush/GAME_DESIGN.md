@@ -296,6 +296,56 @@ Die meisten werden verdient. Die kaufbaren sind absichtlich nicht die schönsten
 
 ---
 
+## 10b. Season: die Belohnung, die nicht wiederkommt
+
+Das größte Spiel der Plattform hat eine Mechanik, die sich in einem Satz
+zusammenfassen lässt: **live-Events am Wochenende, deren Belohnung du schlicht
+nicht bekommst, wenn du nicht da warst.** Knappheit plus Frist plus etwas, das
+alle sehen können.
+
+Bei uns heißt das so:
+
+- Samstag und Sonntag (UTC) öffnet ein Fenster.
+- Darin — und nirgends sonst — fällt der **Season Core**. Er ist aus jeder
+  normalen Drop-Tabelle ausgeschlossen, kein Luck-Wert der Welt holt ihn
+  außerhalb.
+- Vierzig Stück bringen dir ein **Badge**: einen Titel und einen Trail mit dem
+  Namen dieser Season, dauerhaft, und diese Season kommt nie zurück.
+
+**Drei Regeln, die das sauber halten:**
+
+1. **Es wird nie verkauft.** In dem Moment, in dem Knappheit kaufbar ist, ist
+   sie keine Knappheit mehr, sondern ein Laden.
+2. **Der Preis ist Anwesenheit, nicht Geld.** Wer keine Robux hat und zwei
+   Stunden Zeit, bekommt exakt dasselbe wie ein zahlender Spieler.
+3. **Es ist in einer Sitzung schaffbar** — rund 25 Minuten im Fenster. Eine
+   Frist, die man nicht einhalten kann, ist keine Dringlichkeit, sondern nur
+   ein verdorbener Abend. Der Balance-Check schlägt fehl, wenn das driftet.
+
+Was wir aus demselben Werkzeugkasten **nicht** übernommen haben: bezahlte
+Luck-Multiplikatoren an einem Glücksrad und Verlustmechaniken, die auf die
+Tränen von Kindern hin optimiert sind. Beides funktioniert nachweislich. Beides
+kommt hier nicht rein.
+
+---
+
+## 10c. Der beste Fund steht über deinem Kopf
+
+Sammelspiele leben davon, dass Spieler sehen, was andere haben. Ohne das ist
+ein seltener Fund eine private Zahl.
+
+Deshalb trägt jeder Spieler sein **seltenstes Erz aller Zeiten** auf dem
+Namensschild — mit Namen, Farbe der Seltenheitsstufe und der echten Quote:
+
+```
+◆ Golden Origin Shard · 1 in 4.3M
+```
+
+Das ist die billigste starke Idee im ganzen Spiel. An jemandem vorbeizulaufen,
+der eine 1-zu-4,3-Millionen trägt, ist der Grund, weiterzugraben.
+
+---
+
 ## 11. Ökonomie in Zahlen
 
 Aus `tools/balance-check.py`, nicht geschätzt:

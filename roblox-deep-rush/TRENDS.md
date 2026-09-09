@@ -211,6 +211,82 @@ Eine Kernmechanik war seit dem ersten Tag tot.
 
 ---
 
+## Zweite Runde (9. September 2026): Cover, Sog, Werbung
+
+### Befund 8 — Thumbnails: der blockige Avatar ist Pflicht, nicht Geschmack
+
+Die erste Cover-Fassung nutzte eine glatte Silhouette. Sie sah gut aus und war
+plattformfremd. Was die Recherche zu 2026er Thumbnails ergibt:
+
+- Ein Render des **eigenen Rigs** hält Outfit, Accessoires und Gesicht über
+  alle Thumbnails konstant — so bauen Roblox-Kanäle Wiedererkennung auf.
+- **Starke Emotionen im Gesicht schlagen neutrale um bis zu 40 %** in der
+  Klickphase. "Erschrocken" ist die Standardmimik der Plattform.
+- **Action-Posen und klare Silhouetten** bekommen mehr Klicks.
+- **Rohe Screenshots verlieren fast immer** gegen ein gestaltetes Bild.
+- **Icon und Thumbnail lösen verschiedene Probleme**: das Icon entscheidet den
+  Klick, die Thumbnails die Spiel-Entscheidung. Sie werden unterschiedlich
+  gestaltet.
+- Wachsendes Problem: **visuelle Ermüdung**, weil zu viele Thumbnails gleich
+  aussehen.
+
+**Umsetzung:** `cover/assets/robloxian.js` baut ein klassisches R6-Rig aus
+echten 3D-Boxen — projiziert, tiefensortiert, pro Fläche schattiert, mit
+echten Gelenkrotationen. Dazu erschrockenes Gesicht, Helm, Warnweste,
+Spitzhacke. Es steckt jetzt in allen drei Thumbnails und im Icon.
+
+Gegen die Ermüdung hilft der Schacht: der Tunnel-Hintergrund gehört keinem
+anderen Spiel, und der Charakter davor liefert trotzdem die
+Plattform-Zugehörigkeit.
+
+**Dein echter Avatar:** `node cover/avatar.mjs <username>` holt einen
+transparenten Render über die offizielle Thumbnails-API. Voreinstellung bleibt
+die gezeichnete Figur, weil sie posierbar ist und keinem fremden Menschen
+gehört.
+
+### Befund 9 — Was Spieler "das brauche ich" denken lässt
+
+Aus der Analyse der aktuell größten Spiele:
+
+- **Live-Wochenend-Events mit Belohnungen, die man nur bekommt, wenn man da
+  war.** Wer das Event verpasst, bekommt nichts. Das ist der Kern.
+- **Sichtbare Sammlungen.** Spieler sehen die Gärten der anderen; der
+  Wettbewerb dreht sich darum, die seltensten Sachen zu haben.
+- **Emotionale Reaktions-Clips** wirken wie kostenlose Werbung — Videos von
+  Kindern, die ihre Beute verlieren, haben zweistellige Millionen Views
+  gemacht.
+
+**Umsetzung:** das **Season-Fenster** (Sa/So UTC, exklusives Erz, permanentes
+Badge, das nie wiederkommt) und der **beste Fund auf dem Namensschild**, mit
+echter Quote, für jeden sichtbar.
+
+**Was ausdrücklich nicht übernommen wurde.** Dieselbe Analyse beschreibt
+Mechaniken, die klar Glücksspiel-Charakter haben: zeitgesperrte Spins mit
+Kaufoption zum Überspringen, und **Robux ausgeben, um die Gewinnchancen zu
+erhöhen** — vom Autor selbst als Kern-Glücksspieldynamik bezeichnet, gerichtet
+an ein überwiegend minderjähriges Publikum. Das Season-Badge ist deshalb
+unverkäuflich, in einer Sitzung erreichbar, und der Preis ist Anwesenheit,
+nicht Geld. Der Balance-Check erzwingt alle drei Punkte.
+
+### Befund 10 — Werbung: ja, ab etwa 35 Dollar
+
+| Kennzahl | Wert |
+|---|---|
+| Mindestkauf | 10 Ad Credits ≈ 2.850 Robux ≈ **35 $** |
+| Mindest-Tagesbudget | 1 $ (sinnvoll: 10–20 $) |
+| Kosten pro Besuch | 0,01–0,05 $ |
+| Kosten pro Klick | 0,10–0,50 $ |
+| Kosten pro engagiertem Spieler | 0,20–1,00 $ |
+| 100 $ Test | 2.000–10.000 Besuche |
+
+Vollständiger Plan inklusive der Schwelle, ab der sich Werbung überhaupt
+lohnt, in [`ADS_PLAYBOOK.md`](ADS_PLAYBOOK.md). Kurzfassung: **erst halten,
+dann kaufen** — unter 10 % D1-Retention verbrennt bezahlter Traffic Geld
+zweimal, weil der Empfehlungsalgorithmus genau mitzählt, dass niemand
+wiederkommt.
+
+---
+
 ## Quellen
 
 - [Optimizing Discovery: How Great Games Reach Millions of Players on Roblox](https://about.roblox.com/newsroom/2026/06/optimizing-discovery-great-games-reach-millions-players-roblox) — Roblox Newsroom, Juni 2026
@@ -222,3 +298,7 @@ Eine Kernmechanik war seit dem ersten Tag tot.
 - [AdService](https://create.roblox.com/docs/reference/engine/classes/AdService) / [SocialService](https://create.roblox.com/docs/reference/engine/classes/SocialService) — Roblox Creator Docs
 - [Roblox Monetization Trends 2026](https://rolearn.dev/trend-reports/roblox-monetization-trends-devex-creator-rewards/) — RoLearn (Drittanbieter)
 - [How the Roblox Discovery Algorithm Works in 2026](https://rolearn.dev/insights/roblox-game-discovery-algorithm-2026/) — RoLearn (Drittanbieter; widerspricht der Primärquelle, siehe Befund 1)
+- [How to Make a Roblox Thumbnail (With Your Real Avatar)](https://www.renderbux.com/guides/how-to-make-a-roblox-thumbnail)
+- [How to Make a Roblox Thumbnail That Gets Clicks (2026)](https://vizzbees.com/blog/how-to-make-a-roblox-thumbnail)
+- [Complete Guide to Roblox Advertising (2026)](https://bloxg.com/guides/roblox-ads-guide)
+- [Roblox Avatar Thumbnails API](https://thumbnails.roblox.com/docs) — für `cover/avatar.mjs`
