@@ -26,6 +26,8 @@ local Format = require(Shared.Format)
 local Net = require(Shared.Net)
 
 local Cargo = require(script.Parent.Cargo)
+local Contracts = require(script.Parent.Contracts)
+local ContractConfig = require(Shared.Config.Contracts)
 local Data = require(script.Parent.Data)
 local Economy = require(script.Parent.Economy)
 local Feedback = require(script.Parent.Feedback)
@@ -157,6 +159,15 @@ local function award(player: Player, node)
 	end
 	if riftActive then
 		Quests.record(player, "rift_mine", 1)
+		Contracts.award(player, ContractConfig.Points.perRiftOre)
+	end
+
+	if isNew then
+		Contracts.award(player, ContractConfig.Points.newCodexEntry)
+	elseif tierIndex >= 4 then
+		Contracts.award(player, ContractConfig.Points.perEpicOre)
+	elseif tierIndex >= 3 then
+		Contracts.award(player, ContractConfig.Points.perRareOre)
 	end
 
 	-- Feedback, scaled to how rare the thing actually was.
@@ -263,9 +274,11 @@ function Mining.start()
 
 		local profile = Data.get(player)
 		if profile and depth > profile.stats.bestDepth then
+			local gained = depth - profile.stats.bestDepth
 			profile.stats.bestDepth = depth
 			Data.push(player, { stats = { bestDepth = depth } })
 			Quests.record(player, "depth_alltime", depth, "max")
+			Contracts.award(player, gained * ContractConfig.Points.perDepthRecord)
 		end
 		Quests.record(player, "depth", depth, "max")
 		Data.push(player, { depth = depth })

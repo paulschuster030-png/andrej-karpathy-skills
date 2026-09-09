@@ -19,6 +19,8 @@ local Format = require(Shared.Format)
 local Net = require(Shared.Net)
 
 local Cargo = require(script.Parent.Cargo)
+local Contracts = require(script.Parent.Contracts)
+local ContractConfig = require(Shared.Config.Contracts)
 local Data = require(script.Parent.Data)
 local Economy = require(script.Parent.Economy)
 local Feedback = require(script.Parent.Feedback)
@@ -89,6 +91,10 @@ function Surface.deposit(player: Player)
 	Quests.record(player, "bank_runs", 1)
 	Quests.record(player, "bank_single", payout, "max")
 	Quests.record(player, "clean_banks", session.cleanBanks, "set")
+	-- Only trips that actually went down count, matching the streak rule.
+	if deepEnough then
+		Contracts.award(player, ContractConfig.Points.perDeepBank)
+	end
 
 	require(script.Parent.Leaderboards).submit(player, payout)
 

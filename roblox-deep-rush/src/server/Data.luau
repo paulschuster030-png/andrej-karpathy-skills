@@ -66,6 +66,17 @@ local function template()
 			cleanBanks = 0,
 		},
 		rewards = { lastLogin = "", streak = 0, chests = 0 },
+
+		-- Weekly ladder. dayPoints enforces the daily cap that pushes play
+		-- DAYS rather than long single sessions.
+		contract = { week = "", points = 0, dayPoints = 0, day = "", claimed = {} },
+
+		-- Distinct days played, which is the metric the 28-day discovery
+		-- window actually grades.
+		descent = { days = 0, lastDay = "", claimed = {} },
+
+		cosmetics = { owned = {}, equipped = {} },
+		deals = { day = "", bought = {} },
 		purchases = {},
 		createdAt = os.time(),
 		lastSeen = os.time(),
@@ -262,6 +273,10 @@ function Data.snapshot(player: Player)
 		quests = profile.quests,
 		stats = profile.stats,
 		rewards = profile.rewards,
+		contract = profile.contract,
+		descent = profile.descent,
+		cosmetics = profile.cosmetics,
+		deals = profile.deals,
 		cargo = { count = #session.cargo.items, value = session.cargo.value },
 		depth = session.depth,
 		oxygen = session.oxygen,

@@ -17,6 +17,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local QuestConfig = require(Shared.Config.Quests)
 local Net = require(Shared.Net)
 
+local ContractConfig = require(Shared.Config.Contracts)
 local Data = require(script.Parent.Data)
 local Economy = require(script.Parent.Economy)
 local Feedback = require(script.Parent.Feedback)
@@ -171,11 +172,16 @@ local function grant(player: Player, reward)
 		return
 	end
 
+	require(script.Parent.Contracts).award(player, ContractConfig.Points.perQuestClaimed)
+
 	if reward.cash then
 		Economy.addCash(player, reward.cash)
 	end
 	if reward.luckMinutes then
 		Economy.addBuff(player, "luck", 2, reward.luckMinutes * 60)
+	end
+	if reward.cosmetic then
+		require(script.Parent.Cosmetics).unlock(player, reward.cosmetic)
 	end
 	if reward.drone and not profile.drones.owned[reward.drone] then
 		profile.drones.owned[reward.drone] = true

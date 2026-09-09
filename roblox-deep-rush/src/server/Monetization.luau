@@ -20,6 +20,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local ProductConfig = require(Shared.Config.Products)
 local Format = require(Shared.Format)
 
+local Crew = require(script.Parent.Crew)
 local Data = require(script.Parent.Data)
 local Economy = require(script.Parent.Economy)
 local Feedback = require(script.Parent.Feedback)
@@ -81,6 +82,31 @@ local function applyProduct(player: Player, product): boolean
 			body = `Active for {grant.minutes} minutes.`,
 			kind = "rift",
 		})
+	end
+
+	if grant.oxygenMultiplier and grant.minutes then
+		Economy.addBuff(player, "oxygen", grant.oxygenMultiplier, grant.minutes * 60)
+		Feedback.toast(player, {
+			title = "DEEP LUNGS",
+			body = `Double air for {grant.minutes} minutes.`,
+			kind = "cash",
+		})
+	end
+
+	-- A deal that pays the buyer's whole crew. Bought by one person, felt by
+	-- four — which is the only kind of purchase that makes a group play
+	-- longer rather than shorter.
+	if grant.crewCash and grant.minutes then
+		local crew = Crew.of(player)
+		local members = crew and crew.members or { player }
+		for _, member in ipairs(members) do
+			Economy.addBuff(member, "cash", grant.crewCash, grant.minutes * 60)
+			Feedback.toast(member, {
+				title = `{grant.crewCash}x CREW CASH`,
+				body = `{player.DisplayName} bought rations for the crew.`,
+				kind = "cash",
+			})
+		end
 	end
 
 	if grant.personalRift then
@@ -175,6 +201,16 @@ function Monetization.start()
 
 		profile.purchases.receipts[receipt.PurchaseId] = os.time()
 		profile.purchases[product.id] = (profile.purchases[product.id] or 0) + 1
+
+		-- Mark today's deal as taken so the shop stops offering it.
+		local today = os.date("!*t")
+		local dayKey = string.format("%d-%03d", today.year, today.yday)
+		if profile.deals.day ~= dayKey then
+			profile.deals = { day = dayKey, bought = {} }
+		end
+		profile.deals.bought[product.id] = true
+		Data.push(player, { deals = Data.replace(table.clone(profile.deals)) })
+
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end
 end

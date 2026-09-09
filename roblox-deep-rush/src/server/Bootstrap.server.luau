@@ -9,9 +9,12 @@
 
 local SERVICES = {
 	"Data",
+	"World",
+	"Crew",
 	"Economy",
 	"Cargo",
-	"World",
+	"Cosmetics",
+	"Contracts",
 	"Quests",
 	"Rift",
 	"Mining",
@@ -24,6 +27,7 @@ local SERVICES = {
 	"Rewards",
 	"Leaderboards",
 	"Monetization",
+	"Ads",
 	"AntiCheat",
 }
 

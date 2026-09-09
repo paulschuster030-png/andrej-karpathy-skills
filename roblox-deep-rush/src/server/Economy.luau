@@ -18,6 +18,7 @@ local RebirthConfig = require(Shared.Config.Rebirth)
 local DroneConfig = require(Shared.Config.Drones)
 local ProductConfig = require(Shared.Config.Products)
 
+local Crew = require(script.Parent.Crew)
 local Data = require(script.Parent.Data)
 local Feedback = require(script.Parent.Feedback)
 
@@ -98,6 +99,10 @@ function Economy.luck(player: Player): number
 	luck += RebirthConfig.bonuses(profile.rebirths).luck
 	luck += DroneConfig.bonusesOf(profile.drones.equipped).luck
 
+	-- Paid for digging within bond range of a crewmate, not for being on a
+	-- roster. See Server/Crew.luau.
+	luck += Crew.bonus(player).luck
+
 	luck *= gamepassBonus(player, "luckMultiplier", 1)
 
 	for _, buff in ipairs(activeBuffs(player)) do
@@ -117,6 +122,7 @@ function Economy.cashMultiplier(player: Player): number
 
 	local multiplier = RebirthConfig.bonuses(profile.rebirths).cashMultiplier
 	multiplier *= 1 + DroneConfig.bonusesOf(profile.drones.equipped).cash
+	multiplier *= 1 + Crew.bonus(player).cash
 	multiplier *= gamepassBonus(player, "cashMultiplier", 1)
 
 	for _, buff in ipairs(activeBuffs(player)) do
@@ -151,6 +157,13 @@ function Economy.maxOxygen(player: Player): number
 	oxygen += UpgradeConfig.value("oxygen", profile.upgrades.oxygen or 0)
 	oxygen += RebirthConfig.bonuses(profile.rebirths).oxygen
 	oxygen += DroneConfig.bonusesOf(profile.drones.equipped).oxygen
+
+	for _, buff in ipairs(activeBuffs(player)) do
+		if buff.kind == "oxygen" then
+			oxygen *= buff.multiplier
+		end
+	end
+
 	return oxygen
 end
 

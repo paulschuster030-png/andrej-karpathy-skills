@@ -19,16 +19,18 @@ local Players = game:GetService("Players")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config.Game)
+local CrewConfig = require(Shared.Config.Crew)
 local DroneConfig = require(Shared.Config.Drones)
 local Format = require(Shared.Format)
 local Net = require(Shared.Net)
 
 local Cargo = require(script.Parent.Cargo)
+local Crew = require(script.Parent.Crew)
 local Data = require(script.Parent.Data)
 local Economy = require(script.Parent.Economy)
+local World = require(script.Parent.World)
 local Feedback = require(script.Parent.Feedback)
 local Quests = require(script.Parent.Quests)
-local World = require(script.Parent.World)
 
 local Steal = {}
 
@@ -251,6 +253,47 @@ local function onDeath(player: Player)
 	session.lastLoss = { items = lost, crateId = crateId, at = os.time() }
 end
 
+--- The opposite of a snatch: give a crewmate's dropped crate back to them
+--- and take a finder's fee in cash. In a game built on theft, one clearly
+--- cooperative action is what makes a crew read as a crew.
+function Steal.rescue(player: Player)
+	local root = rootOf(player)
+	if not root then
+		return
+	end
+
+	for _, crate in ipairs(World.cratesNear(root.Position, CrewConfig.RescueRadius)) do
+		local owner = Players:GetPlayerByUserId(crate.owner)
+		if owner and owner ~= player and Crew.isMate(player, owner) then
+			local returned = Cargo.give(owner, crate.items)
+			World.removeCrate(crate.id)
+
+			local fee = math.floor(crate.value * CrewConfig.RescueReward)
+			Economy.addCash(player, fee)
+			Quests.record(player, "rescue", 1)
+
+			Feedback.effect(player, "crate", { amount = fee })
+			Feedback.toast(player, {
+				title = "CARGO RETURNED",
+				body = `Gave {owner.DisplayName} their haul back. Finder's fee: {Format.short(fee)}.`,
+				kind = "quest",
+			})
+			Feedback.toast(owner, {
+				title = "+" .. Format.short(returned) .. " RECOVERED",
+				body = `{player.DisplayName} brought your cargo back.`,
+				kind = "cash",
+			})
+			return
+		end
+	end
+
+	Feedback.toast(player, {
+		title = "NOTHING TO RETURN",
+		body = "Stand next to a crewmate's dropped crate.",
+		kind = "error",
+	})
+end
+
 --- Magnet Drone: hoover nearby crates without touching them.
 local function magnetSweep()
 	for _, player in ipairs(Players:GetPlayers()) do
@@ -272,6 +315,10 @@ end
 function Steal.start()
 	Net.on("Snatch", function(player)
 		Steal.snatch(player)
+	end)
+
+	Net.on("Rescue", function(player)
+		Steal.rescue(player)
 	end)
 
 	Net.on("GrabCrate", function(player, crateId)
