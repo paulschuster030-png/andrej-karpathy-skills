@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="assets/fonts.css">
+  <link rel="stylesheet" href="assets/base.css">
+  <style>
+    /* Roblox hero thumbnail: 1920x1080. */
+    html, body { width: 1920px; height: 1080px; }
+
+    .copy { position: absolute; left: 96px; top: 236px; z-index: 60; width: 820px; }
+    .wordmark { font-size: 40px; color: var(--ore); }
+    .wordmark .dot { color: var(--depth); }
+
+    .title { font-size: 208px; margin-top: 18px; }
+    .title .hot { color: var(--ore); }
+
+    .rule {
+      width: 470px; height: 12px; margin: 34px 0 26px;
+      background: linear-gradient(90deg, var(--ore), rgba(255,201,60,0));
+    }
+
+    .sub {
+      font-family: 'Bebas Neue', sans-serif; font-size: 54px;
+      letter-spacing: 0.06em; color: #cfd2dc;
+    }
+
+    .depth {
+      position: absolute; right: 92px; top: 108px; z-index: 60; text-align: right;
+    }
+    .depth .n { font-family: 'Anton', sans-serif; font-size: 168px; color: var(--depth); line-height: 0.84; }
+    .depth .l { font-family: 'Bebas Neue', sans-serif; font-size: 42px; letter-spacing: 0.24em; color: #7f8798; }
+
+    .chip {
+      position: absolute; right: 92px; bottom: 84px; z-index: 60;
+      padding: 20px 34px; border: 5px solid var(--ore); border-radius: 20px;
+      background: rgba(10,8,4,0.72);
+      font-family: 'Bebas Neue', sans-serif; font-size: 50px;
+      letter-spacing: 0.13em; color: var(--ore);
+    }
+
+    /* A hard falloff behind the copy: the headline must never compete with
+       rock texture, no matter how the shaft happens to land. */
+    .textguard {
+      position: absolute; inset: 0; z-index: 50;
+      background: linear-gradient(100deg,
+        rgba(4,4,7,0.97) 0%, rgba(4,4,7,0.93) 26%,
+        rgba(4,4,7,0.55) 40%, rgba(4,4,7,0) 54%);
+    }
+    .figure { position: absolute; left: 60%; top: 21%; transform: translateX(-50%); z-index: 62; }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="shaft" id="shaft"></div>
+    <div class="figure" id="figure"></div>
+    <div class="vignette" style="--vx:70%; --vy:56%"></div>
+    <div class="textguard"></div>
+    <div class="grain"></div>
+
+    <div class="copy">
+      <div class="wordmark kicker">⛏ DEEP RUSH<span class="dot"> ▾</span></div>
+      <div class="title headline outline-dark">DIG OR<br><span class="hot glow-ore">LOSE IT</span></div>
+      <div class="rule"></div>
+      <div class="sub">BANK IT — OR SOMEONE ELSE WILL</div>
+    </div>
+
+    <div class="depth">
+      <div class="n glow-depth outline-dark">1,400m</div>
+      <div class="l">AND STILL FALLING</div>
+    </div>
+
+    <div class="chip glow-ore">1 IN 540,000</div>
+  </div>
+
+  <script src="assets/shaft.js"></script>
+  <script src="assets/figures.js"></script>
+  <script>
+    buildShaft(document.getElementById('shaft'), { mouthX: 38, mouthY: 22, coreX: 73, coreY: 66 });
+    document.getElementById('figure').innerHTML = minerFalling({ size: 460 });
+  </script>
+</body>
+</html>

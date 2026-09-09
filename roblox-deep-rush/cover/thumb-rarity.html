@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="assets/fonts.css">
+  <link rel="stylesheet" href="assets/base.css">
+  <style>
+    /* Variant 2: sells the RNG chase rather than the loop. Worth testing
+       against variant 1 — rarity hooks and risk hooks pull different players,
+       and only the click-through numbers can tell you which is yours. */
+    html, body { width: 1920px; height: 1080px; }
+
+    .copy { position: absolute; left: 96px; top: 250px; z-index: 60; width: 900px; }
+    .wordmark { font-size: 40px; color: var(--ore); }
+
+    .odds { font-family: 'Anton', sans-serif; font-size: 158px; color: var(--bone); line-height: 0.9; }
+    .odds .n { color: var(--ore); }
+
+    .line { font-family: 'Anton', sans-serif; font-size: 104px; color: var(--bone); line-height: 0.92; margin-top: 6px; }
+
+    .rule { width: 520px; height: 12px; margin: 30px 0 24px;
+            background: linear-gradient(90deg, var(--ore), rgba(255,201,60,0)); }
+
+    .sub { font-family: 'Bebas Neue', sans-serif; font-size: 50px;
+           letter-spacing: 0.07em; color: #cfd2dc; }
+
+    .gem { position: absolute; left: 68%; top: 44%; transform: translate(-50%,-50%); z-index: 62; }
+
+    /* The in-game reveal card, reproduced. A thumbnail that shows a real
+       screen from the game sets an expectation the game then keeps. */
+    .card {
+      position: absolute; right: 92px; bottom: 76px; z-index: 64;
+      width: 640px; padding: 24px 32px;
+      background: rgba(6,6,10,0.9); border: 5px solid var(--ore); border-radius: 22px;
+    }
+    .card .t { font-family: 'Bebas Neue', sans-serif; font-size: 34px;
+               letter-spacing: 0.2em; color: #8e94a4; }
+    .card .n { font-family: 'Anton', sans-serif; font-size: 58px; color: var(--ore); line-height: 1.02; }
+    .card .m { font-family: 'Bebas Neue', sans-serif; font-size: 34px;
+               letter-spacing: 0.1em; color: var(--depth); }
+
+    .textguard {
+      position: absolute; inset: 0; z-index: 50;
+      background: linear-gradient(100deg, rgba(4,4,7,0.97) 0%, rgba(4,4,7,0.9) 30%,
+                  rgba(4,4,7,0.4) 44%, rgba(4,4,7,0) 56%);
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="shaft" id="shaft"></div>
+    <div class="gem" id="gem"></div>
+    <div class="vignette" style="--vx:71%; --vy:50%"></div>
+    <div class="textguard"></div>
+    <div class="grain"></div>
+
+    <div class="copy">
+      <div class="wordmark kicker">⛏ DEEP RUSH</div>
+      <div class="odds">1 IN <span class="n glow-ore">540,000</span></div>
+      <div class="line">IT'S DOWN THERE</div>
+      <div class="rule"></div>
+      <div class="sub">30 ORES · 8 RARITIES · 5 MUTATIONS</div>
+    </div>
+
+    <div class="card">
+      <div class="t">SINGULARITY</div>
+      <div class="n">GOLDEN ORIGIN SHARD</div>
+      <div class="m">×8 MUTATION · 72,000,000</div>
+    </div>
+  </div>
+
+  <script src="assets/shaft.js"></script>
+  <script src="assets/figures.js"></script>
+  <script>
+    buildShaft(document.getElementById('shaft'), { mouthX: 44, mouthY: 18, coreX: 68, coreY: 44, maxLightness: 10 });
+    document.getElementById('gem').innerHTML = oreCrystal({ size: 430 });
+  </script>
+</body>
+</html>

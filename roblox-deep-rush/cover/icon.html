@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="assets/fonts.css">
+  <link rel="stylesheet" href="assets/base.css">
+  <style>
+    /*
+      Game icon: 512x512, but the size that matters is ~150px in a search
+      result. So: no text, one silhouette, one glow, maximum contrast. If it
+      does not survive render.mjs's 150px check, it is not finished.
+    */
+    html, body { width: 512px; height: 512px; }
+    .figure {
+      position: absolute; left: 50%; top: 46%;
+      transform: translate(-50%,-50%); z-index: 62;
+    }
+    .edge {
+      position: absolute; inset: 0; z-index: 70;
+      box-shadow: inset 0 0 0 10px rgba(255,201,60,0.22);
+      border-radius: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="shaft" id="shaft"></div>
+    <div class="figure" id="figure"></div>
+    <div class="vignette" style="--vx:50%; --vy:52%"></div>
+    <div class="grain"></div>
+    <div class="edge"></div>
+  </div>
+
+  <script src="assets/shaft.js"></script>
+  <script src="assets/figures.js"></script>
+  <script>
+    buildShaft(document.getElementById('shaft'), {
+      mouthX: 44, mouthY: 30, coreX: 54, coreY: 62,
+      rings: 16, start: 900, ratio: 0.855, maxLightness: 15,
+    });
+    document.getElementById('figure').innerHTML = minerFalling({ size: 250 });
+  </script>
+</body>
+</html>

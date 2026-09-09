@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="assets/fonts.css">
+  <link rel="stylesheet" href="assets/base.css">
+  <style>
+    /* Variant 3: sells the social hook. This is the one most likely to make
+       someone send the game to a friend, because the picture contains a
+       second person doing something to you. */
+    html, body { width: 1920px; height: 1080px; }
+
+    .copy { position: absolute; left: 92px; top: 268px; z-index: 60; width: 860px; }
+    .wordmark { font-size: 40px; color: var(--greed); }
+
+    .title { font-size: 172px; line-height: 0.88; }
+    .title .hot { color: var(--greed); }
+
+    .rule { width: 500px; height: 12px; margin: 32px 0 24px;
+            background: linear-gradient(90deg, var(--greed), rgba(255,61,127,0)); }
+
+    .sub { font-family: 'Bebas Neue', sans-serif; font-size: 52px;
+           letter-spacing: 0.07em; color: #cfd2dc; }
+
+    .victim { position: absolute; left: 73%; top: 19%; z-index: 62; }
+    .thief  { position: absolute; left: 55%; top: 34%; z-index: 61; transform: scaleX(-1); }
+    .loot   { position: absolute; left: 66.5%; top: 61%; z-index: 63; }
+
+    /* The state the whole steal mechanic hangs on, shown as the game shows it. */
+    .marked {
+      position: absolute; left: 84%; top: 13%; z-index: 66;
+      transform: translateX(-50%);
+      padding: 14px 30px; border: 5px solid var(--greed); border-radius: 999px;
+      background: rgba(12,2,8,0.85);
+      font-family: 'Bebas Neue', sans-serif; font-size: 44px;
+      letter-spacing: 0.2em; color: var(--greed);
+    }
+
+    .textguard {
+      position: absolute; inset: 0; z-index: 50;
+      background: linear-gradient(100deg, rgba(4,4,7,0.97) 0%, rgba(4,4,7,0.92) 28%,
+                  rgba(4,4,7,0.45) 42%, rgba(4,4,7,0) 55%);
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="shaft" id="shaft"></div>
+    <div class="thief" id="thief"></div>
+    <div class="victim" id="victim"></div>
+    <div class="loot" id="loot"></div>
+    <div class="vignette" style="--vx:70%; --vy:46%"></div>
+    <div class="textguard"></div>
+    <div class="grain"></div>
+
+    <div class="marked glow-greed">⚠ MARKED</div>
+
+    <div class="copy">
+      <div class="wordmark kicker">⛏ DEEP RUSH</div>
+      <div class="title headline outline-dark">THEY CAN<br><span class="hot glow-greed">TAKE IT</span></div>
+      <div class="rule"></div>
+      <div class="sub">GET GREEDY. GET ROBBED.</div>
+    </div>
+  </div>
+
+  <script src="assets/shaft.js"></script>
+  <script src="assets/figures.js"></script>
+  <script>
+    buildShaft(document.getElementById('shaft'), {
+      mouthX: 40, mouthY: 20, coreX: 72, coreY: 60, hue: 'greed', maxLightness: 11,
+    });
+    document.getElementById('victim').innerHTML = minerFalling({ size: 380, accent: '#ff3d7f', lamp: '#ff86b4' });
+    document.getElementById('thief').innerHTML  = minerFalling({ size: 300, accent: '#ffc93c', lamp: '#ffd45e' });
+    document.getElementById('loot').innerHTML   = crate({ size: 230 });
+  </script>
+</body>
+</html>
