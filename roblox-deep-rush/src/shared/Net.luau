@@ -31,6 +31,21 @@ Net.Events = {
 	Rebirth = 2,
 	UseLift = 3,
 	ReportDepth = 20,
+
+	-- Co-play. Ping is the only one with real traffic; it is the entire
+	-- coordination vocabulary now that chat is age-gated.
+	CrewBeacon = 2,
+	CrewJoin = 3,
+	CrewLeave = 3,
+	Ping = 3,
+	Rescue = 4,
+
+	-- Long-arc retention and status.
+	ClaimContract = 6,
+	ClaimDescent = 6,
+	EquipCosmetic = 6,
+	BuyCosmetic = 4,
+	WatchAd = 1,
 }
 
 -- Server -> client only.
@@ -41,6 +56,9 @@ Net.Signals = {
 	"Rift", -- rift start/stop/tick
 	"Effect", -- one-shot client feedback (shake, sfx, particles)
 	"Marked", -- another player crossed the greed threshold
+	"Crew", -- crew roster and nearby beacons
+	"Pings", -- a teammate marked something in the world
+	"Ad", -- rewarded-video availability changed
 }
 
 Net.Functions = {

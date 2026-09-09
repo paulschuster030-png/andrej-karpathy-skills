@@ -40,6 +40,8 @@ Quests.DailyPool = {
 	{ id = "d_steal", name = "Finders Keepers", desc = "Take 2 crates or snatches from other miners.", metric = "steal", mode = "count", target = 2, reward = { cash = 16000 } },
 	{ id = "d_upgrade", name = "Reinvest", desc = "Buy 5 upgrades.", metric = "upgrade", mode = "count", target = 5, reward = { cash = 11000 } },
 	{ id = "d_survive", name = "Clean Run", desc = "Bank 5 trips without dying in between.", metric = "clean_banks", mode = "max", target = 5, reward = { cash = 20000, luckMinutes = 15 } },
+	{ id = "d_crew", name = "Buddy System", desc = "Mine 10 minutes next to a crewmate.", metric = "crew_minutes", mode = "count", target = 10, reward = { cash = 24000 } },
+	{ id = "d_rescue", name = "Good Samaritan", desc = "Return a crewmate's dropped cargo.", metric = "rescue", mode = "count", target = 1, reward = { cash = 18000 } },
 }
 
 Quests.DailyCount = 3
@@ -51,9 +53,10 @@ Quests.Milestones = {
 	{ id = "m_bank1m", name = "Millionaire", desc = "Bank 1,000,000 lifetime.", metric = "bank_alltime", mode = "count", target = 1000000, reward = { cash = 150000 } },
 	{ id = "m_bank100m", name = "Shaft Baron", desc = "Bank 100,000,000 lifetime.", metric = "bank_alltime", mode = "count", target = 100000000, reward = { cash = 12000000 } },
 	{ id = "m_codex15", name = "Half the Book", desc = "Find 15 different ores.", metric = "codex", mode = "max", target = 15, reward = { cash = 250000 } },
-	{ id = "m_codex30", name = "Complete Codex", desc = "Find all 30 ores.", metric = "codex", mode = "max", target = 30, reward = { cash = 25000000, drone = "void" } },
+	{ id = "m_codex30", name = "Complete Codex", desc = "Find all 30 ores.", metric = "codex", mode = "max", target = 30, reward = { cash = 25000000, drone = "void", cosmetic = "title_codex" } },
 	{ id = "m_rebirth5", name = "Five Lives", desc = "Rebirth 5 times.", metric = "rebirths", mode = "max", target = 5, reward = { cash = 1500000 } },
-	{ id = "m_steal50", name = "Shaft Pirate", desc = "Take 50 crates or snatches.", metric = "steal_alltime", mode = "count", target = 50, reward = { cash = 800000 } },
+	{ id = "m_steal50", name = "Shaft Pirate", desc = "Take 50 crates or snatches.", metric = "steal_alltime", mode = "count", target = 50, reward = { cash = 800000, cosmetic = "title_pirate" } },
+	{ id = "m_crew", name = "Never Alone", desc = "Mine 300 minutes alongside crewmates.", metric = "crew_minutes_alltime", mode = "count", target = 300, reward = { cash = 4000000, cosmetic = "trail_gold" } },
 }
 
 Quests.All = {}
