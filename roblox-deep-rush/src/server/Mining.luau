@@ -300,35 +300,43 @@ function Mining.start()
 		end
 	end)
 
-	--- Depth is reported by the client (it owns the character) but it is only
-	--- ever used for display, rift eligibility and hazards — never for pay.
-	--- Payout depth comes from the node's own recorded position.
-	Net.on("ReportDepth", function(player)
-		local session = Data.session(player)
-		local root = rootOf(player)
-		if not session or not root then
-			return
-		end
-
-		local depth = World.depthOf(root.Position)
-		session.depth = depth
-
-		local profile = Data.get(player)
-		if profile and depth > profile.stats.bestDepth then
-			local gained = depth - profile.stats.bestDepth
-			profile.stats.bestDepth = depth
-			Data.push(player, { stats = { bestDepth = depth } })
-			Quests.record(player, "depth_alltime", depth, "max")
-			Contracts.award(player, gained * ContractConfig.Points.perDepthRecord)
-		end
-		Quests.record(player, "depth", depth, "max")
-		Data.push(player, { depth = depth })
-	end)
-
 	task.spawn(function()
 		while true do
 			step()
 			task.wait(0.1)
+		end
+	end)
+
+	--- Depth is measured from the character the server can see, on a timer.
+	---
+	--- It used to be reported by the client, which was wrong twice over: a
+	--- client that simply stopped sending it never ran out of air, and one
+	--- that sent 3,000 collected the depth milestones and unlocked the
+	--- rebirth gate without moving. Payout depth always came from the node's
+	--- own recorded position, so cash was never at risk — but records,
+	--- hazards and rift eligibility all were.
+	task.spawn(function()
+		while true do
+			task.wait(0.4)
+			for _, player in ipairs(Players:GetPlayers()) do
+				local session = Data.session(player)
+				local root = rootOf(player)
+				if session and root then
+					local depth = World.depthOf(root.Position)
+					session.depth = depth
+
+					local profile = Data.get(player)
+					if profile and depth > profile.stats.bestDepth then
+						local gained = depth - profile.stats.bestDepth
+						profile.stats.bestDepth = depth
+						Data.push(player, { stats = { bestDepth = depth } })
+						Quests.record(player, "depth_alltime", depth, "max")
+						Contracts.award(player, gained * ContractConfig.Points.perDepthRecord)
+					end
+					Quests.record(player, "depth", depth, "max")
+					Data.push(player, { depth = depth })
+				end
+			end
 		end
 	end)
 end

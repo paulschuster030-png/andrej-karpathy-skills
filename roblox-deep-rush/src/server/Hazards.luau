@@ -33,6 +33,7 @@ local Layers = require(Shared.Config.Layers)
 local Data = require(script.Parent.Data)
 local Economy = require(script.Parent.Economy)
 local Feedback = require(script.Parent.Feedback)
+local World = require(script.Parent.World)
 
 local Hazards = {}
 
@@ -159,7 +160,13 @@ local function tick(delta: number)
 			continue
 		end
 
-		local depth = session.depth or 0
+		-- Measured here rather than read from session.depth, which another
+		-- loop maintains at a different rate. Reading it meant a player who
+		-- had just surfaced kept suffocating for a tick or two on a stale
+		-- number — invisible in play, and the sort of ordering bug that only
+		-- ever gets worse.
+		local root = rootOf(player)
+		local depth = root and World.depthOf(root.Position) or 0
 		local layer = Layers.at(depth)
 		local maxOxygen = Economy.maxOxygen(player)
 

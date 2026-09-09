@@ -165,17 +165,6 @@ function Mining.start()
 	end, false, Enum.KeyCode.E, Enum.KeyCode.ButtonR2)
 
 	RunService.Heartbeat:Connect(tick)
-
-	-- Depth is reported on a timer rather than every frame: it drives the
-	-- HUD, hazards and rift eligibility, none of which need 60Hz.
-	task.spawn(function()
-		while true do
-			task.wait(0.5)
-			if rootPart() then
-				Net.fire("ReportDepth")
-			end
-		end
-	end)
 end
 
 return Mining
