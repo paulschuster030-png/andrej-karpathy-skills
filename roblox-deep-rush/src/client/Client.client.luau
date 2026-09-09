@@ -13,6 +13,7 @@ local CONTROLLERS = {
 	"Panels",
 	"Notify",
 	"Hud",
+	"Crew",
 	"Onboarding",
 }
 

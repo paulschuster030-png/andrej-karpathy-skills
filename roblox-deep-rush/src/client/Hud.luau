@@ -187,6 +187,8 @@ local function buildCargo(parent)
 	Ui.padding(holder, 8)
 
 	widgets.cargoStroke = holder:FindFirstChildOfClass("UIStroke")
+	-- Server/Crew.luau's client half stacks the ping row and crew strip
+	-- directly above this, so nothing here may grow downward.
 
 	local _, fill, label = Ui.bar({
 		parent = holder,
@@ -212,37 +214,43 @@ end
 local function buildMenu(parent)
 	local holder = Ui.frame({
 		parent = parent,
-		size = UDim2.fromOffset(72, 300),
+		size = UDim2.fromOffset(124, 236),
 		position = UDim2.new(0, 16, 1, -18),
 		anchor = Vector2.new(0, 1),
 		transparency = 1,
 		radius = false,
 	})
 
-	local layout = Instance.new("UIListLayout")
-	layout.Padding = UDim.new(0, 8)
+	local layout = Instance.new("UIGridLayout")
+	layout.CellSize = UDim2.fromOffset(58, 50)
+	layout.CellPadding = UDim2.fromOffset(6, 6)
 	layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = holder
 
 	local entries = {
 		{ icon = "⛏️", tab = "shop", color = theme.panelLight },
 		{ icon = "📋", tab = "tasks", color = theme.panelLight },
+		{ icon = "📜", tab = "contract", color = theme.gold },
+		{ icon = "📅", tab = "descent", color = theme.panelLight },
 		{ icon = "📖", tab = "codex", color = theme.panelLight },
+		{ icon = "✨", tab = "looks", color = theme.panelLight },
 		{ icon = "🛠️", tab = "drones", color = theme.panelLight },
 		{ icon = "🏆", tab = "boards", color = theme.panelLight },
 		{ icon = "🔥", tab = "rebirth", color = theme.accent },
 	}
 
-	for _, entry in ipairs(entries) do
+	for index, entry in ipairs(entries) do
 		local button = Ui.button({
 			parent = holder,
-			size = UDim2.fromOffset(64, 56),
+			size = UDim2.fromOffset(58, 50),
 			text = entry.icon,
 			color = entry.color,
 			onClick = function()
 				Panels.toggle(entry.tab)
 			end,
 		})
+		button.LayoutOrder = index
 
 		-- The tasks button carries the "you have something to claim" dot,
 		-- which is most of why anyone opens the panel at all.
@@ -297,6 +305,35 @@ local function buildActions(parent)
 		textColor = Color3.fromRGB(10, 30, 20),
 		onClick = function()
 			Net.fire("UseLift")
+		end,
+		visible = false,
+	})
+
+	-- Only ever present when Roblox actually has an ad to serve; see
+	-- Server/Ads.luau.
+	widgets.adButton = Ui.button({
+		parent = holder,
+		size = UDim2.fromOffset(176, 48),
+		text = "🎬 FREE 2x LUCK",
+		color = theme.cyan,
+		textColor = Color3.fromRGB(10, 20, 26),
+		scaled = false,
+		visible = false,
+		onClick = function()
+			Net.fire("WatchAd")
+		end,
+	})
+
+	widgets.grabButton = Ui.button({
+		parent = holder,
+		size = UDim2.fromOffset(176, 58),
+		text = "📦 GRAB CARGO",
+		color = theme.gold,
+		textColor = Color3.fromRGB(30, 24, 10),
+		onClick = function()
+			if widgets.nearestCrateId then
+				Net.fire("GrabCrate", widgets.nearestCrateId)
+			end
 		end,
 		visible = false,
 	})
@@ -445,6 +482,21 @@ local function renderContextual()
 	end
 	widgets.liftButton.Visible = onPad
 
+	-- Dropped crates: the server has always accepted the pickup, but until
+	-- now nothing on screen asked for it.
+	local nearestCrate, nearestDistance = nil, 14
+	for _, part in ipairs(workspace:GetPartBoundsInRadius(root.Position, 14)) do
+		local crateId = part:GetAttribute("CrateId")
+		if crateId then
+			local distance = (part.Position - root.Position).Magnitude
+			if distance < nearestDistance then
+				nearestCrate, nearestDistance = crateId, distance
+			end
+		end
+	end
+	widgets.nearestCrateId = nearestCrate
+	widgets.grabButton.Visible = nearestCrate ~= nil
+
 	-- Snatch shows only when a marked player is actually in range.
 	local snatchable = false
 	for _, other in ipairs(Players:GetPlayers()) do
@@ -498,6 +550,12 @@ function Hud.start()
 	buildReticle(gui)
 
 	findVault()
+
+	Net.listen("Ad", function(payload)
+		if typeof(payload) == "table" and widgets.adButton then
+			widgets.adButton.Visible = payload.available == true
+		end
+	end)
 
 	State.changed:connect(renderState)
 	State.riftChanged:connect(renderRift)

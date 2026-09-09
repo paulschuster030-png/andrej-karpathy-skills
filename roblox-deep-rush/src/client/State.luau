@@ -32,6 +32,11 @@ State.data = {
 	buffs = {},
 	gamepasses = {},
 	streak = 0,
+	contract = { week = "", points = 0, dayPoints = 0, claimed = {} },
+	descent = { days = 0, lastDay = "", claimed = {} },
+	cosmetics = { owned = {}, equipped = {} },
+	deals = { day = "", bought = {} },
+	crew = { members = {}, bonusNear = 0 },
 }
 
 State.changed = Signal.new()

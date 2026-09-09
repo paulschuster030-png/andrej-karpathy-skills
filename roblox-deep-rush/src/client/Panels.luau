@@ -11,6 +11,8 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local ContractConfig = require(Shared.Config.Contracts)
+local CosmeticConfig = require(Shared.Config.Cosmetics)
 local DroneConfig = require(Shared.Config.Drones)
 local Format = require(Shared.Format)
 local Layers = require(Shared.Config.Layers)
@@ -35,6 +37,9 @@ local content: ScrollingFrame
 local currentTab: string? = nil
 
 local TAB_TITLES = {
+	contract = "WEEKLY CONTRACT",
+	descent = "DESCENT LOG",
+	looks = "APPEARANCE",
 	shop = "UPGRADES",
 	tasks = "TASKS",
 	codex = "ORE CODEX",
@@ -138,6 +143,26 @@ end
 -- Tabs ---------------------------------------------------------------------
 
 local function renderShop()
+	local deal = ProductConfig.dealOfTheDay()
+	if deal and deal.assetId ~= 0 then
+		local bought = (State.data.deals and State.data.deals.bought or {})[deal.id] == true
+		header("TODAY'S DEAL — rotates at midnight UTC")
+		row({
+			icon = deal.icon,
+			title = deal.name,
+			body = deal.desc,
+			accent = bought and theme.green or theme.accent,
+			action = bought and "BOUGHT" or (deal.robux .. " R$"),
+			actionColor = bought and theme.green or theme.accent,
+			actionTextColor = Color3.fromRGB(255, 255, 255),
+			onAction = function()
+				if not bought then
+					MarketplaceService:PromptProductPurchase(player, deal.assetId)
+				end
+			end,
+		})
+	end
+
 	header("SPEND CASH — everything here is permanent")
 
 	for _, upgrade in ipairs(UpgradeConfig.List) do
@@ -449,7 +474,175 @@ local function renderRebirth()
 	end
 end
 
+local function renderContract()
+	local contract = State.data.contract or { points = 0, dayPoints = 0, claimed = {} }
+	local points = contract.points or 0
+	local dayPoints = contract.dayPoints or 0
+
+	header(`{string.upper(ContractConfig.nameForWeek())} — resets Monday, midnight UTC`)
+
+	local capped = dayPoints >= ContractConfig.DailyPointCap
+	row({
+		icon = capped and "✅" or "⚡",
+		title = `{Format.short(points)} / {Format.short(ContractConfig.totalPoints())} contract points`,
+		body = capped
+			and "Today's contract work is done. Everything else still pays — the ladder refills at midnight."
+			or `Today: {dayPoints} / {ContractConfig.DailyPointCap}. Banking, rare pulls, new ores, depth records and crew time all count.`,
+		progress = points / ContractConfig.totalPoints(),
+		accent = capped and theme.green or theme.gold,
+		height = 92,
+	})
+
+	for index, tier in ipairs(ContractConfig.Tiers) do
+		local reached = points >= tier.points
+		local claimed = (contract.claimed or {})[tostring(index)] == true
+		local extras = {}
+		if tier.reward.luckMinutes then
+			table.insert(extras, `{tier.reward.luckMinutes} min 2x luck`)
+		end
+		if tier.reward.cosmetic then
+			local cosmetic = CosmeticConfig.ById[tier.reward.cosmetic]
+			table.insert(extras, cosmetic and cosmetic.name or tier.reward.cosmetic)
+		end
+		if tier.reward.drone then
+			local drone = DroneConfig.ById[tier.reward.drone]
+			table.insert(extras, drone and drone.name or tier.reward.drone)
+		end
+
+		row({
+			icon = claimed and "✅" or (reached and "🎁" or "🔒"),
+			title = `Tier {index}  ·  {Format.short(tier.points)} pts`,
+			body = `{Format.short(tier.reward.cash or 0)} cash`
+				.. (#extras > 0 and ("  ·  " .. table.concat(extras, "  ·  ")) or ""),
+			progress = math.min(points / tier.points, 1),
+			accent = claimed and theme.panelLight or (reached and theme.gold or theme.panelLight),
+			action = claimed and "DONE" or (reached and "CLAIM" or "LOCKED"),
+			actionColor = (reached and not claimed) and theme.gold or theme.panelLight,
+			actionTextColor = (reached and not claimed) and Color3.fromRGB(30, 24, 10) or theme.muted,
+			onAction = function()
+				if reached and not claimed then
+					Net.fire("ClaimContract", index)
+					task.delay(0.35, function()
+						if currentTab == "contract" then
+							Panels.open("contract")
+						end
+					end)
+				end
+			end,
+		})
+	end
+end
+
+local function renderDescent()
+	local descent = State.data.descent or { days = 0, claimed = {} }
+	local days = descent.days or 0
+
+	header(`{days} DISTINCT DAYS PLAYED — these rewards are one-time`)
+	header("Coming back on a new day is what moves this. Playing longer today does not.")
+
+	for index, milestone in ipairs(ContractConfig.DescentLog) do
+		local reached = days >= milestone.days
+		local claimed = (descent.claimed or {})[tostring(index)] == true
+		local extras = {}
+		if milestone.reward.cosmetic then
+			local cosmetic = CosmeticConfig.ById[milestone.reward.cosmetic]
+			table.insert(extras, cosmetic and cosmetic.name or milestone.reward.cosmetic)
+		end
+		if milestone.reward.drone then
+			local drone = DroneConfig.ById[milestone.reward.drone]
+			table.insert(extras, drone and drone.name or milestone.reward.drone)
+		end
+
+		row({
+			icon = claimed and "✅" or (reached and "🎁" or "📅"),
+			title = `Day {milestone.days}  ·  {milestone.label}`,
+			body = `{Format.short(milestone.reward.cash or 0)} cash`
+				.. (#extras > 0 and ("  ·  " .. table.concat(extras, "  ·  ")) or ""),
+			progress = math.min(days / milestone.days, 1),
+			accent = claimed and theme.panelLight or (reached and theme.cyan or theme.panelLight),
+			action = claimed and "DONE" or (reached and "CLAIM" or `{milestone.days - days} DAYS`),
+			actionColor = (reached and not claimed) and theme.cyan or theme.panelLight,
+			actionTextColor = (reached and not claimed) and Color3.fromRGB(10, 20, 26) or theme.muted,
+			onAction = function()
+				if reached and not claimed then
+					Net.fire("ClaimDescent", index)
+					task.delay(0.35, function()
+						if currentTab == "descent" then
+							Panels.open("descent")
+						end
+					end)
+				end
+			end,
+		})
+	end
+end
+
+local function renderLooks()
+	local cosmetics = State.data.cosmetics or { owned = {}, equipped = {} }
+	local owned = cosmetics.owned or {}
+	local equipped = cosmetics.equipped or {}
+
+	header("EVERYONE IN THE SHAFT SEES THESE — that is the whole point")
+
+	local sections = {
+		{ kind = "lamp", label = "HELMET LAMPS — lights the rock around you" },
+		{ kind = "trail", label = "TRAILS — what people see when you fall past" },
+		{ kind = "title", label = "TITLES — sits on your nameplate" },
+	}
+
+	for _, section in ipairs(sections) do
+		header(section.label)
+		for _, cosmetic in ipairs(CosmeticConfig.ofKind(section.kind)) do
+			local isDefault = cosmetic.source == "default"
+			local isOwned = isDefault or owned[cosmetic.id] == true
+			local isEquipped = (equipped[section.kind] or CosmeticConfig.Defaults[section.kind]) == cosmetic.id
+
+			local action, actionColor
+			if isEquipped then
+				action, actionColor = "WORN", theme.green
+			elseif isOwned then
+				action, actionColor = "WEAR", theme.cyan
+			elseif cosmetic.source == "shop" then
+				action, actionColor = Format.short(cosmetic.cost or 0), theme.gold
+			elseif cosmetic.source == "contract" then
+				action, actionColor = "CONTRACT", theme.panelLight
+			elseif cosmetic.source == "descent" then
+				action, actionColor = "DESCENT LOG", theme.panelLight
+			else
+				action, actionColor = "MILESTONE", theme.panelLight
+			end
+
+			row({
+				height = 64,
+				icon = section.kind == "lamp" and "🔦" or (section.kind == "trail" and "💫" or "🏷️"),
+				title = cosmetic.name,
+				titleColor = CosmeticConfig.color(cosmetic.id),
+				body = isOwned and "Owned" or `Earned from: {cosmetic.source}`,
+				accent = isEquipped and theme.green or (isOwned and theme.cyan or theme.panelLight),
+				action = action,
+				actionColor = actionColor,
+				actionTextColor = Color3.fromRGB(15, 20, 25),
+				onAction = function()
+					if isOwned then
+						Net.fire("EquipCosmetic", cosmetic.id)
+					elseif cosmetic.source == "shop" then
+						Net.fire("BuyCosmetic", cosmetic.id)
+					end
+					task.delay(0.35, function()
+						if currentTab == "looks" then
+							Panels.open("looks")
+						end
+					end)
+				end,
+			})
+		end
+	end
+end
+
 local RENDERERS = {
+	contract = renderContract,
+	descent = renderDescent,
+	looks = renderLooks,
 	shop = renderShop,
 	tasks = renderTasks,
 	codex = renderCodex,
