@@ -100,7 +100,7 @@ Erste Zeile ist die einzige, die viele lesen:
 
 ```
 Grab dich tiefer, als du zurückkommst. Jeder Meter multipliziert deine Beute —
-und macht dich zum Ziel. 30 Erze, 9 Schichten, 1 zu 540.000.
+und macht dich zum Ziel. 32 Erze, 9 Schichten, 1 zu 540.000.
 
 ⛏️ 8 Seltenheitsstufen mit Mutationen bis ×15
 ⚡ RIFT SURGE alle 12 Minuten — 5× Luck für alle

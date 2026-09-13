@@ -19,7 +19,7 @@ sechs Bausteine immer wieder auf:
 | **RNG mit Multiplikator-Stapel** | erzeugt teilbare Extremwerte | 8 Stufen × 5 Mutationen |
 | **Soziale Reibung** | erzeugt Geschichten, nicht nur Punkte | Gier-Markierung + Snatch |
 | **Kurzer Entscheidungszyklus** | passt in eine Bushaltestelle | 60–90 s pro Tauchgang |
-| **Sammlung** | gibt Identität über den Grind hinaus | Codex (30 Erze) + Drohnen |
+| **Sammlung** | gibt Identität über den Grind hinaus | Codex (32 Erze) + Drohnen |
 | **Prestige-Reset** | verlängert die Kurve um Größenordnungen | Rebirth mit Schicht-Gating |
 
 Was diese Spiele **nicht** teilen: Grafikqualität, Story, Steuerungstiefe. Das
