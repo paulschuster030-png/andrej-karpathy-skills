@@ -28,10 +28,10 @@ local Audio = {}
 
 Audio.Custom = {
 	-- Paste the asset id (just the number) after uploading audio/*.ogg.
-	ambienceSurface = "", -- audio/ambience-surface.ogg
-	ambienceShallow = "", -- audio/ambience-shallow.ogg
-	ambienceDeep = "", -- audio/ambience-deep.ogg
-	ambienceAbyss = "", -- audio/ambience-abyss.ogg
+	ambienceSurface = "105633144930885", -- audio/ambience-surface.ogg
+	ambienceShallow = "99103211447000", -- audio/ambience-shallow.ogg
+	ambienceDeep = "80872828094349", -- audio/ambience-deep.ogg
+	ambienceAbyss = "78013053184850", -- audio/ambience-abyss.ogg
 
 	-- Positional. These attach to the objects themselves, so you hear a gas
 	-- pocket before you can see it and the volume tells you how close it is.
@@ -41,7 +41,7 @@ Audio.Custom = {
 
 	-- One-shots.
 	pickHit = "", -- audio/pick-hit.ogg
-	rareReveal = "", -- audio/rare-reveal.ogg
+	rareReveal = "86205815247689", -- audio/rare-reveal.ogg
 
 	music = "", -- optional loop; left empty on purpose, see below
 }
