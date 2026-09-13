@@ -21,8 +21,22 @@ local Data = require(script.Parent.Data)
 
 local Leaderboards = {}
 
-local depthStore = Config.UseDataStores and DataStoreService:GetOrderedDataStore("DeepRushDepth_v1") or nil
-local cashStore = Config.UseDataStores and DataStoreService:GetOrderedDataStore("DeepRushBanked_v1") or nil
+-- Same story as Data: GetOrderedDataStore throws in Studio without API
+-- access, at module scope, and takes the whole service down with it. Without
+-- them the global boards are empty; the live server board does not use them
+-- at all and works either way.
+local function openBoard(name: string)
+	if not Config.UseDataStores then
+		return nil
+	end
+	local ok, opened = pcall(function()
+		return DataStoreService:GetOrderedDataStore(name)
+	end)
+	return ok and opened or nil
+end
+
+local depthStore = openBoard("DeepRushDepth_v1")
+local cashStore = openBoard("DeepRushBanked_v1")
 
 local cache = { depth = {}, banked = {}, fetchedAt = 0 }
 local lastWrite: { [number]: { depth: number, banked: number } } = {}
@@ -82,7 +96,9 @@ function Leaderboards.submit(player: Player, payout: number)
 	live[player.UserId] = (live[player.UserId] or 0) + math.max(payout or 0, 0)
 
 	local profile = Data.get(player)
-	if not profile or not Config.UseDataStores then
+	-- Guarded on the stores themselves, not on the config flag: the flag can
+	-- be true while the stores never opened.
+	if not profile or not depthStore or not cashStore then
 		return
 	end
 

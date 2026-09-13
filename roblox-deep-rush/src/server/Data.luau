@@ -33,7 +33,33 @@ Data.unloading = Signal.new() -- fired (player, profile) before the final save
 local LOCK_STALE_SECONDS = 100
 local LOAD_ATTEMPTS = 5
 
-local store = Config.UseDataStores and DataStoreService:GetDataStore("DeepRushProfiles_v1") or nil
+--- Opening a DataStore is not a safe call.
+---
+--- In Studio, on a place that has never been published or with "Enable Studio
+--- Access to API Services" off, GetDataStore throws. This runs at module
+--- scope, so that throw meant Data failed to load — and since almost every
+--- other service requires Data, all twenty-three of them went with it. The
+--- game did not start, and the reason was a save system nobody needs while
+--- testing locally.
+---
+--- So it degrades instead. No store means profiles live in memory for this
+--- session: everything is playable, nothing persists, and the server says so
+--- once rather than failing.
+local store = nil
+if Config.UseDataStores then
+	local ok, opened = pcall(function()
+		return DataStoreService:GetDataStore("DeepRushProfiles_v1")
+	end)
+	if ok then
+		store = opened
+	else
+		warn(
+			"[DEEP RUSH] No DataStore access, so progress will not be saved this session.\n"
+				.. "  This is normal in Studio before the place is published. To save while testing:\n"
+				.. "  Game Settings > Security > Enable Studio Access to API Services."
+		)
+	end
+end
 local profiles: { [Player]: any } = {}
 local sessions: { [Player]: any } = {}
 local pendingPatches: { [Player]: any } = {}
