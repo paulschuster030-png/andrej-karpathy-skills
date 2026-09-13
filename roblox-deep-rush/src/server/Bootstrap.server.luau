@@ -33,6 +33,19 @@ local SERVICES = {
 	"AntiCheat",
 }
 
+local Players = game:GetService("Players")
+
+-- Nobody arrives before there is somewhere to arrive.
+--
+-- This world is generated at runtime, and Data.start touches DataStores,
+-- which yields. In Studio the local player joins at the same instant the
+-- server boots, so without this the character spawns into an empty Workspace
+-- and falls — and since the shaft needs FallenPartsDestroyHeight down at
+-- -9,400, it falls for about ten seconds before anything resets it. The
+-- symptom is a player in the sky with nothing around them, which is
+-- indistinguishable from a broken download.
+Players.CharacterAutoLoads = false
+
 local started = os.clock()
 
 for _, name in ipairs(SERVICES) do
@@ -53,6 +66,14 @@ for _, name in ipairs(SERVICES) do
 		if not startOk then
 			warn(`DeepRush: service "{name}" failed to start: {err}`)
 		end
+	end
+end
+
+-- The world exists now, so people may enter it.
+Players.CharacterAutoLoads = true
+for _, player in ipairs(Players:GetPlayers()) do
+	if not player.Character then
+		player:LoadCharacter()
 	end
 end
 

@@ -115,6 +115,56 @@ function service(className, depth, props = "", children = "") {
     .join("\n");
 }
 
+// Where the runtime spawn pad ends up: SHAFT_RADIUS + 18 in
+// src/server/World.luau. The placeholder stands in the same place so the
+// swap is invisible.
+const SPAWN_Z = 62 + 18;
+
+// Static geometry, and the only geometry in the file.
+//
+// Everything else in this world is generated at runtime, which made opening
+// the place in Studio look like the download was broken: an empty Workspace
+// renders as nothing but sky, and a character spawning before the server
+// finished building fell through where the floor was going to be.
+//
+// So the file ships with a floor and a spawn. World.buildSurface deletes the
+// whole folder the moment the real surface exists — it sits over the shaft
+// mouth, so leaving it would seal the hole you are supposed to jump into.
+const placeholder = [
+  `${indent(2)}<Item class="Folder" referent="${nextRef()}">`,
+  `${indent(3)}<Properties>`,
+  `${indent(4)}<string name="Name">StudioPlaceholder</string>`,
+  `${indent(3)}</Properties>`,
+  `${indent(3)}<Item class="Part" referent="${nextRef()}">`,
+  `${indent(4)}<Properties>`,
+  `${indent(5)}<string name="Name">ArrivalPad</string>`,
+  `${indent(5)}<bool name="Anchored">true</bool>`,
+  `${indent(5)}<Vector3 name="size"><X>160</X><Y>4</Y><Z>160</Z></Vector3>`,
+  `${indent(5)}<CoordinateFrame name="CFrame"><X>0</X><Y>-2</Y><Z>0</Z>` +
+    `<R00>1</R00><R01>0</R01><R02>0</R02>` +
+    `<R10>0</R10><R11>1</R11><R12>0</R12>` +
+    `<R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>`,
+  `${indent(5)}<Color3 name="Color3uint8">4285625462</Color3>`,
+  `${indent(5)}<token name="Material">1088</token>`,
+  `${indent(4)}</Properties>`,
+  `${indent(3)}</Item>`,
+  `${indent(3)}<Item class="SpawnLocation" referent="${nextRef()}">`,
+  `${indent(4)}<Properties>`,
+  `${indent(5)}<string name="Name">ArrivalSpawn</string>`,
+  `${indent(5)}<bool name="Anchored">true</bool>`,
+  `${indent(5)}<bool name="CanCollide">true</bool>`,
+  `${indent(5)}<Vector3 name="size"><X>12</X><Y>1</Y><Z>12</Z></Vector3>`,
+  `${indent(5)}<CoordinateFrame name="CFrame"><X>0</X><Y>0.5</Y><Z>${SPAWN_Z}</Z>` +
+    `<R00>1</R00><R01>0</R01><R02>0</R02>` +
+    `<R10>0</R10><R11>1</R11><R12>0</R12>` +
+    `<R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>`,
+  `${indent(5)}<Color3 name="Color3uint8">4288053503</Color3>`,
+  `${indent(5)}<token name="Material">288</token>`,
+  `${indent(4)}</Properties>`,
+  `${indent(3)}</Item>`,
+  `${indent(2)}</Item>`,
+].join("\n");
+
 const lightingProps = [
   `${indent(3)}<Color3 name="Ambient"><R>0</R><G>0</G><B>0</B></Color3>`,
   `${indent(3)}<Color3 name="OutdoorAmbient"><R>0.27</R><G>0.27</G><B>0.31</B></Color3>`,
@@ -137,7 +187,7 @@ const starterPlayerScripts = [
 
 const document = [
   '<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">',
-  service("Workspace", 1),
+  service("Workspace", 1, "", placeholder),
   service("Lighting", 1, lightingProps),
   service("ReplicatedStorage", 1, "", folderWrapping("Shared", join(ROOT, "src", "shared"), 2)),
   service("ServerScriptService", 1, "", folderWrapping("Server", join(ROOT, "src", "server"), 2)),

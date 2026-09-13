@@ -806,6 +806,15 @@ end
 -- Surface hub --------------------------------------------------------------
 
 local function buildSurface()
+	-- The place file ships with a floor and a spawn so that opening it in
+	-- Studio shows something and nobody can arrive before the world does.
+	-- Both sit over the shaft mouth, so they go the moment the real surface
+	-- is about to exist.
+	local placeholder = workspace:FindFirstChild("StudioPlaceholder")
+	if placeholder then
+		placeholder:Destroy()
+	end
+
 	local hub = Instance.new("Folder")
 	hub.Name = "Surface"
 
@@ -1209,6 +1218,27 @@ function World.start()
 		while true do
 			streamChunks()
 			task.wait(1)
+		end
+	end)
+
+	-- Nobody falls out of the world.
+	--
+	-- Raising FallenPartsDestroyHeight to clear the shaft had a cost nobody
+	-- would guess: a player who ends up under the geometry no longer dies and
+	-- respawns after a second, they fall for ten. That reads exactly like a
+	-- broken game. Bedrock is solid so this should never fire, but "should
+	-- never" is not a thing to leave to chunk streaming.
+	task.spawn(function()
+		local floorY = World.yForDepth(MAX_DEPTH_METERS) - 30
+		while true do
+			task.wait(1)
+			for _, player in ipairs(Players:GetPlayers()) do
+				local character = player.Character
+				local root = character and character:FindFirstChild("HumanoidRootPart")
+				if root and root.Position.Y < floorY and World.spawnPosition then
+					root.CFrame = CFrame.new(World.spawnPosition)
+				end
+			end
 		end
 	end)
 end

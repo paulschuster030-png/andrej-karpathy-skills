@@ -1,10 +1,36 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-  <Item class="Workspace" referent="RBX14">
+  <Item class="Workspace" referent="RBX17">
     <Properties>
       <string name="Name">Workspace</string>
     </Properties>
+    <Item class="Folder" referent="RBX0">
+      <Properties>
+        <string name="Name">StudioPlaceholder</string>
+      </Properties>
+      <Item class="Part" referent="RBX1">
+        <Properties>
+          <string name="Name">ArrivalPad</string>
+          <bool name="Anchored">true</bool>
+          <Vector3 name="size"><X>160</X><Y>4</Y><Z>160</Z></Vector3>
+          <CoordinateFrame name="CFrame"><X>0</X><Y>-2</Y><Z>0</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+          <Color3 name="Color3uint8">4285625462</Color3>
+          <token name="Material">1088</token>
+        </Properties>
+      </Item>
+      <Item class="SpawnLocation" referent="RBX2">
+        <Properties>
+          <string name="Name">ArrivalSpawn</string>
+          <bool name="Anchored">true</bool>
+          <bool name="CanCollide">true</bool>
+          <Vector3 name="size"><X>12</X><Y>1</Y><Z>12</Z></Vector3>
+          <CoordinateFrame name="CFrame"><X>0</X><Y>0.5</Y><Z>80</Z><R00>1</R00><R01>0</R01><R02>0</R02><R10>0</R10><R11>1</R11><R12>0</R12><R20>0</R20><R21>0</R21><R22>1</R22></CoordinateFrame>
+          <Color3 name="Color3uint8">4288053503</Color3>
+          <token name="Material">288</token>
+        </Properties>
+      </Item>
+    </Item>
   </Item>
-  <Item class="Lighting" referent="RBX15">
+  <Item class="Lighting" referent="RBX18">
     <Properties>
       <string name="Name">Lighting</string>
       <Color3 name="Ambient"><R>0</R><G>0</G><B>0</B></Color3>
@@ -17,19 +43,19 @@
       <Color3 name="FogColor"><R>0.06</R><G>0.06</G><B>0.08</B></Color3>
     </Properties>
   </Item>
-  <Item class="ReplicatedStorage" referent="RBX39">
+  <Item class="ReplicatedStorage" referent="RBX42">
     <Properties>
       <string name="Name">ReplicatedStorage</string>
     </Properties>
-    <Item class="Folder" referent="RBX16">
+    <Item class="Folder" referent="RBX19">
       <Properties>
         <string name="Name">Shared</string>
       </Properties>
-      <Item class="Folder" referent="RBX17">
+      <Item class="Folder" referent="RBX20">
         <Properties>
           <string name="Name">Config</string>
         </Properties>
-        <Item class="ModuleScript" referent="RBX18">
+        <Item class="ModuleScript" referent="RBX21">
           <Properties>
             <string name="Name">Audio</string>
             <ProtectedString name="Source"><![CDATA[
@@ -166,7 +192,7 @@ return Audio
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX19">
+        <Item class="ModuleScript" referent="RBX22">
           <Properties>
             <string name="Name">Contracts</string>
             <ProtectedString name="Source"><![CDATA[
@@ -294,7 +320,7 @@ return Contracts
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX20">
+        <Item class="ModuleScript" referent="RBX23">
           <Properties>
             <string name="Name">Cosmetics</string>
             <ProtectedString name="Source"><![CDATA[
@@ -383,7 +409,7 @@ return Cosmetics
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX21">
+        <Item class="ModuleScript" referent="RBX24">
           <Properties>
             <string name="Name">Crew</string>
             <ProtectedString name="Source"><![CDATA[
@@ -437,7 +463,7 @@ return {
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX22">
+        <Item class="ModuleScript" referent="RBX25">
           <Properties>
             <string name="Name">Drones</string>
             <ProtectedString name="Source"><![CDATA[
@@ -572,7 +598,7 @@ return Drones
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX23">
+        <Item class="ModuleScript" referent="RBX26">
           <Properties>
             <string name="Name">Game</string>
             <ProtectedString name="Source"><![CDATA[
@@ -665,7 +691,7 @@ return {
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX24">
+        <Item class="ModuleScript" referent="RBX27">
           <Properties>
             <string name="Name">Hazards</string>
             <ProtectedString name="Source"><![CDATA[
@@ -843,7 +869,7 @@ return Hazards
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX25">
+        <Item class="ModuleScript" referent="RBX28">
           <Properties>
             <string name="Name">Layers</string>
             <ProtectedString name="Source"><![CDATA[
@@ -1038,7 +1064,7 @@ return Layers
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX26">
+        <Item class="ModuleScript" referent="RBX29">
           <Properties>
             <string name="Name">Mutations</string>
             <ProtectedString name="Source"><![CDATA[
@@ -1099,7 +1125,7 @@ return Mutations
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX27">
+        <Item class="ModuleScript" referent="RBX30">
           <Properties>
             <string name="Name">Ores</string>
             <ProtectedString name="Source"><![CDATA[
@@ -1298,7 +1324,7 @@ return Ores
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX28">
+        <Item class="ModuleScript" referent="RBX31">
           <Properties>
             <string name="Name">Products</string>
             <ProtectedString name="Source"><![CDATA[
@@ -1463,7 +1489,7 @@ return Products
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX29">
+        <Item class="ModuleScript" referent="RBX32">
           <Properties>
             <string name="Name">Quests</string>
             <ProtectedString name="Source"><![CDATA[
@@ -1541,7 +1567,7 @@ return Quests
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX30">
+        <Item class="ModuleScript" referent="RBX33">
           <Properties>
             <string name="Name">Ranks</string>
             <ProtectedString name="Source"><![CDATA[
@@ -1634,7 +1660,7 @@ return Ranks
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX31">
+        <Item class="ModuleScript" referent="RBX34">
           <Properties>
             <string name="Name">Rebirth</string>
             <ProtectedString name="Source"><![CDATA[
@@ -1706,7 +1732,7 @@ return Rebirth
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX32">
+        <Item class="ModuleScript" referent="RBX35">
           <Properties>
             <string name="Name">Season</string>
             <ProtectedString name="Source"><![CDATA[
@@ -1837,7 +1863,7 @@ return Season
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX33">
+        <Item class="ModuleScript" referent="RBX36">
           <Properties>
             <string name="Name">Tools</string>
             <ProtectedString name="Source"><![CDATA[
@@ -1922,7 +1948,7 @@ return Tools
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX34">
+        <Item class="ModuleScript" referent="RBX37">
           <Properties>
             <string name="Name">Upgrades</string>
             <ProtectedString name="Source"><![CDATA[
@@ -2100,7 +2126,7 @@ return Upgrades
           </Properties>
         </Item>
       </Item>
-      <Item class="ModuleScript" referent="RBX35">
+      <Item class="ModuleScript" referent="RBX38">
         <Properties>
           <string name="Name">Format</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2188,7 +2214,7 @@ return Format
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX36">
+      <Item class="ModuleScript" referent="RBX39">
         <Properties>
           <string name="Name">Net</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2424,7 +2450,7 @@ return Net
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX37">
+      <Item class="ModuleScript" referent="RBX40">
         <Properties>
           <string name="Name">Rarity</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2617,7 +2643,7 @@ return Rarity
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX38">
+      <Item class="ModuleScript" referent="RBX41">
         <Properties>
           <string name="Name">Signal</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2675,15 +2701,15 @@ return Signal
       </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="RBX66">
+  <Item class="ServerScriptService" referent="RBX69">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Folder" referent="RBX40">
+    <Item class="Folder" referent="RBX43">
       <Properties>
         <string name="Name">Server</string>
       </Properties>
-      <Item class="ModuleScript" referent="RBX41">
+      <Item class="ModuleScript" referent="RBX44">
         <Properties>
           <string name="Name">Ads</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2847,7 +2873,7 @@ return Ads
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX42">
+      <Item class="ModuleScript" referent="RBX45">
         <Properties>
           <string name="Name">AntiCheat</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2943,7 +2969,7 @@ return AntiCheat
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="Script" referent="RBX43">
+      <Item class="Script" referent="RBX46">
         <Properties>
           <string name="Name">Bootstrap</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2982,6 +3008,19 @@ local SERVICES = {
 	"AntiCheat",
 }
 
+local Players = game:GetService("Players")
+
+-- Nobody arrives before there is somewhere to arrive.
+--
+-- This world is generated at runtime, and Data.start touches DataStores,
+-- which yields. In Studio the local player joins at the same instant the
+-- server boots, so without this the character spawns into an empty Workspace
+-- and falls — and since the shaft needs FallenPartsDestroyHeight down at
+-- -9,400, it falls for about ten seconds before anything resets it. The
+-- symptom is a player in the sky with nothing around them, which is
+-- indistinguishable from a broken download.
+Players.CharacterAutoLoads = false
+
 local started = os.clock()
 
 for _, name in ipairs(SERVICES) do
@@ -3002,6 +3041,14 @@ for _, name in ipairs(SERVICES) do
 		if not startOk then
 			warn(`DeepRush: service "{name}" failed to start: {err}`)
 		end
+	end
+end
+
+-- The world exists now, so people may enter it.
+Players.CharacterAutoLoads = true
+for _, player in ipairs(Players:GetPlayers()) do
+	if not player.Character then
+		player:LoadCharacter()
 	end
 end
 
@@ -3030,7 +3077,7 @@ end
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX44">
+      <Item class="ModuleScript" referent="RBX47">
         <Properties>
           <string name="Name">Cargo</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3181,7 +3228,7 @@ return Cargo
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX45">
+      <Item class="ModuleScript" referent="RBX48">
         <Properties>
           <string name="Name">Contracts</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3464,7 +3511,7 @@ return Contracts
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX46">
+      <Item class="ModuleScript" referent="RBX49">
         <Properties>
           <string name="Name">Cosmetics</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3787,7 +3834,7 @@ return Cosmetics
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX47">
+      <Item class="ModuleScript" referent="RBX50">
         <Properties>
           <string name="Name">Crew</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4179,7 +4226,7 @@ return Crew
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX48">
+      <Item class="ModuleScript" referent="RBX51">
         <Properties>
           <string name="Name">Data</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4579,7 +4626,7 @@ return Data
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX49">
+      <Item class="ModuleScript" referent="RBX52">
         <Properties>
           <string name="Name">Drones</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4753,7 +4800,7 @@ return Drones
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX50">
+      <Item class="ModuleScript" referent="RBX53">
         <Properties>
           <string name="Name">Economy</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5030,7 +5077,7 @@ return Economy
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX51">
+      <Item class="ModuleScript" referent="RBX54">
         <Properties>
           <string name="Name">Feedback</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5091,7 +5138,7 @@ return Feedback
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX52">
+      <Item class="ModuleScript" referent="RBX55">
         <Properties>
           <string name="Name">Hazards</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5316,7 +5363,7 @@ return Hazards
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX53">
+      <Item class="ModuleScript" referent="RBX56">
         <Properties>
           <string name="Name">Leaderboards</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5645,7 +5692,7 @@ return Leaderboards
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX54">
+      <Item class="ModuleScript" referent="RBX57">
         <Properties>
           <string name="Name">Mining</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6004,7 +6051,7 @@ return Mining
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX55">
+      <Item class="ModuleScript" referent="RBX58">
         <Properties>
           <string name="Name">Monetization</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6231,7 +6278,7 @@ return Monetization
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX56">
+      <Item class="ModuleScript" referent="RBX59">
         <Properties>
           <string name="Name">Quests</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6554,7 +6601,7 @@ return Quests
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX57">
+      <Item class="ModuleScript" referent="RBX60">
         <Properties>
           <string name="Name">Rebirth</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6648,7 +6695,7 @@ return Rebirth
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX58">
+      <Item class="ModuleScript" referent="RBX61">
         <Properties>
           <string name="Name">Rewards</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6756,7 +6803,7 @@ return Rewards
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX59">
+      <Item class="ModuleScript" referent="RBX62">
         <Properties>
           <string name="Name">Rift</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6923,7 +6970,7 @@ return Rift
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX60">
+      <Item class="ModuleScript" referent="RBX63">
         <Properties>
           <string name="Name">Season</string>
           <ProtectedString name="Source"><![CDATA[
@@ -7115,7 +7162,7 @@ return Season
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX61">
+      <Item class="ModuleScript" referent="RBX64">
         <Properties>
           <string name="Name">Steal</string>
           <ProtectedString name="Source"><![CDATA[
@@ -7503,7 +7550,7 @@ return Steal
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX62">
+      <Item class="ModuleScript" referent="RBX65">
         <Properties>
           <string name="Name">Surface</string>
           <ProtectedString name="Source"><![CDATA[
@@ -7796,7 +7843,7 @@ return Surface
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX63">
+      <Item class="ModuleScript" referent="RBX66">
         <Properties>
           <string name="Name">Tools</string>
           <ProtectedString name="Source"><![CDATA[
@@ -7862,6 +7909,15 @@ function Tools.equip(player: Player)
 	local existing = character:FindFirstChild("Pickaxe")
 	if existing then
 		existing:Destroy()
+	end
+
+	-- The motor too, and not only for tidiness. Re-equipping happens on every
+	-- Drill Power level now, so leaving them behind hangs a dead Motor6D on
+	-- the hand per upgrade — fifty of them by max level, each pointing at a
+	-- pickaxe that no longer exists.
+	local staleMotor = hand:FindFirstChild("PickaxeMotor")
+	if staleMotor then
+		staleMotor:Destroy()
 	end
 	motors[player] = nil
 
@@ -7965,7 +8021,7 @@ return Tools
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX64">
+      <Item class="ModuleScript" referent="RBX67">
         <Properties>
           <string name="Name">Upgrades</string>
           <ProtectedString name="Source"><![CDATA[
@@ -8047,7 +8103,7 @@ return Upgrades
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX65">
+      <Item class="ModuleScript" referent="RBX68">
         <Properties>
           <string name="Name">World</string>
           <ProtectedString name="Source"><![CDATA[
@@ -8859,6 +8915,15 @@ end
 -- Surface hub --------------------------------------------------------------
 
 local function buildSurface()
+	-- The place file ships with a floor and a spawn so that opening it in
+	-- Studio shows something and nobody can arrive before the world does.
+	-- Both sit over the shaft mouth, so they go the moment the real surface
+	-- is about to exist.
+	local placeholder = workspace:FindFirstChild("StudioPlaceholder")
+	if placeholder then
+		placeholder:Destroy()
+	end
+
 	local hub = Instance.new("Folder")
 	hub.Name = "Surface"
 
@@ -9264,6 +9329,27 @@ function World.start()
 			task.wait(1)
 		end
 	end)
+
+	-- Nobody falls out of the world.
+	--
+	-- Raising FallenPartsDestroyHeight to clear the shaft had a cost nobody
+	-- would guess: a player who ends up under the geometry no longer dies and
+	-- respawns after a second, they fall for ten. That reads exactly like a
+	-- broken game. Bedrock is solid so this should never fire, but "should
+	-- never" is not a thing to leave to chunk streaming.
+	task.spawn(function()
+		local floorY = World.yForDepth(MAX_DEPTH_METERS) - 30
+		while true do
+			task.wait(1)
+			for _, player in ipairs(Players:GetPlayers()) do
+				local character = player.Character
+				local root = character and character:FindFirstChild("HumanoidRootPart")
+				if root and root.Position.Y < floorY and World.spawnPosition then
+					root.CFrame = CFrame.new(World.spawnPosition)
+				end
+			end
+		end
+	end)
 end
 
 return World
@@ -9274,19 +9360,19 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="RBX67">
+  <Item class="StarterPlayer" referent="RBX70">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="RBX0">
+    <Item class="StarterPlayerScripts" referent="RBX3">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="Folder" referent="RBX1">
+      <Item class="Folder" referent="RBX4">
         <Properties>
           <string name="Name">Client</string>
         </Properties>
-        <Item class="ModuleScript" referent="RBX2">
+        <Item class="ModuleScript" referent="RBX5">
           <Properties>
             <string name="Name">Atmosphere</string>
             <ProtectedString name="Source"><![CDATA[
@@ -9517,7 +9603,7 @@ return Atmosphere
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="LocalScript" referent="RBX3">
+        <Item class="LocalScript" referent="RBX6">
           <Properties>
             <string name="Name">Client</string>
             <ProtectedString name="Source"><![CDATA[
@@ -9567,7 +9653,7 @@ end
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX4">
+        <Item class="ModuleScript" referent="RBX7">
           <Properties>
             <string name="Name">Crew</string>
             <ProtectedString name="Source"><![CDATA[
@@ -9942,7 +10028,7 @@ return Crew
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX5">
+        <Item class="ModuleScript" referent="RBX8">
           <Properties>
             <string name="Name">Effects</string>
             <ProtectedString name="Source"><![CDATA[
@@ -10271,7 +10357,7 @@ return Effects
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX6">
+        <Item class="ModuleScript" referent="RBX9">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[
@@ -10986,7 +11072,7 @@ return Hud
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX7">
+        <Item class="ModuleScript" referent="RBX10">
           <Properties>
             <string name="Name">Intro</string>
             <ProtectedString name="Source"><![CDATA[
@@ -11256,7 +11342,7 @@ return Intro
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX8">
+        <Item class="ModuleScript" referent="RBX11">
           <Properties>
             <string name="Name">Mining</string>
             <ProtectedString name="Source"><![CDATA[
@@ -11445,7 +11531,7 @@ return Mining
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX9">
+        <Item class="ModuleScript" referent="RBX12">
           <Properties>
             <string name="Name">Notify</string>
             <ProtectedString name="Source"><![CDATA[
@@ -11707,7 +11793,7 @@ return Notify
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX10">
+        <Item class="ModuleScript" referent="RBX13">
           <Properties>
             <string name="Name">Onboarding</string>
             <ProtectedString name="Source"><![CDATA[
@@ -11940,7 +12026,7 @@ return Onboarding
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX11">
+        <Item class="ModuleScript" referent="RBX14">
           <Properties>
             <string name="Name">Panels</string>
             <ProtectedString name="Source"><![CDATA[
@@ -12738,7 +12824,7 @@ return Panels
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX12">
+        <Item class="ModuleScript" referent="RBX15">
           <Properties>
             <string name="Name">State</string>
             <ProtectedString name="Source"><![CDATA[
@@ -12841,7 +12927,7 @@ return State
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX13">
+        <Item class="ModuleScript" referent="RBX16">
           <Properties>
             <string name="Name">Ui</string>
             <ProtectedString name="Source"><![CDATA[
