@@ -161,10 +161,11 @@ print(string.format("[DEEP RUSH] %d services up in %.2fs", #SERVICES, os.clock()
 -- Until then the game runs on the built-in client sounds, which work but are
 -- much thinner. This says so once, plainly, instead of leaving you to wonder
 -- why it sounds flat.
-local missingAudio = require(game:GetService("ReplicatedStorage").Shared.Config.Audio).missing()
+local AudioConfig = require(game:GetService("ReplicatedStorage").Shared.Config.Audio)
+local missingAudio = AudioConfig.missing()
 if #missingAudio > 0 then
 	local lines = {
-		`[DEEP RUSH] audio: {#missingAudio} of 9 sounds are still on the built-in fallback.`,
+		`[DEEP RUSH] audio: {#missingAudio} of {#AudioConfig.Uploads} sounds are still on the built-in fallback.`,
 		"  Upload these in Studio (Home > Asset Manager > Audio > right-click > Add Audio),",
 		"  then paste each id into Shared/Config/Audio -> Audio.Custom:",
 	}

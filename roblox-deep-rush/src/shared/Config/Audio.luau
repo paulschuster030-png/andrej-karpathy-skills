@@ -17,9 +17,9 @@
 	broken audio that looks configured. The built-ins are worse-sounding and
 	honest.
 
-	**The files are already made.** `audio/` in this repo contains nine
-	purpose-built pieces — four ambience loops, three positional loops and two
-	one-shots — every loop seamless by construction (see tools/make-audio.py).
+	**The files are already made.** `audio/` in this repo contains ten
+	purpose-built pieces — four ambience loops, three positional loops, two
+	one-shots and the score — every loop seamless by construction (see tools/make-audio.py).
 	Upload them once, paste the ids below, done. `audio/README.md` walks
 	through it.
 ]]
@@ -43,7 +43,7 @@ Audio.Custom = {
 	pickHit = "", -- audio/pick-hit.ogg
 	rareReveal = "86205815247689", -- audio/rare-reveal.ogg
 
-	music = "", -- optional loop; left empty on purpose, see below
+	music = "", -- audio/music.ogg
 }
 
 --- The nine files in `audio/`, in upload order. This is what the boot notice
@@ -59,6 +59,7 @@ Audio.Uploads = {
 	{ slot = "liftMotor", file = "audio/lift-motor.ogg" },
 	{ slot = "pickHit", file = "audio/pick-hit.ogg" },
 	{ slot = "rareReveal", file = "audio/rare-reveal.ogg" },
+	{ slot = "music", file = "audio/music.ogg" },
 }
 
 --- Slots still waiting on an asset id, in upload order.
@@ -115,11 +116,21 @@ Audio.Ambience = {
 	{ id = "abyss", custom = "ambienceAbyss", from = 1300, to = 3000, volume = 0.55, pitch = 0.2 },
 }
 
---- Music is deliberately off by default. A loop a player hears for the
---- fortieth time is worse than no loop, and this game already has a rhythm
---- (swing, reveal, rift siren). Add one only if you have a track that earns
---- its place.
-Audio.MusicVolume = 0.18
+--- The score.
+---
+--- There was no music here for a long time, on the grounds that a loop heard
+--- for the fortieth time is worse than none. That was half right: the answer
+--- is not "no music", it is "no melody and no hurry". audio/music.ogg is
+--- three and a half minutes of open fifths with long gaps, in the same key as
+--- everything else, and it gets out of the way on its own:
+---
+---   · it fades as you descend, so the abyss keeps its silence
+---   · it swells for a rift and a rank up, which are the moments worth scoring
+---   · a player can switch it off, and the game remembers
+Audio.MusicVolume = 0.16
+Audio.MusicDeepFade = 0.35 -- share of the volume left at maximum depth
+Audio.MusicEventVolume = 0.30 -- during a rift or a rank up
+Audio.MusicEventSeconds = 12
 
 Audio.MaxDepthForRumble = 3000
 

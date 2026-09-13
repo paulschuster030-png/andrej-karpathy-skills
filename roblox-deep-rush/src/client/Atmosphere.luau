@@ -18,6 +18,7 @@
 ]]
 
 local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 
@@ -28,6 +29,8 @@ local Net = require(Shared.Net)
 
 local State = require(script.Parent.State)
 
+local player = Players.LocalPlayer
+
 local Atmosphere = {}
 
 local layers: { [string]: Sound } = {}
@@ -36,6 +39,13 @@ local colorCorrection: ColorCorrectionEffect
 local bloom: BloomEffect
 local depthOfField: DepthOfFieldEffect
 local sunRays: SunRaysEffect
+local music: Sound?
+local musicEventUntil = 0
+
+--- Per-player, remembered across sessions on this device. Somebody who turns
+--- the music off has said something about how they want to play; asking them
+--- again every time they rejoin is not a feature.
+local musicOn = true
 local haze
 
 local tensionTarget = 0
@@ -90,16 +100,16 @@ local function buildAudio()
 	tension.Parent = SoundService
 	tension:Play()
 
-	local music = AudioConfig.source("music")
-	if music ~= "" then
-		local track = Instance.new("Sound")
-		track.Name = "Music"
-		track.SoundId = music
-		track.Looped = true
-		track.Volume = AudioConfig.MusicVolume
-		track.SoundGroup = group
-		track.Parent = SoundService
-		track:Play()
+	local musicId = AudioConfig.source("music")
+	if musicId ~= "" then
+		music = Instance.new("Sound")
+		music.Name = "Music"
+		music.SoundId = musicId
+		music.Looped = true
+		music.Volume = 0
+		music.SoundGroup = group
+		music.Parent = SoundService
+		music:Play()
 	end
 end
 
@@ -193,6 +203,8 @@ local function step(delta: number)
 	depthOfField.InFocusRadius = lerp(depthOfField.InFocusRadius, 42 - descent * 20, blend)
 	sunRays.Intensity = lerp(sunRays.Intensity, math.max(0, 0.16 * (1 - depth / 220)), blend)
 
+	stepMusic(depth, blend)
+
 	-- Ambience.
 	for _, band in ipairs(AudioConfig.Ambience) do
 		local sound = layers[band.id]
@@ -210,7 +222,60 @@ local function step(delta: number)
 	tension.PlaybackSpeed = lerp(tension.PlaybackSpeed, 0.35 + tensionTarget * 0.5, blend)
 end
 
+--- The score follows the descent down and the event up.
+---
+--- Down: the abyss earns its silence, and a track playing over it would be
+--- the game telling you how to feel about a place that speaks for itself.
+--- Up: a rift and a rank up are the two moments worth scoring, and music
+--- that only arrives for them is noticed.
+local function stepMusic(depth: number, blend: number)
+	if not music then
+		return
+	end
+
+	local target = 0
+	if musicOn then
+		local descent = math.clamp(depth / 2200, 0, 1)
+		target = AudioConfig.MusicVolume * (1 - descent * (1 - AudioConfig.MusicDeepFade))
+		if os.clock() < musicEventUntil then
+			target = AudioConfig.MusicEventVolume
+		end
+	end
+
+	-- Slower than the rest of the mix on purpose: a volume that snaps is a
+	-- volume you hear moving.
+	music.Volume = lerp(music.Volume, target, blend * 0.25)
+end
+
+--- Switch the score off or on. Returns the new state, for the button.
+function Atmosphere.toggleMusic(): boolean
+	musicOn = not musicOn
+	pcall(function()
+		player:SetAttribute("DeepRushMusic", musicOn)
+	end)
+	return musicOn
+end
+
+function Atmosphere.musicOn(): boolean
+	return musicOn
+end
+
+--- Whether there is a track at all. With no asset id there is nothing to
+--- switch, and a button that does nothing is worse than no button.
+function Atmosphere.hasMusic(): boolean
+	return music ~= nil
+end
+
+function Atmosphere.scoreEvent()
+	musicEventUntil = os.clock() + AudioConfig.MusicEventSeconds
+end
+
 function Atmosphere.start()
+	local remembered = player:GetAttribute("DeepRushMusic")
+	if typeof(remembered) == "boolean" then
+		musicOn = remembered
+	end
+
 	buildAudio()
 	buildLighting()
 
@@ -218,6 +283,16 @@ function Atmosphere.start()
 		if kind == "hazardWarn" or kind == "hazardHit" or kind == "hazardTick" or kind == "suffocating" then
 			hazardUntil = os.clock() + 3
 		end
+	end)
+
+	Net.listen("Reveal", function(payload)
+		if typeof(payload) == "table" and (payload.kind == "rank" or payload.tier) then
+			Atmosphere.scoreEvent()
+		end
+	end)
+
+	Net.listen("Rift", function()
+		Atmosphere.scoreEvent()
 	end)
 
 	RunService.Heartbeat:Connect(step)

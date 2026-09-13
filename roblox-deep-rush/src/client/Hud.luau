@@ -27,6 +27,7 @@ local ToolConfig = require(Shared.Config.Tools)
 local UpgradeConfig = require(Shared.Config.Upgrades)
 local RebirthConfig = require(Shared.Config.Rebirth)
 
+local Atmosphere = require(script.Parent.Atmosphere)
 local Mining = require(script.Parent.Mining)
 local Panels = require(script.Parent.Panels)
 local State = require(script.Parent.State)
@@ -287,7 +288,7 @@ end
 local function buildMenu(parent)
 	local holder = Ui.frame({
 		parent = parent,
-		size = UDim2.fromOffset(124, 236),
+		size = UDim2.fromOffset(186, 236),
 		position = UDim2.new(0, 16, 1, -18),
 		anchor = Vector2.new(0, 1),
 		transparency = 1,
@@ -311,6 +312,7 @@ local function buildMenu(parent)
 		{ icon = "🛠️", tab = "drones", color = theme.panelLight },
 		{ icon = "🏆", tab = "boards", color = theme.panelLight },
 		{ icon = "🔥", tab = "rebirth", color = theme.accent },
+		{ icon = "🔊", tab = "music", color = theme.panelLight },
 	}
 
 	for index, entry in ipairs(entries) do
@@ -320,10 +322,21 @@ local function buildMenu(parent)
 			text = entry.icon,
 			color = entry.color,
 			onClick = function()
-				Panels.toggle(entry.tab)
+				if entry.tab == "music" then
+					button.Text = Atmosphere.toggleMusic() and "🔊" or "🔇"
+				else
+					Panels.toggle(entry.tab)
+				end
 			end,
 		})
 		button.LayoutOrder = index
+
+		-- No track configured means nothing to switch, and a button that does
+		-- nothing is worse than no button.
+		if entry.tab == "music" then
+			button.Visible = Atmosphere.hasMusic()
+			button.Text = Atmosphere.musicOn() and "🔊" or "🔇"
+		end
 
 		-- The tasks button carries the "you have something to claim" dot,
 		-- which is most of why anyone opens the panel at all.

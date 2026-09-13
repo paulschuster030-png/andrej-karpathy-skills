@@ -82,9 +82,9 @@
 	broken audio that looks configured. The built-ins are worse-sounding and
 	honest.
 
-	**The files are already made.** `audio/` in this repo contains nine
-	purpose-built pieces — four ambience loops, three positional loops and two
-	one-shots — every loop seamless by construction (see tools/make-audio.py).
+	**The files are already made.** `audio/` in this repo contains ten
+	purpose-built pieces — four ambience loops, three positional loops, two
+	one-shots and the score — every loop seamless by construction (see tools/make-audio.py).
 	Upload them once, paste the ids below, done. `audio/README.md` walks
 	through it.
 ]]
@@ -108,7 +108,7 @@ Audio.Custom = {
 	pickHit = "", -- audio/pick-hit.ogg
 	rareReveal = "86205815247689", -- audio/rare-reveal.ogg
 
-	music = "", -- optional loop; left empty on purpose, see below
+	music = "", -- audio/music.ogg
 }
 
 --- The nine files in `audio/`, in upload order. This is what the boot notice
@@ -124,6 +124,7 @@ Audio.Uploads = {
 	{ slot = "liftMotor", file = "audio/lift-motor.ogg" },
 	{ slot = "pickHit", file = "audio/pick-hit.ogg" },
 	{ slot = "rareReveal", file = "audio/rare-reveal.ogg" },
+	{ slot = "music", file = "audio/music.ogg" },
 }
 
 --- Slots still waiting on an asset id, in upload order.
@@ -180,11 +181,21 @@ Audio.Ambience = {
 	{ id = "abyss", custom = "ambienceAbyss", from = 1300, to = 3000, volume = 0.55, pitch = 0.2 },
 }
 
---- Music is deliberately off by default. A loop a player hears for the
---- fortieth time is worse than no loop, and this game already has a rhythm
---- (swing, reveal, rift siren). Add one only if you have a track that earns
---- its place.
-Audio.MusicVolume = 0.18
+--- The score.
+---
+--- There was no music here for a long time, on the grounds that a loop heard
+--- for the fortieth time is worse than none. That was half right: the answer
+--- is not "no music", it is "no melody and no hurry". audio/music.ogg is
+--- three and a half minutes of open fifths with long gaps, in the same key as
+--- everything else, and it gets out of the way on its own:
+---
+---   · it fades as you descend, so the abyss keeps its silence
+---   · it swells for a rift and a rank up, which are the moments worth scoring
+---   · a player can switch it off, and the game remembers
+Audio.MusicVolume = 0.16
+Audio.MusicDeepFade = 0.35 -- share of the volume left at maximum depth
+Audio.MusicEventVolume = 0.30 -- during a rift or a rank up
+Audio.MusicEventSeconds = 12
 
 Audio.MaxDepthForRumble = 3000
 
@@ -3156,10 +3167,11 @@ print(string.format("[DEEP RUSH] %d services up in %.2fs", #SERVICES, os.clock()
 -- Until then the game runs on the built-in client sounds, which work but are
 -- much thinner. This says so once, plainly, instead of leaving you to wonder
 -- why it sounds flat.
-local missingAudio = require(game:GetService("ReplicatedStorage").Shared.Config.Audio).missing()
+local AudioConfig = require(game:GetService("ReplicatedStorage").Shared.Config.Audio)
+local missingAudio = AudioConfig.missing()
 if #missingAudio > 0 then
 	local lines = {
-		`[DEEP RUSH] audio: {#missingAudio} of 9 sounds are still on the built-in fallback.`,
+		`[DEEP RUSH] audio: {#missingAudio} of {#AudioConfig.Uploads} sounds are still on the built-in fallback.`,
 		"  Upload these in Studio (Home > Asset Manager > Audio > right-click > Add Audio),",
 		"  then paste each id into Shared/Config/Audio -> Audio.Custom:",
 	}
@@ -9739,6 +9751,7 @@ return World
 ]]
 
 local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 
@@ -9749,6 +9762,8 @@ local Net = require(Shared.Net)
 
 local State = require(script.Parent.State)
 
+local player = Players.LocalPlayer
+
 local Atmosphere = {}
 
 local layers: { [string]: Sound } = {}
@@ -9757,6 +9772,13 @@ local colorCorrection: ColorCorrectionEffect
 local bloom: BloomEffect
 local depthOfField: DepthOfFieldEffect
 local sunRays: SunRaysEffect
+local music: Sound?
+local musicEventUntil = 0
+
+--- Per-player, remembered across sessions on this device. Somebody who turns
+--- the music off has said something about how they want to play; asking them
+--- again every time they rejoin is not a feature.
+local musicOn = true
 local haze
 
 local tensionTarget = 0
@@ -9811,16 +9833,16 @@ local function buildAudio()
 	tension.Parent = SoundService
 	tension:Play()
 
-	local music = AudioConfig.source("music")
-	if music ~= "" then
-		local track = Instance.new("Sound")
-		track.Name = "Music"
-		track.SoundId = music
-		track.Looped = true
-		track.Volume = AudioConfig.MusicVolume
-		track.SoundGroup = group
-		track.Parent = SoundService
-		track:Play()
+	local musicId = AudioConfig.source("music")
+	if musicId ~= "" then
+		music = Instance.new("Sound")
+		music.Name = "Music"
+		music.SoundId = musicId
+		music.Looped = true
+		music.Volume = 0
+		music.SoundGroup = group
+		music.Parent = SoundService
+		music:Play()
 	end
 end
 
@@ -9914,6 +9936,8 @@ local function step(delta: number)
 	depthOfField.InFocusRadius = lerp(depthOfField.InFocusRadius, 42 - descent * 20, blend)
 	sunRays.Intensity = lerp(sunRays.Intensity, math.max(0, 0.16 * (1 - depth / 220)), blend)
 
+	stepMusic(depth, blend)
+
 	-- Ambience.
 	for _, band in ipairs(AudioConfig.Ambience) do
 		local sound = layers[band.id]
@@ -9931,7 +9955,60 @@ local function step(delta: number)
 	tension.PlaybackSpeed = lerp(tension.PlaybackSpeed, 0.35 + tensionTarget * 0.5, blend)
 end
 
+--- The score follows the descent down and the event up.
+---
+--- Down: the abyss earns its silence, and a track playing over it would be
+--- the game telling you how to feel about a place that speaks for itself.
+--- Up: a rift and a rank up are the two moments worth scoring, and music
+--- that only arrives for them is noticed.
+local function stepMusic(depth: number, blend: number)
+	if not music then
+		return
+	end
+
+	local target = 0
+	if musicOn then
+		local descent = math.clamp(depth / 2200, 0, 1)
+		target = AudioConfig.MusicVolume * (1 - descent * (1 - AudioConfig.MusicDeepFade))
+		if os.clock() < musicEventUntil then
+			target = AudioConfig.MusicEventVolume
+		end
+	end
+
+	-- Slower than the rest of the mix on purpose: a volume that snaps is a
+	-- volume you hear moving.
+	music.Volume = lerp(music.Volume, target, blend * 0.25)
+end
+
+--- Switch the score off or on. Returns the new state, for the button.
+function Atmosphere.toggleMusic(): boolean
+	musicOn = not musicOn
+	pcall(function()
+		player:SetAttribute("DeepRushMusic", musicOn)
+	end)
+	return musicOn
+end
+
+function Atmosphere.musicOn(): boolean
+	return musicOn
+end
+
+--- Whether there is a track at all. With no asset id there is nothing to
+--- switch, and a button that does nothing is worse than no button.
+function Atmosphere.hasMusic(): boolean
+	return music ~= nil
+end
+
+function Atmosphere.scoreEvent()
+	musicEventUntil = os.clock() + AudioConfig.MusicEventSeconds
+end
+
 function Atmosphere.start()
+	local remembered = player:GetAttribute("DeepRushMusic")
+	if typeof(remembered) == "boolean" then
+		musicOn = remembered
+	end
+
 	buildAudio()
 	buildLighting()
 
@@ -9939,6 +10016,16 @@ function Atmosphere.start()
 		if kind == "hazardWarn" or kind == "hazardHit" or kind == "hazardTick" or kind == "suffocating" then
 			hazardUntil = os.clock() + 3
 		end
+	end)
+
+	Net.listen("Reveal", function(payload)
+		if typeof(payload) == "table" and (payload.kind == "rank" or payload.tier) then
+			Atmosphere.scoreEvent()
+		end
+	end)
+
+	Net.listen("Rift", function()
+		Atmosphere.scoreEvent()
 	end)
 
 	RunService.Heartbeat:Connect(step)
@@ -10763,6 +10850,7 @@ local ToolConfig = require(Shared.Config.Tools)
 local UpgradeConfig = require(Shared.Config.Upgrades)
 local RebirthConfig = require(Shared.Config.Rebirth)
 
+local Atmosphere = require(script.Parent.Atmosphere)
 local Mining = require(script.Parent.Mining)
 local Panels = require(script.Parent.Panels)
 local State = require(script.Parent.State)
@@ -11023,7 +11111,7 @@ end
 local function buildMenu(parent)
 	local holder = Ui.frame({
 		parent = parent,
-		size = UDim2.fromOffset(124, 236),
+		size = UDim2.fromOffset(186, 236),
 		position = UDim2.new(0, 16, 1, -18),
 		anchor = Vector2.new(0, 1),
 		transparency = 1,
@@ -11047,6 +11135,7 @@ local function buildMenu(parent)
 		{ icon = "🛠️", tab = "drones", color = theme.panelLight },
 		{ icon = "🏆", tab = "boards", color = theme.panelLight },
 		{ icon = "🔥", tab = "rebirth", color = theme.accent },
+		{ icon = "🔊", tab = "music", color = theme.panelLight },
 	}
 
 	for index, entry in ipairs(entries) do
@@ -11056,10 +11145,21 @@ local function buildMenu(parent)
 			text = entry.icon,
 			color = entry.color,
 			onClick = function()
-				Panels.toggle(entry.tab)
+				if entry.tab == "music" then
+					button.Text = Atmosphere.toggleMusic() and "🔊" or "🔇"
+				else
+					Panels.toggle(entry.tab)
+				end
 			end,
 		})
 		button.LayoutOrder = index
+
+		-- No track configured means nothing to switch, and a button that does
+		-- nothing is worse than no button.
+		if entry.tab == "music" then
+			button.Visible = Atmosphere.hasMusic()
+			button.Text = Atmosphere.musicOn() and "🔊" or "🔇"
+		end
 
 		-- The tasks button carries the "you have something to claim" dot,
 		-- which is most of why anyone opens the panel at all.
