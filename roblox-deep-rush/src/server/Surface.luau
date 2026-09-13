@@ -16,6 +16,7 @@ local Players = game:GetService("Players")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config.Game)
 local Format = require(Shared.Format)
+local Ranks = require(Shared.Config.Ranks)
 local Net = require(Shared.Net)
 
 local Cargo = require(script.Parent.Cargo)
@@ -76,6 +77,7 @@ function Surface.deposit(player: Player)
 
 	Economy.addCash(player, payout)
 
+	local rankBefore = select(2, Ranks.at(profile.stats.bankedTotal))
 	profile.stats.bankedTotal += payout
 	profile.stats.bestSingleBank = math.max(profile.stats.bestSingleBank, payout)
 	session.cleanBanks = (session.cleanBanks or 0) + 1
@@ -110,6 +112,26 @@ function Surface.deposit(player: Player)
 			or `Banked. x{string.format("%.2f", multiplier)} multiplier.`,
 		kind = "cash",
 	})
+
+	-- Rank up. Lifetime banked is the only figure that never falls, so this
+	-- fires perhaps ten times in a player's whole history — which is exactly
+	-- why it gets the reveal card and a line to the whole server rather than
+	-- a toast nobody reads.
+	local rank, rankAfter = Ranks.at(profile.stats.bankedTotal)
+	if rankAfter > rankBefore then
+		Feedback.reveal(player, {
+			title = "RANK UP",
+			name = `{rank.icon} {string.upper(rank.name)}`,
+			body = `Lifetime banked {Format.short(profile.stats.bankedTotal)}. Everyone can see it over your head.`,
+			kind = "rank",
+		})
+		Feedback.announce(
+			`{rank.icon} RANK UP`,
+			`{player.DisplayName} reached {rank.name}.`,
+			rank.color
+		)
+		require(script.Parent.Cosmetics).apply(player)
+	end
 
 	local ok, err = pcall(function()
 		require(script.Parent.Leaderboards).submit(player, payout)

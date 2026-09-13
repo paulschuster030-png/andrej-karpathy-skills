@@ -22,6 +22,7 @@ local Ores = require(Shared.Config.Ores)
 local Mutations = require(Shared.Config.Mutations)
 local Net = require(Shared.Net)
 local RebirthConfig = require(Shared.Config.Rebirth)
+local Ranks = require(Shared.Config.Ranks)
 
 local Data = require(script.Parent.Data)
 local Economy = require(script.Parent.Economy)
@@ -156,11 +157,14 @@ local function applyNameplate(character: Model, profile, player: Player)
 	rank.Size = UDim2.new(1, 0, 0.3, 0)
 	rank.Position = UDim2.new(0, 0, 1, 0)
 	rank.BackgroundTransparency = 1
-	rank.Font = Enum.Font.GothamMedium
+	-- Rank leads the line, because it is the one thing on this plate that
+	-- means the same to everyone who reads it. Rebirth and title come after.
+	local rankConfig = Ranks.at(profile.stats.bankedTotal or 0)
+	rank.Font = Enum.Font.GothamBold
 	rank.Text = profile.rebirths > 0
-		and `R{profile.rebirths} · {RebirthConfig.title(profile.rebirths)}`
-		or RebirthConfig.title(0)
-	rank.TextColor3 = Color3.fromRGB(150, 150, 175)
+		and `{rankConfig.icon} {string.upper(rankConfig.name)} · R{profile.rebirths} · {RebirthConfig.title(profile.rebirths)}`
+		or `{rankConfig.icon} {string.upper(rankConfig.name)} · {RebirthConfig.title(0)}`
+	rank.TextColor3 = Ranks.color(rankConfig.id)
 	rank.TextScaled = true
 	rank.TextStrokeTransparency = 0.5
 	rank.Parent = plate

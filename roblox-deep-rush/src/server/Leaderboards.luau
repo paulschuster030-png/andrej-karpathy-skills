@@ -15,6 +15,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config.Game)
 local Format = require(Shared.Format)
 local Net = require(Shared.Net)
+local Ranks = require(Shared.Config.Ranks)
 
 local Data = require(script.Parent.Data)
 
@@ -25,6 +26,15 @@ local cashStore = Config.UseDataStores and DataStoreService:GetOrderedDataStore(
 
 local cache = { depth = {}, banked = {}, fetchedAt = 0 }
 local lastWrite: { [number]: { depth: number, banked: number } } = {}
+
+--- What each player has banked since joining THIS server.
+---
+--- The global boards are all-time and they move once a week; on a Tuesday
+--- evening nobody on the server is on them and nobody ever will be. This one
+--- resets when the server does, so the person standing next to you is on it,
+--- and beating them is a thing you can do in the next twenty minutes. That is
+--- the board players actually race.
+local live: { [number]: number } = {}
 
 local function nameFor(userId: number): string
 	local player = Players:GetPlayerByUserId(userId)
@@ -68,7 +78,9 @@ end
 
 --- Called after a successful deposit. Only writes when the player actually
 --- beat their own recorded value.
-function Leaderboards.submit(player: Player, _payout: number)
+function Leaderboards.submit(player: Player, payout: number)
+	live[player.UserId] = (live[player.UserId] or 0) + math.max(payout or 0, 0)
+
 	local profile = Data.get(player)
 	if not profile or not Config.UseDataStores then
 		return
@@ -96,11 +108,11 @@ function Leaderboards.submit(player: Player, _payout: number)
 	lastWrite[player.UserId] = previous
 end
 
-local function buildBoard()
+local function buildWall(name: string, cframe: CFrame, heading: string, headingColor: Color3)
 	local anchor = Instance.new("Part")
-	anchor.Name = "LeaderboardWall"
+	anchor.Name = name
 	anchor.Size = Vector3.new(40, 24, 2)
-	anchor.CFrame = CFrame.new(-52, 12, 76) * CFrame.Angles(0, math.rad(-35), 0)
+	anchor.CFrame = cframe
 	anchor.Anchored = true
 	anchor.Color = Color3.fromRGB(24, 24, 30)
 	anchor.Material = Enum.Material.Metal
@@ -121,8 +133,8 @@ local function buildBoard()
 	title.Size = UDim2.new(1, 0, 0, 70)
 	title.BackgroundTransparency = 1
 	title.Font = Enum.Font.GothamBlack
-	title.Text = "DEEPEST DIVES"
-	title.TextColor3 = Color3.fromRGB(120, 220, 255)
+	title.Text = heading
+	title.TextColor3 = headingColor
 	title.TextScaled = true
 	title.Parent = frame
 
@@ -138,6 +150,54 @@ local function buildBoard()
 	layout.Parent = list
 
 	return list
+end
+
+local function liveRows()
+	local rows = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		local profile = Data.get(player)
+		table.insert(rows, {
+			userId = player.UserId,
+			name = player.DisplayName,
+			value = live[player.UserId] or 0,
+			rank = 0,
+			badge = Ranks.label(profile and profile.stats.bankedTotal or 0),
+			rankId = Ranks.at(profile and profile.stats.bankedTotal or 0).id,
+		})
+	end
+	table.sort(rows, function(a, b)
+		if a.value == b.value then
+			return a.name < b.name
+		end
+		return a.value > b.value
+	end)
+	for index, row in ipairs(rows) do
+		row.rank = index
+	end
+	return rows
+end
+
+local function renderLive(list: Frame)
+	for _, child in ipairs(list:GetChildren()) do
+		if child:IsA("TextLabel") then
+			child:Destroy()
+		end
+	end
+
+	for index, row in ipairs(liveRows()) do
+		if index > 10 then
+			break
+		end
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, 0, 0, 34)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.GothamBold
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.Text = string.format("%d.  %s %s  —  %s", row.rank, row.badge, row.name, Format.short(row.value))
+		label.TextColor3 = index == 1 and Color3.fromRGB(255, 210, 90) or Ranks.color(row.rankId)
+		label.TextScaled = true
+		label.Parent = list
+	end
 end
 
 local function renderBoard(list: Frame)
@@ -188,6 +248,11 @@ local function setupLeaderstats(player: Player)
 	depth.Value = "0m"
 	depth.Parent = stats
 
+	local rank = Instance.new("StringValue")
+	rank.Name = "Rank"
+	rank.Value = Ranks.label(0)
+	rank.Parent = stats
+
 	stats.Parent = player
 
 	task.spawn(function()
@@ -197,6 +262,7 @@ local function setupLeaderstats(player: Player)
 			if profile then
 				cash.Value = Format.short(profile.cash)
 				depth.Value = Format.depth(session and session.depth or 0)
+				rank.Value = Ranks.label(profile.stats.bankedTotal or 0)
 			end
 			task.wait(3)
 		end
@@ -210,22 +276,44 @@ function Leaderboards.start()
 	Players.PlayerAdded:Connect(setupLeaderstats)
 
 	Net.handle("GetBoards", function()
-		return { depth = cache.depth, banked = cache.banked }
+		return { depth = cache.depth, banked = cache.banked, server = liveRows() }
 	end)
 
 	task.spawn(function()
 		-- The world builds first; give it a beat before parenting to it.
 		task.wait(2)
-		local list = buildBoard()
+		local global = buildWall(
+			"LeaderboardWall",
+			CFrame.new(-52, 12, 76) * CFrame.Angles(0, math.rad(-35), 0),
+			"DEEPEST DIVES",
+			Color3.fromRGB(120, 220, 255)
+		)
+		local server = buildWall(
+			"LiveBoardWall",
+			CFrame.new(52, 12, 76) * CFrame.Angles(0, math.rad(35), 0),
+			"THIS SERVER · TODAY",
+			Color3.fromRGB(255, 205, 90)
+		)
+
+		-- The live board refreshes far faster than the global one, and costs
+		-- nothing to: it reads players who are already in memory, while the
+		-- global board is a DataStore call on a budget.
+		local sinceGlobal = math.huge
 		while true do
-			refresh()
-			renderBoard(list)
-			task.wait(Config.LeaderboardRefresh)
+			if sinceGlobal >= Config.LeaderboardRefresh then
+				refresh()
+				renderBoard(global)
+				sinceGlobal = 0
+			end
+			renderLive(server)
+			task.wait(3)
+			sinceGlobal += 3
 		end
 	end)
 
 	Players.PlayerRemoving:Connect(function(player)
 		lastWrite[player.UserId] = nil
+		live[player.UserId] = nil
 	end)
 end
 
