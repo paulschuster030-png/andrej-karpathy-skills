@@ -30,6 +30,16 @@ end
 
 local net = game:GetService("ReplicatedStorage"):FindFirstChild("DeepRushNet")
 
+--- Call a RemoteFunction the way a client would.
+local function invoke(functionName: string, player, ...)
+	local functions = net and net:FindFirstChild("Functions")
+	local remote = functions and functions:FindFirstChild(functionName)
+	if not remote or not remote.OnServerInvoke then
+		error("no such remote function: " .. functionName, 0)
+	end
+	return remote.OnServerInvoke(player, ...)
+end
+
 local function fire(eventName: string, player, ...)
 	local events = net and net:FindFirstChild("Events")
 	local remote = events and events:FindFirstChild(eventName)
@@ -100,6 +110,43 @@ check("ore nodes are solid", (function()
 	return true
 end)())
 
+check("every node says what is in it", (function()
+	-- The whole point of pre-rolling the ore at spawn: a player can read the
+	-- wall. A node without an Ore attribute is a node the HUD, the highlight
+	-- and the reticle will all shrug at.
+	local seen = {}
+	for _, node in ipairs(nodes) do
+		local ore = node:GetAttribute("Ore")
+		if not ore or not MODULES.Ores.ById[ore] then
+			return false
+		end
+		seen[ore] = (seen[ore] or 0) + 1
+	end
+	local kinds = 0
+	for _ in pairs(seen) do
+		kinds += 1
+	end
+	print(string.format("       %d nodes across %d different ores", #nodes, kinds))
+	return kinds > 1
+end)())
+
+check("the rock is lit by what is in it", (function()
+	-- A gold seam and a coal lump must not glow the same colour, or none of
+	-- the above is visible from more than two studs away.
+	for _, node in ipairs(nodes) do
+		local light = node:FindFirstChild("Glow")
+		if not light then
+			return false
+		end
+		local vein = MODULES.Ores.appearance(node:GetAttribute("Ore")).color
+		local want = ENV.Color3.fromRGB(vein[1], vein[2], vein[3])
+		if math.abs(light.Color.R - want.R) > 0.02 or math.abs(light.Color.B - want.B) > 0.02 then
+			return false
+		end
+	end
+	return true
+end)())
+
 check("hazard zones are walk-into, not walk-around", (function()
 	local zones = partsWithAttribute("HazardZone")
 	for _, zone in ipairs(zones) do
@@ -140,6 +187,42 @@ check("the node comes back solid", (function()
 	-- NodeRespawn is 9 seconds; virtual time makes that instant.
 	advance(11)
 	return target.CanCollide == true and target.Transparency == 0
+end)())
+
+check("you never get less than the wall promised", (function()
+	-- Luck is a second roll that can only beat the node. If this ever fails,
+	-- the visible ore has become a lie and every route decision with it.
+	local session = SERVER.Data.session(alice)
+	local worst = nil
+	for _ = 1, 40 do
+		local node = nil
+		for _, candidate in ipairs(nodes) do
+			if SERVER.World.getNode(candidate:GetAttribute("NodeId")) then
+				node = candidate
+				break
+			end
+		end
+		if not node then
+			break
+		end
+
+		local promised = MODULES.Ores.TierIndex[MODULES.Ores.ById[node:GetAttribute("Ore")].tier]
+		moveTo(alice, node.Position)
+		local before = #session.cargo.items
+		fire("Mine", alice, node:GetAttribute("NodeId"))
+		advance(3)
+		local item = session.cargo.items[#session.cargo.items]
+		if #session.cargo.items > before and item then
+			local got = MODULES.Ores.TierIndex[item.tier]
+			if got < promised then
+				return false
+			end
+			worst = math.min(worst or 99, got - promised)
+		end
+		SERVER.Cargo.clear(alice)
+	end
+	print(string.format("       40 swings, smallest gap between promise and payout: %s", tostring(worst)))
+	return worst ~= nil
 end)())
 
 check("mining out of range does nothing", (function()
@@ -184,6 +267,72 @@ check("banking at the vault pays and empties the hold", (function()
 	local after = SERVER.Data.get(alice).cash
 	print(string.format("       banked %d items for %d cash", carried, after - before))
 	return after > before and #SERVER.Data.session(alice).cargo.items == 0
+end)())
+
+print("\n== rank ==")
+
+check("a new player starts on the bottom rung", (function()
+	local rank = MODULES.Ranks.at(0)
+	print(string.format("       0 banked = %s", rank.name))
+	return rank.id == "dust" and MODULES.Ranks.progress(0) < 1
+end)())
+
+check("the ladder only ever goes up", (function()
+	-- Each rung must cost more than the one below it, or a player can rank
+	-- down by earning, which is the worst bug a progression system can have.
+	local previous = -1
+	for _, rank in ipairs(MODULES.Ranks.List) do
+		if rank.at <= previous then
+			return false
+		end
+		previous = rank.at
+	end
+	return true
+end)())
+
+check("banking past a threshold promotes you", (function()
+	local profile = SERVER.Data.get(alice)
+	local wasRank = MODULES.Ranks.at(profile.stats.bankedTotal).id
+
+	-- Park the lifetime total just under Copper, then bank a real deposit
+	-- through the real remote and watch the rank move.
+	profile.stats.bankedTotal = MODULES.Ranks.List[2].at - 1
+	moveTo(alice, target.Position)
+	for _ = 1, 3 do
+		fire("Mine", alice, target:GetAttribute("NodeId"))
+		advance(3)
+		advance(11)
+	end
+	moveTo(alice, SERVER.World.vaultPosition)
+	fire("Bank", alice)
+	advance(1)
+
+	local nowRank = MODULES.Ranks.at(SERVER.Data.get(alice).stats.bankedTotal)
+	print(string.format("       %s -> %s", wasRank, nowRank.id))
+	return nowRank.id == "copper"
+end)())
+
+check("the rank is on the player list and over their head", (function()
+	local stats = alice:FindFirstChild("leaderstats")
+	local entry = stats and stats:FindFirstChild("Rank")
+	if not entry then
+		return false
+	end
+
+	local head = alice.Character and alice.Character:FindFirstChild("Head")
+	local plate = head and head:FindFirstChild("DeepRushPlate")
+	print(string.format("       player list says %s", tostring(entry.Value)))
+	return plate ~= nil and string.find(string.upper(tostring(entry.Value)), "COPPER") ~= nil
+end)())
+
+check("the live server board lists whoever is in the shaft", (function()
+	local boards = invoke("GetBoards", alice)
+	local rows = boards and boards.server or {}
+	if #rows == 0 then
+		return false
+	end
+	print(string.format("       %d on the board, top is %s with %d", #rows, rows[1].name, rows[1].value))
+	return rows[1].name == "Alice" and rows[1].value > 0
 end)())
 
 print("\n== the lift ==")

@@ -15,6 +15,7 @@ local Rebirth = MODULES.Rebirth
 local Game = MODULES.Game
 local Format = MODULES.Format
 local Rarity = MODULES.Rarity
+local Ranks = MODULES.Ranks
 
 local failures = 0
 local checks = 0
@@ -280,6 +281,47 @@ check("first rebirth is reachable but not trivial", (function()
 	local minutes = requirement.cash / rate / 60
 	print(string.format("       first rebirth ≈ %.1f min of mining at %sm", minutes, requirement.depth))
 	return minutes > 15 and minutes < 90
+end)())
+
+check("the first rank arrives inside the first session", (function()
+	-- A ladder whose first rung takes an hour is a ladder nobody knows
+	-- exists. Copper has to land while the player is still in session one.
+	local copper = Ranks.List[2]
+	local minutes = copper.at / surfaceRate / 60
+	print(string.format("       %s at %s banked ≈ %.1f min", copper.name, Format.short(copper.at), minutes))
+	return minutes > 1 and minutes < 25
+end)())
+
+check("the rank ladder outlasts the upgrade ladder", (function()
+	-- Ranks are the long game. If the top rank were reachable before the
+	-- upgrades run out, the ladder would stop mattering exactly when a
+	-- player has the most reason to care about it.
+	local topRank = Ranks.List[#Ranks.List].at
+	local fullUpgrades = 0
+	for _, upgrade in ipairs(Upgrades.List) do
+		for level = 0, upgrade.maxLevel - 1 do
+			fullUpgrades += Upgrades.cost(upgrade.id, level)
+		end
+	end
+	print(string.format(
+		"       every upgrade maxed costs %s, top rank needs %s banked",
+		Format.short(fullUpgrades),
+		Format.short(topRank)
+	))
+	return topRank > fullUpgrades * 4
+end)())
+
+check("no rank hands out an advantage", (function()
+	-- Status only. The moment a rank pays cash or luck, falling behind stops
+	-- being something a player wants to fix and starts being unfair.
+	for _, rank in ipairs(Ranks.List) do
+		for key in pairs(rank) do
+			if key ~= "id" and key ~= "name" and key ~= "icon" and key ~= "at" and key ~= "color" then
+				return false
+			end
+		end
+	end
+	return true
 end)())
 
 check("deep mining always beats shallow mining", (function()

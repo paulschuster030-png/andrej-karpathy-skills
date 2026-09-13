@@ -25,6 +25,8 @@ SHARED = [
     ("Ores", "Config/Ores.luau"),
     ("Layers", "Config/Layers.luau"),
     ("Mutations", "Config/Mutations.luau"),
+    ("Tools", "Config/Tools.luau"),
+    ("Ranks", "Config/Ranks.luau"),
     ("Upgrades", "Config/Upgrades.luau"),
     ("Rebirth", "Config/Rebirth.luau"),
     ("Drones", "Config/Drones.luau"),
@@ -35,7 +37,6 @@ SHARED = [
     ("Contracts", "Config/Contracts.luau"),
     ("Season", "Config/Season.luau"),
     ("Hazards", "Config/Hazards.luau"),
-    ("Tools", "Config/Tools.luau"),
     ("Products", "Config/Products.luau"),
     ("Audio", "Config/Audio.luau"),
     ("Format", "Format.luau"),
@@ -59,10 +60,20 @@ SERVER = [
 SKIPPED = []  # everything loads; the DataStore-backed paths no-op without stores
 
 
-def rewrite(source: str) -> str:
-    """Point intra-project requires at the registries."""
+def rewrite(source: str, shared: bool = False) -> str:
+    """Point intra-project requires at the registries.
+
+    `script.Parent.X` means two different things depending on where the file
+    lives: a sibling service for a server module, a sibling config for one
+    under shared/Config. Reading it the same way in both places sent
+    Config/Upgrades looking for the SERVER Tools module and handed it nil.
+    """
     source = re.sub(r"require\(script\.Parent\.Config\.(\w+)\)", r"MODULES.\1", source)
-    source = re.sub(r"require\(script\.Parent\.(\w+)\)", r"SERVER.\1", source)
+    source = re.sub(
+        r"require\(script\.Parent\.(\w+)\)",
+        (r"MODULES.\1" if shared else r"SERVER.\1"),
+        source,
+    )
     source = re.sub(r"require\(Shared\.Config\.(\w+)\)", r"MODULES.\1", source)
     source = re.sub(r"require\(Shared\.(\w+)\)", r"MODULES.\1", source)
     return source
@@ -127,7 +138,7 @@ local SERVER = {}
 
     for name, relative in SHARED:
         with open(os.path.join(SRC, "shared", relative), encoding="utf-8") as handle:
-            parts.append(f"MODULES.{name} = (function()\n{rewrite(handle.read())}\nend)()\n")
+            parts.append(f"MODULES.{name} = (function()\n{rewrite(handle.read(), shared=True)}\nend)()\n")
 
     # DataStores are unreachable from a headless run; the profile lives in
     # memory, which is exactly what UseDataStores = false is for.

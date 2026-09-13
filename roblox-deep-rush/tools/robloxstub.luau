@@ -531,6 +531,13 @@ local function makePlayers()
 		hand.Position = position or vec(0, 5, 0)
 		hand.Parent = character
 
+		-- Server/Cosmetics.luau hangs the nameplate here, so without a Head
+		-- the rank badge silently never exists and the spec cannot see it.
+		local head = newInstance("Part")
+		head.Name = "Head"
+		head.Position = position or vec(0, 5, 0)
+		head.Parent = character
+
 		player.Character = character
 		player.Parent = players
 
