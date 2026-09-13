@@ -104,12 +104,12 @@ local function buildAudio()
 end
 
 local function buildLighting()
-	-- Future is what makes the ore look like ore. It is the only lighting
-	-- technology with real shadows from point lights and specular response to
-	-- materials, and this whole game is point lights inside rock: a gold seam
-	-- under Voxel is a yellow box, under Future it has a highlight that moves
-	-- as you walk past it.
-	Lighting.Technology = Enum.Technology.Future
+	-- Lighting.Technology is NOT set here, and that is not an oversight.
+	-- Roblox reserves it (RobloxScriptSecurity), so assigning it throws — and
+	-- a throw here took this whole controller down with it, which is how a
+	-- place shipped with no atmosphere at all. It is a saved property, so the
+	-- builder writes Future straight into the place file instead; see
+	-- lightingProps in tools/build-rbxlx.mjs.
 	Lighting.GlobalShadows = true
 	Lighting.EnvironmentDiffuseScale = 0.35
 	Lighting.EnvironmentSpecularScale = 0.6

@@ -171,6 +171,12 @@ const lightingProps = [
   `${indent(3)}<float name="Brightness">2</float>`,
   `${indent(3)}<float name="ClockTime">15</float>`,
   `${indent(3)}<bool name="GlobalShadows">true</bool>`,
+  // Future = 4. This has to be set here rather than by a script: Roblox
+  // reserves Lighting.Technology for itself, so assigning it at runtime
+  // throws. It is a saved property, so the file can simply carry it.
+  `${indent(3)}<token name="Technology">4</token>`,
+  `${indent(3)}<float name="EnvironmentDiffuseScale">0.35</float>`,
+  `${indent(3)}<float name="EnvironmentSpecularScale">0.6</float>`,
   `${indent(3)}<float name="FogStart">60</float>`,
   `${indent(3)}<float name="FogEnd">420</float>`,
   `${indent(3)}<Color3 name="FogColor"><R>0.06</R><G>0.06</G><B>0.08</B></Color3>`,

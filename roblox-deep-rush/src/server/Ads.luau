@@ -51,7 +51,7 @@ local function checkAvailability(): boolean
 	end
 
 	local ok, result = pcall(function()
-		return AdService:GetAdAvailabilityNowAsync(Enum.AdFormat.Rewarded)
+		return AdService:GetAdAvailabilityNowAsync(Enum.AdFormat.RewardedVideo)
 	end)
 	if not ok or result == nil then
 		return false
@@ -104,7 +104,7 @@ function Ads.offer(player: Player)
 		return
 	end
 
-	if result ~= Enum.ShowAdResult.Succeeded then
+	if result ~= Enum.ShowAdResult.ShowCompleted then
 		return
 	end
 
