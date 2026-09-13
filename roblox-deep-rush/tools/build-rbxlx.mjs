@@ -165,6 +165,13 @@ const placeholder = [
   `${indent(2)}</Item>`,
 ].join("\n");
 
+// -9,400: below the -9,000 bottom of the shaft, so nothing in the world is
+// ever under Roblox's delete floor. This has to live in the file rather than
+// in a script — only a plugin may write FallenPartsDestroyHeight at runtime.
+const workspaceProps = [
+  `${indent(3)}<float name="FallenPartsDestroyHeight">-9400</float>`,
+].join("\n");
+
 const lightingProps = [
   `${indent(3)}<Color3 name="Ambient"><R>0</R><G>0</G><B>0</B></Color3>`,
   `${indent(3)}<Color3 name="OutdoorAmbient"><R>0.27</R><G>0.27</G><B>0.31</B></Color3>`,
@@ -193,7 +200,7 @@ const starterPlayerScripts = [
 
 const document = [
   '<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">',
-  service("Workspace", 1, "", placeholder),
+  service("Workspace", 1, workspaceProps, placeholder),
   service("Lighting", 1, lightingProps),
   service("ReplicatedStorage", 1, "", folderWrapping("Shared", join(ROOT, "src", "shared"), 2)),
   service("ServerScriptService", 1, "", folderWrapping("Server", join(ROOT, "src", "server"), 2)),
@@ -206,4 +213,19 @@ mkdirSync(dirname(OUT), { recursive: true });
 writeFileSync(OUT, document, "utf8");
 
 const kb = (Buffer.byteLength(document, "utf8") / 1024).toFixed(0);
+// The file has to carry two things no script is allowed to set at runtime.
+// Losing either is silent and severe — the world gets deleted from under the
+// players, or it renders with flat lighting — so the build refuses instead.
+const written = readFileSync(OUT, "utf8");
+for (const [needle, why] of [
+  ['<float name="FallenPartsDestroyHeight">-9400</float>',
+   "without it Roblox deletes everything below -500, which is most of the shaft"],
+  ['<token name="Technology">4</token>',
+   "without it the place renders on the old lighting engine"],
+]) {
+  if (!written.includes(needle)) {
+    throw new Error(`built place is missing ${needle} — ${why}`);
+  }
+}
+
 console.log(`Wrote ${OUT} (${referent} instances, ${kb} KB)`);

@@ -1196,11 +1196,16 @@ local function streamChunks()
 end
 
 function World.start()
-	-- Roblox destroys anything that falls below FallenPartsDestroyHeight, and
-	-- the default is -500. This shaft bottoms out at -9,000. Left alone, the
-	-- entire lower two thirds of the world — and every player and dropped
-	-- cargo crate in it — would be deleted on arrival.
-	workspace.FallenPartsDestroyHeight = World.yForDepth(MAX_DEPTH_METERS) - 400
+	-- FallenPartsDestroyHeight is NOT set here, and that is not an oversight.
+	-- Roblox only lets a plugin write it, so the assignment threw with
+	-- "lacking capability Plugin" and took the entire world generator with
+	-- it. It is a saved property, so the builder writes -9,400 straight into
+	-- the place file instead; see tools/build-rbxlx.mjs.
+	--
+	-- Why it has to be moved rather than dropped: the default is -500 and this
+	-- shaft bottoms out at -9,000, so at the default the lower two thirds of
+	-- the world — and every player and dropped crate in it — is deleted on
+	-- arrival.
 
 	container = Instance.new("Folder")
 	container.Name = "DeepRushWorld"

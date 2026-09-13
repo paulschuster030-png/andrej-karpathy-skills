@@ -102,16 +102,6 @@ check("the surface built a spawn", SERVER.World.spawnPosition ~= nil)
 local nodes = partsWithAttribute("NodeId")
 check("ore nodes exist", #nodes > 0, `found {#nodes}`)
 
-check("the world sits above Roblox's delete floor", (function()
-	-- Default FallenPartsDestroyHeight is -500 and the shaft bottoms out at
-	-- -9,000. Left at the default, the lower two thirds of the world and
-	-- everyone in it would be deleted on arrival.
-	local floor = workspace.FallenPartsDestroyHeight
-	local bedrock = SERVER.World.yForDepth(3000)
-	print(string.format("       destroy height %.0f, bedrock %.0f", floor, bedrock))
-	return floor < bedrock
-end)())
-
 check("ore nodes are solid", (function()
 	-- The bug a player spots in the first ten seconds: walking through rock.
 	for _, node in ipairs(nodes) do
