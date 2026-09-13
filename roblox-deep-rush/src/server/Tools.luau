@@ -61,6 +61,15 @@ function Tools.equip(player: Player)
 	if existing then
 		existing:Destroy()
 	end
+
+	-- The motor too, and not only for tidiness. Re-equipping happens on every
+	-- Drill Power level now, so leaving them behind hangs a dead Motor6D on
+	-- the hand per upgrade — fifty of them by max level, each pointing at a
+	-- pickaxe that no longer exists.
+	local staleMotor = hand:FindFirstChild("PickaxeMotor")
+	if staleMotor then
+		staleMotor:Destroy()
+	end
 	motors[player] = nil
 
 	local tier = Config.tierFor(profile.upgrades.drill or 0)

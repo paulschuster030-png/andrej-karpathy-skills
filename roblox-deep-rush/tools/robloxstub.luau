@@ -386,7 +386,20 @@ local function newInstance(className)
 	end
 
 	function api:Destroy()
+		-- Through the proxy, not straight into `fields`. Writing the field
+		-- directly left the instance in its parent's child list, so
+		-- FindFirstChild kept handing back things the game had destroyed --
+		-- and a check asserting something was cleaned up passed either way.
+		local previous = fields.Parent
+		if previous then
+			local list = previous._children
+			local index = table.find(list, proxy)
+			if index then
+				table.remove(list, index)
+			end
+		end
 		fields.Parent = nil
+
 		local index = table.find(allParts, proxy)
 		if index then table.remove(allParts, index) end
 	end
