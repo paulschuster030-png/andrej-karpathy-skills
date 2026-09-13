@@ -218,6 +218,26 @@ handlers.mined = function(payload)
 	end
 end
 
+handlers.swing = function(payload)
+	-- One knock per chop, following the same schedule the server animates to.
+	-- The pickaxe used to swing in silence and then the rock made one noise as
+	-- it vanished, which is backwards: the work should be audible and the
+	-- break should be the payoff.
+	local chops = math.clamp(tonumber(payload and payload.chops) or 1, 1, 4)
+	local duration = tonumber(payload and payload.duration) or 0.5
+	local each = duration / chops
+
+	task.spawn(function()
+		for index = 1, chops do
+			task.wait(each * 0.64)
+			-- Each strike a little lower than the last, so a long swing reads
+			-- as digging in rather than as a loop.
+			Effects.sound("hit", 0.4, 1.08 - index * 0.06 + math.random() * 0.05)
+			task.wait(each * 0.36)
+		end
+	end)
+end
+
 handlers.full = function()
 	Effects.sound("click", 0.4, 0.7)
 end

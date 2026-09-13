@@ -112,11 +112,17 @@ local function update()
 		return
 	end
 
-	local cargoFull = (State.data.cargo.count or 0) >= (State.data.cargo.capacity or 8)
+	-- 60%, not full. Waiting for a full hold meant the arrow to the way out
+	-- only appeared once the player had already stopped being able to mine,
+	-- and "can I even get back up?" is a question people ask well before
+	-- that. Sixty is also where the greed mark makes you a target, so it is
+	-- the moment surfacing starts being the right call anyway.
+	local capacity = State.data.cargo.capacity or 8
+	local loaded = (State.data.cargo.count or 0) >= capacity * 0.6
 	local depth = State.data.depth or 0
 
 	local targetPosition, text
-	if cargoFull and depth > 20 then
+	if loaded and depth > 20 then
 		local lift = nearestLift()
 		if lift then
 			targetPosition, text = lift.Position + Vector3.new(0, 6, 0), "▼ RIDE UP"

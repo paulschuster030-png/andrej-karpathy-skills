@@ -121,25 +121,69 @@ function Tools.equip(player: Player)
 end
 
 --- One chop, timed to the swing the server is already running.
-function Tools.swing(player: Player, duration: number)
+--- Chop, for as long as the swing lasts.
+---
+--- One tween down and one back was a single lazy wave of a stick per rock,
+--- and at a maxed drill it barely moved at all. A swing is now as many chops
+--- as it has room for, each with a wind-up, a fast strike and a recoil — and
+--- each one kicks the rock it lands on, so the rock is part of the animation
+--- rather than a thing that vanishes at the end of it.
+--- How many chops fit in a swing. One per ~0.42s: below that the strikes
+--- blur into a vibration, above it the pick hangs in the air.
+function Tools.chopsFor(duration: number): number
+	return math.clamp(math.round(duration / 0.42), 1, 4)
+end
+
+function Tools.swing(player: Player, duration: number, nodeId: string?)
 	local motor = motors[player]
 	if not motor or not motor.Parent then
 		return
 	end
 
 	local rest = CFrame.new(Config.Grip[1], Config.Grip[2], Config.Grip[3])
-	local raised = rest * CFrame.Angles(math.rad(-Config.SwingAngle * 0.5), 0, 0)
-	local struck = rest * CFrame.Angles(math.rad(Config.SwingAngle * 0.5), 0, 0)
+	local raised = rest * CFrame.Angles(math.rad(-Config.SwingAngle * 0.55), 0, math.rad(-12))
+	local struck = rest * CFrame.Angles(math.rad(Config.SwingAngle * 0.45), 0, math.rad(6))
 
-	local down = math.max(duration * (1 - Config.ReturnFraction), 0.08)
-	local back = math.max(duration * Config.ReturnFraction, 0.06)
+	-- One chop per ~0.42s of swing, so a slow pick lands four and a fast one
+	-- lands one. Below that the strikes blur into a vibration.
+	local chops = Tools.chopsFor(duration)
+	local each = duration / chops
 
-	motor.C0 = raised
-	local chop = TweenService:Create(motor, TweenInfo.new(down, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { C0 = struck })
-	chop:Play()
-	chop.Completed:Once(function()
-		if motor.Parent then
-			TweenService:Create(motor, TweenInfo.new(back, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { C0 = rest }):Play()
+	task.spawn(function()
+		for index = 1, chops do
+			if not motor.Parent then
+				return
+			end
+
+			local lift = each * 0.34
+			local fall = each * 0.30
+			local recover = each - lift - fall
+
+			TweenService:Create(motor, TweenInfo.new(lift, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+				C0 = raised,
+			}):Play()
+			task.wait(lift)
+
+			if not motor.Parent then
+				return
+			end
+			-- The strike is the fast part. Quad In means it accelerates into
+			-- the rock instead of arriving at a constant speed.
+			TweenService:Create(motor, TweenInfo.new(fall, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				C0 = struck,
+			}):Play()
+			task.wait(fall)
+
+			if nodeId then
+				require(script.Parent.World).chipNode(nodeId, index / chops)
+			end
+
+			if motor.Parent then
+				TweenService:Create(motor, TweenInfo.new(math.max(recover, 0.04), Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+					C0 = rest,
+				}):Play()
+			end
+			task.wait(math.max(recover, 0.04))
 		end
 	end)
 end

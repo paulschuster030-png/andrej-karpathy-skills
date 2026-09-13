@@ -272,8 +272,13 @@ function Mining.begin(player: Player, nodeId: string)
 
 	-- The pickaxe chop is timed to the same duration, so the hit lands when
 	-- the bar fills rather than on its own schedule.
-	require(script.Parent.Tools).swing(player, duration)
-	Feedback.effect(player, "swing", { duration = duration, nodeId = nodeId })
+	local Tools = require(script.Parent.Tools)
+	Tools.swing(player, duration, nodeId)
+	Feedback.effect(player, "swing", {
+		duration = duration,
+		nodeId = nodeId,
+		chops = Tools.chopsFor(duration),
+	})
 end
 
 function Mining.stop(player: Player)
