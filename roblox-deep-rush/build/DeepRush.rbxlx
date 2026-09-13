@@ -152,13 +152,22 @@ Audio.ZoneLoops = {
 
 --- Built-ins. Pitched and looped rather than used as one-shots, which is how
 --- a handful of short clips becomes an ambience bed.
+---
+--- Not every path under rbxasset://sounds/ is one a game may play. Some are
+--- there for the engine and answer a request with "Asset is not approved for
+--- the requester", which is a warning rather than an error — so the sound is
+--- simply silent and the only sign is a line in the Output nobody reads.
+--- swoosh.wav shipped that way: the tension layer never made a sound in a
+--- real place and nothing here could tell.
+---
+--- Every path below has been seen loading in a live session. Adding one means
+--- testing it in Studio first; tools/api-check.py holds the list.
 Audio.Builtin = {
 	rumble = "rbxasset://sounds/bass.wav",
-	wind = "rbxasset://sounds/swoosh.wav",
+	wind = "rbxasset://sounds/bass.wav",
 	hit = "rbxasset://sounds/snap.wav",
 	ping = "rbxasset://sounds/electronicpingshort.wav",
 	click = "rbxasset://sounds/clickfast.wav",
-	impact = "rbxasset://sounds/impact_water.mp3",
 }
 
 --- The ambience bed, layered by depth. Each layer fades in over its own band,
@@ -10408,7 +10417,9 @@ local SOUNDS = {
 		or "rbxasset://sounds/bass.wav",
 	ping = "rbxasset://sounds/electronicpingshort.wav",
 	click = "rbxasset://sounds/clickfast.wav",
-	whoosh = "rbxasset://sounds/swoosh.wav",
+	-- Was swoosh.wav, which a game is not allowed to play; see the note in
+	-- Shared/Config/Audio.luau. Pitched, bass carries a snatch well enough.
+	whoosh = "rbxasset://sounds/bass.wav",
 	boom = "rbxasset://sounds/bass.wav",
 }
 

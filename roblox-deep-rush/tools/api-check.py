@@ -200,6 +200,48 @@ def check_datastore_opens():
     return problems
 
 
+# Built-in sound paths a game is actually allowed to play.
+#
+# rbxasset://sounds/ holds more than this, but not all of it is ours to use:
+# swoosh.wav answers with "Asset is not approved for the requester", which
+# Roblox reports as a WARNING. The sound is silent, the game carries on, and
+# the only evidence is a line in the Output. That is the worst failure shape
+# there is, so the set is pinned here.
+#
+# Every entry has been seen loading in a live session. Adding one means
+# playing it in Studio first and reading the Output — there is no offline way
+# to tell an allowed path from a forbidden one.
+PLAYABLE_BUILTINS = {
+    "rbxasset://sounds/bass.wav",
+    "rbxasset://sounds/snap.wav",
+    "rbxasset://sounds/electronicpingshort.wav",
+    "rbxasset://sounds/clickfast.wav",
+}
+
+BUILTIN_USE = re.compile(r'"(rbxasset://sounds/[^"]+)"')
+
+
+def check_builtin_sounds():
+    problems = []
+    for folder, _, names in os.walk(os.path.join(ROOT, "src")):
+        for name in sorted(names):
+            if not name.endswith(".luau"):
+                continue
+            path = os.path.join(folder, name)
+            with open(path, encoding="utf-8") as handle:
+                lines = handle.readlines()
+            for number, line in enumerate(lines, 1):
+                if line.lstrip().startswith("--"):
+                    continue
+                for used in BUILTIN_USE.findall(line):
+                    if used not in PLAYABLE_BUILTINS:
+                        problems.append(
+                            f"{os.path.relpath(path, ROOT)}:{number}: {used} is not on the"
+                            " list of built-ins proven to load — play it in Studio first"
+                        )
+    return problems
+
+
 def main():
     if not os.path.exists(DUMP):
         print("skipped: tools/api-dump.json is not present (see the header of this file)")
@@ -216,6 +258,7 @@ def main():
                 problems += check_file(os.path.join(folder, name), properties, enums, by_name)
 
     problems += check_datastore_opens()
+    problems += check_builtin_sounds()
 
     for problem in problems:
         print(f"  FAIL {problem}")

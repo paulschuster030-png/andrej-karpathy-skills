@@ -36,7 +36,9 @@ local SOUNDS = {
 		or "rbxasset://sounds/bass.wav",
 	ping = "rbxasset://sounds/electronicpingshort.wav",
 	click = "rbxasset://sounds/clickfast.wav",
-	whoosh = "rbxasset://sounds/swoosh.wav",
+	-- Was swoosh.wav, which a game is not allowed to play; see the note in
+	-- Shared/Config/Audio.luau. Pitched, bass carries a snatch well enough.
+	whoosh = "rbxasset://sounds/bass.wav",
 	boom = "rbxasset://sounds/bass.wav",
 }
 
