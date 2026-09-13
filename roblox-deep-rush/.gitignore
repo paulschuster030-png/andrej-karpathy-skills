@@ -11,3 +11,6 @@ build/sim-program.luau
 # the committed .ogg set and twenty times the size; regenerate rather than
 # store. They exist for the one case the .ogg upload will not go through.
 audio/wav/
+
+# Left behind by importing tools/make-audio.py in a debug session.
+tools/__pycache__/
