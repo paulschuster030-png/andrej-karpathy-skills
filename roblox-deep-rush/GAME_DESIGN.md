@@ -418,6 +418,95 @@ startet den Notaufstieg einmal erfolgreich und einmal mit Bewegung.
 
 ---
 
+## 10f. Der Stein zeigt, was drin ist
+
+Die erste Fassung würfelte das Erz **beim Schlag**. Jeder Knoten war derselbe
+graue Würfel, und was herauskam, erfuhr man erst danach. Das ist bequem zu
+bauen und es nimmt dem Spiel seine einzige räumliche Entscheidung: Wenn alle
+Steine gleich aussehen, ist es egal, zu welchem man läuft.
+
+Jetzt würfelt ein Knoten sein Erz, **wenn er entsteht**, und der Fels zeigt es:
+
+| Look | Material | Wer |
+|---|---|---|
+| **metal** | Metal, matter Glanz | Kupfer, Eisen, Silber, Gold, Magmasteel |
+| **gem** | Glass, durchscheinend | Quarz, Amethyst, Smaragd, Diamant, Rubin |
+| **crystal** | Neon, von innen beleuchtet | Prism, Ember, Frostcore, Abyssite, Origin |
+| **stone** | Slate, kaum heller als der Fels | Dirtstone, Kohle, Obsidian, Hollow Bone |
+| **void** | dunkler Körper, falsches Licht | Nullstone, Voidglass |
+
+Dazu: ab **Rare** steht der Name über dem Knoten, ab **Epic** schießt eine
+Lichtsäule den Schacht hoch. Man steht auf einer Schiene, sieht zweihundert
+Studs weiter unten etwas grün leuchten, und trifft eine Entscheidung.
+
+### Wo das Glück hin ist
+
+Ein Knoten, den zwei Spieler sehen, kann nicht auf das Glück von einem
+gewürfelt werden. Also würfelt er bei luck 1 — und **Luck wurde ein zweiter
+Wurf beim Schlag**:
+
+1. Der Knoten ist, was du siehst.
+2. Mit Wahrscheinlichkeit `1 - 1/luck` würfelst du zusätzlich aus der
+   glücksgewichteten Tabelle.
+3. Du behältst das Seltenere von beidem.
+
+Damit kann Glück nur **nach oben** wirken: Der sichtbare Stein ist eine
+Untergrenze, und die Wand lügt nie. Der Simulator prüft genau das über 40
+Schläge (`you never get less than the wall promised`).
+
+Der Nebeneffekt ist der eigentliche Gewinn. Vorher war Luck eine unsichtbare
+Kurve, die eine Tabelle bog, die niemand zu sehen bekam. Jetzt ist es ein
+Ereignis: **⚡ LUCK BEAT THE VEIN**, Gold wird zu etwas Besserem, mit
+Bildschirmblitz und Schockwelle. `Rarity.odds` rechnet die Gesamtverteilung
+aus beiden Schritten **exakt** aus — die Quote auf der Karte ist die echte.
+
+---
+
+## 10g. Rang: die Zahl, die nie fällt
+
+Cash gibt man aus. Tiefe endet mit jedem Run. Rebirth löscht die Upgrades.
+Keine dieser Zahlen beantwortet „wie gut bin ich", und das ist die Frage, die
+ein Spieler nach der dritten Sitzung stellt — und die ihn an Tag vier
+zurückholt.
+
+Der Rang beantwortet sie aus den **Lebenszeit-Einzahlungen**: die einzige
+Zahl im Spiel, die nicht fällt. Nicht bei Tod, nicht bei Diebstahl, nicht bei
+Rebirth.
+
+| Rang | ab | Rang | ab |
+|---|---|---|---|
+| ◆ Dust | 0 | ❖ Emerald | 3M |
+| ◆ Copper | 5K | ❖ Diamond | 15M |
+| ◆ Iron | 25K | ✦ Obsidian | 80M |
+| ◈ Silver | 120K | ✦ Abyssal | 450M |
+| ◈ Gold | 600K | ✹ Singularity | 3B |
+
+Zehn Stufen, grob Faktor 5–6 auseinander: Kupfer nach etwa **4 Minuten**, die
+Spitze jenseits von 410M — dem, was *sämtliche* Upgrades zusammen kosten. Eine
+Leiter mit zwanzig Sprossen ist ein Fortschrittsbalken, und niemand macht
+einen Screenshot von einem Fortschrittsbalken.
+
+Der Rang steht an vier Stellen: über dem Kopf, im HUD mit Fortschrittsbalken,
+in der Roblox-Spielerliste (Tab) und auf dem Board an der Oberfläche.
+
+**Kein Rang gibt einen Vorteil.** Kein Cash, keine Luck, kein Tempo, keine
+Kapazität. Der Balance-Check erzwingt es, indem er jeden Rangeintrag auf
+erlaubte Felder prüft. Sobald ein Rang etwas auszahlt, ist Zurückliegen nicht
+mehr etwas, das man aufholen will, sondern etwas, das man ungerecht findet.
+
+### Zwei Boards, und warum das zweite wichtiger ist
+
+An der Oberfläche stehen jetzt zwei Wände. Links **DEEPEST DIVES** — global,
+für immer, per OrderedDataStore. Rechts **THIS SERVER · TODAY** — was jeder,
+der gerade hier ist, seit Serverstart eingezahlt hat.
+
+Das zweite ist das, was Spieler tatsächlich jagen. Auf dem globalen Board
+steht an einem Dienstagabend niemand aus diesem Server und wird auch nie
+jemand stehen. Auf dem lokalen steht die Person, die zwei Schienen unter dir
+gräbt, und sie ist in zwanzig Minuten einholbar.
+
+---
+
 ## 11. Ökonomie in Zahlen
 
 Aus `tools/balance-check.py`, nicht geschätzt:

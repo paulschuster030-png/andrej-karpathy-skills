@@ -15,6 +15,20 @@ bezahlte Reichweite kauft, ohne Geld zu verbrennen, in
 
 ---
 
+## Was du im Spiel siehst
+
+| | |
+|---|---|
+| **Das Erz steckt sichtbar im Fels** | Gold als Metallader, Diamant als Glaskristall, Nullstone frisst Licht. Ab *Rare* steht der Name darüber, ab *Epic* schießt eine Lichtsäule den Schacht hoch. Du entscheidest, wohin du läufst — vorher waren alle Steine graue Würfel. |
+| **Die Spitzhacke in der Hand** | 5 Stufen, gebunden ans Pickaxe-Upgrade. Jede Stufe macht dich schneller *und* sieht anders aus, für dich und für alle anderen. |
+| **Ranglistensystem** | 10 Ränge auf Lebenszeit-Einzahlungen — die einzige Zahl, die nie fällt. Über dem Kopf, im HUD, in der Spielerliste. Dazu zwei Boards an der Oberfläche: global für immer, und **dieser Server heute**. |
+| **Glück ist ein Ereignis** | Der Stein ist eine Untergrenze. Glück würfelt ein zweites Mal und behält das Bessere — mit Blitz, Schockwelle und „⚡ LUCK BEAT THE VEIN". |
+| **Future-Licht** | Echte Schatten von jedem Punktlicht, Bloom nur auf dem, was wirklich leuchtet, Tiefenschärfe, die den Schacht tief statt hoch aussehen lässt. |
+
+Warum genau diese Dinge: [`TRENDS.md`](TRENDS.md), dritte Runde.
+
+---
+
 ## In 3 Minuten spielbar
 
 1. **Roblox Studio öffnen** → `File ▸ Open from File…`
@@ -60,7 +74,8 @@ node tools/build-rbxlx.mjs
 src/shared/          ReplicatedStorage/Shared — von Server UND Client genutzt
   Config/            das gesamte Balancing als reine Daten
     Game.luau        globale Stellschrauben (Tempo, Risiko, Timer)
-    Ores.luau        8 Seltenheitsstufen, 30 Erze, Tiefen-Gating
+    Ores.luau        8 Seltenheitsstufen, 32 Erze, Tiefen-Gating,
+                     und wie jedes davon im Fels aussieht
     Layers.luau      9 Schichten von Topsoil bis Singularity
     Mutations.luau   die Multiplikatoren, die Screenshots erzeugen
     Upgrades.luau    7 Upgrade-Linien mit Kostenkurven
@@ -69,14 +84,16 @@ src/shared/          ReplicatedStorage/Shared — von Server UND Client genutzt
     Season.luau      das Wochenend-Fenster mit dem exklusiven Badge
     Hazards.luau     die sichtbaren Gefahrenzonen
     Audio.luau       alle Sounds — hier deine eigenen Asset-IDs eintragen
-    Tools.luau       die 5 Spitzhacken-Stufen (folgen dem Drill-Upgrade)
+    Tools.luau       die 5 Spitzhacken-Stufen (folgen dem Pickaxe-Upgrade)
+    Ranks.luau       die 10 Rangstufen auf Lebenszeit-Einzahlungen
     Crew.luau        Co-Play: Bonus, Pings, Rettung
     Cosmetics.luau   Lampen, Trails, Titel — die Status-Ebene
     Rebirth.luau     Prestige-Anforderungen und Boni
     Drones.luau      die Sammel-Ebene
     Products.luau    Gamepasses, Dev-Products, Daily Deals (IDs eintragen!)
   Net.luau           jedes Remote an einem Ort, mit Rate-Limit
-  Rarity.luau        gewichteter Roll + ehrliche Quotenanzeige
+  Rarity.luau        Knoten-Roll ohne Glück, Glück als zweiter Wurf,
+                     exakte Gesamtquote für die Anzeige
   Format.luau        Zahlenformatierung (12.4K statt 12400)
   Signal.luau        minimaler Observer
 
@@ -84,7 +101,7 @@ src/server/          ServerScriptService/Server — autoritativ
   Bootstrap.server.luau   Startreihenfolge = Abhängigkeitsreihenfolge
   Data.luau          Profile, DataStore mit Session-Lock, Autosave
   Economy.luau       eine Quelle der Wahrheit für Luck/Cash/Kapazität
-  World.luau         gechunkter 3.000-m-Schacht, Erz-Nodes, Kisten
+  World.luau         gechunkter 3.000-m-Schacht, sichtbare Erz-Nodes, Kisten
   Mining.luau        der Schwung, der Roll, der Zahlen-Pop
   Cargo.luau         ungebunkerte Beute + Gier-Messung
   Tools.luau         die Spitzhacke in der Hand, animiert per Motor6D
@@ -99,7 +116,8 @@ src/server/          ServerScriptService/Server — autoritativ
   Ads.luau           Rewarded Video (aus, bis konfiguriert)
   Rift.luau          das serverweite Live-Event
   Hazards.luau       Sauerstoff und Schichtgefahren
-  Upgrades / Rebirth / Drones / Rewards / Leaderboards
+  Upgrades / Rebirth / Drones / Rewards
+  Leaderboards.luau  Rang, globale Boards und das Live-Board des Servers
   Monetization.luau  Gamepasses + idempotenter Receipt-Handler
   AntiCheat.luau     Bewegungsplausibilität
 
@@ -112,7 +130,7 @@ src/client/          StarterPlayerScripts/Client — nur Darstellung + Absicht
   Notify.luau        Toasts und die Rare-Pull-Karte
   Onboarding.luau    die ersten zwei Minuten
   Crew.luau          Crew-Leiste, Ping-Reihe, Einladen-Knopf
-  Atmosphere.luau    Licht, Nebel und Ambient-Ton nach Tiefe
+  Atmosphere.luau    Future-Licht, Bloom, Tiefenschärfe, Ton nach Tiefe
   Intro.luau         die Regelkarte beim ersten Start
   Effects.luau       Shake, Partikel, schwebende Zahlen
   Ui.luau            das kleinstmögliche UI-Kit
@@ -120,10 +138,10 @@ src/client/          StarterPlayerScripts/Client — nur Darstellung + Absicht
 tools/
   build-rbxlx.mjs    Quellbaum → Place-Datei
   balance-check.py   fährt die Ökonomie außerhalb von Roblox
-  balance-spec.luau  57 Design-Zusagen als Assertions
+  balance-spec.luau  60 Design-Zusagen als Assertions
   protocol-check.py  prüft, ob Client und Server dieselben Remotes benutzen
   sim-check.py       startet den echten Server headless
-  sim-spec.luau      34 Laufzeit-Checks: Mining, Bank, Lift, Werkzeug,
+  sim-spec.luau      42 Laufzeit-Checks: Mining, Bank, Lift, Werkzeug, Rang,
                      Gefahren, Crew, Notaufstieg, Rückweg vom Grund
   robloxstub.luau    genug Roblox-API, um den Server ohne Roblox laufen zu lassen
   make-audio.py      erzeugt die Sounds in audio/
@@ -147,7 +165,7 @@ cover/
 Der Code ist nicht nur geschrieben, sondern geprüft:
 
 ```bash
-# Syntax/Compile aller 57 Luau-Dateien (braucht die Luau-CLI)
+# Syntax/Compile aller 58 Luau-Dateien (braucht die Luau-CLI)
 find src -name '*.luau' -exec luau-compile --null -O2 {} \;
 
 # Die Ökonomie tatsächlich ausrechnen, nicht schätzen

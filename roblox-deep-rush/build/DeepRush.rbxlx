@@ -17,7 +17,7 @@
       <Color3 name="FogColor"><R>0.06</R><G>0.06</G><B>0.08</B></Color3>
     </Properties>
   </Item>
-  <Item class="ReplicatedStorage" referent="RBX38">
+  <Item class="ReplicatedStorage" referent="RBX39">
     <Properties>
       <string name="Name">ReplicatedStorage</string>
     </Properties>
@@ -1194,6 +1194,68 @@ for _, ore in ipairs(Ores.List) do
 	Ores.ById[ore.id] = ore
 end
 
+-- What each ore looks like in the wall ---------------------------------------
+--
+-- A node decides what it is when it spawns, so the rock can show it. That is
+-- the difference between a shaft of identical grey cubes and a wall where you
+-- spot a gold seam from thirty studs away and change your route for it.
+--
+-- `look` picks the material family, `color` the vein itself:
+--
+--   metal    dull sheen, no transparency — copper, iron, silver, gold
+--   gem      faceted and translucent — quartz, emerald, diamond, ruby
+--   crystal  lit from inside, for the tiers worth shouting about
+--   stone    matte, barely brighter than the rock around it
+--   void     dark body, light that should not be there
+--
+-- An ore missing from this table falls back to its tier colour as a gem,
+-- which is never wrong, only generic.
+Ores.Appearance = {
+	dirtstone = { look = "stone", color = { 124, 104, 86 } },
+	coal = { look = "stone", color = { 42, 42, 50 } },
+	clay = { look = "stone", color = { 172, 122, 94 } },
+	copper = { look = "metal", color = { 214, 120, 60 } },
+	fossil = { look = "stone", color = { 206, 196, 168 } },
+	iron = { look = "metal", color = { 176, 182, 192 } },
+	quartz = { look = "gem", color = { 236, 240, 248 } },
+	silver = { look = "metal", color = { 228, 234, 242 } },
+	gold = { look = "metal", color = { 255, 199, 54 } },
+	cobalt = { look = "metal", color = { 62, 110, 235 } },
+	meteorite = { look = "stone", color = { 98, 88, 106 } },
+	relic = { look = "metal", color = { 208, 176, 104 } },
+	amethyst = { look = "gem", color = { 168, 96, 244 } },
+	emerald = { look = "gem", color = { 42, 222, 132 } },
+	diamond = { look = "gem", color = { 156, 238, 255 } },
+	prism = { look = "crystal", color = { 255, 255, 255 } },
+	obsidian = { look = "stone", color = { 28, 22, 36 } },
+	magmasteel = { look = "metal", color = { 255, 110, 44 } },
+	ruby = { look = "gem", color = { 255, 58, 90 } },
+	ember = { look = "crystal", color = { 255, 140, 32 } },
+	cryonite = { look = "gem", color = { 122, 214, 255 } },
+	glacier = { look = "gem", color = { 186, 240, 255 } },
+	frostcore = { look = "crystal", color = { 150, 255, 255 } },
+	hollowbone = { look = "stone", color = { 226, 220, 200 } },
+	whisper = { look = "crystal", color = { 196, 150, 255 } },
+	nullstone = { look = "void", color = { 34, 28, 46 } },
+	abyssite = { look = "crystal", color = { 0, 226, 190 } },
+	voidglass = { look = "void", color = { 120, 32, 190 } },
+	leviathan = { look = "crystal", color = { 0, 255, 214 } },
+	fragment = { look = "crystal", color = { 255, 255, 255 } },
+	origin = { look = "crystal", color = { 255, 240, 190 } },
+	seasoncore = { look = "crystal", color = { 255, 80, 200 } },
+}
+
+--- The vein colour and material family for an ore.
+function Ores.appearance(oreId: string)
+	local entry = Ores.Appearance[oreId]
+	if entry then
+		return entry
+	end
+	local ore = Ores.ById[oreId]
+	local tier = Ores.Tiers[Ores.TierIndex[ore and ore.tier or "Common"] or 1]
+	return { look = "gem", color = tier.color }
+end
+
 -- Cache the depth->pool lookup: Mining calls this on every swing.
 local poolCache = {}
 
@@ -1481,6 +1543,99 @@ return Quests
         </Item>
         <Item class="ModuleScript" referent="RBX30">
           <Properties>
+            <string name="Name">Ranks</string>
+            <ProtectedString name="Source"><![CDATA[
+--!nonstrict
+--[[
+	Ranks.luau — where you stand, as one word.
+
+	Cash is the number you spend and it goes up and down. Depth resets every
+	run. Rebirth wipes upgrades. None of those answer "how good am I", which
+	is the question a player asks after their third session and the one that
+	makes them open the game on day four.
+
+	Rank answers it from lifetime banked cash: the only figure in the game
+	that never goes down, not on death, not on a steal, not on a rebirth.
+	Ten steps, roughly 5-6x apart, so every one is a real event — a ladder
+	with twenty rungs is a progress bar, and nobody screenshots a progress
+	bar.
+
+	It is status only. No rank grants cash, luck, speed or capacity, and that
+	is deliberate: the moment a rank pays, falling behind stops being a thing
+	you want to fix and starts being a thing you resent.
+]]
+
+local Ranks = {}
+
+Ranks.List = {
+	{ id = "dust", name = "Dust", icon = "◆", at = 0, color = { 150, 150, 172 } },
+	{ id = "copper", name = "Copper", icon = "◆", at = 5000, color = { 214, 120, 60 } },
+	{ id = "iron", name = "Iron", icon = "◆", at = 25000, color = { 176, 182, 192 } },
+	{ id = "silver", name = "Silver", icon = "◈", at = 120000, color = { 228, 234, 242 } },
+	{ id = "gold", name = "Gold", icon = "◈", at = 600000, color = { 255, 199, 54 } },
+	{ id = "emerald", name = "Emerald", icon = "❖", at = 3000000, color = { 42, 222, 132 } },
+	{ id = "diamond", name = "Diamond", icon = "❖", at = 15000000, color = { 156, 238, 255 } },
+	{ id = "obsidian", name = "Obsidian", icon = "✦", at = 80000000, color = { 176, 92, 255 } },
+	{ id = "abyssal", name = "Abyssal", icon = "✦", at = 450000000, color = { 0, 255, 214 } },
+	{ id = "singularity", name = "Singularity", icon = "✹", at = 3000000000, color = { 255, 255, 255 } },
+}
+
+Ranks.Index = {}
+for i, rank in ipairs(Ranks.List) do
+	Ranks.Index[rank.id] = i
+end
+
+--- The rank a lifetime total earns, and its position on the ladder.
+function Ranks.at(banked: number)
+	local chosen, index = Ranks.List[1], 1
+	for i, rank in ipairs(Ranks.List) do
+		if (banked or 0) >= rank.at then
+			chosen, index = rank, i
+		end
+	end
+	return chosen, index
+end
+
+--- The next rank up, or nil at the top.
+function Ranks.next(banked: number)
+	local _, index = Ranks.at(banked)
+	return Ranks.List[index + 1]
+end
+
+--- 0..1 through the current rank. Sits at 1 for a player at the top, which
+--- is the one place a full bar means "done" rather than "about to tick over".
+function Ranks.progress(banked: number): number
+	local current, index = Ranks.at(banked)
+	local upcoming = Ranks.List[index + 1]
+	if not upcoming then
+		return 1
+	end
+	local span = upcoming.at - current.at
+	if span <= 0 then
+		return 1
+	end
+	return math.clamp(((banked or 0) - current.at) / span, 0, 1)
+end
+
+function Ranks.color(rankId: string)
+	local rank = Ranks.List[Ranks.Index[rankId] or 1]
+	return Color3.fromRGB(rank.color[1], rank.color[2], rank.color[3])
+end
+
+--- "◈ GOLD", the form used on the HUD, the nameplate and the boards.
+function Ranks.label(banked: number): string
+	local rank = Ranks.at(banked)
+	return `{rank.icon} {string.upper(rank.name)}`
+end
+
+return Ranks
+
+]]></ProtectedString>
+            <bool name="Disabled">false</bool>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="RBX31">
+          <Properties>
             <string name="Name">Rebirth</string>
             <ProtectedString name="Source"><![CDATA[
 --!nonstrict
@@ -1551,7 +1706,7 @@ return Rebirth
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX31">
+        <Item class="ModuleScript" referent="RBX32">
           <Properties>
             <string name="Name">Season</string>
             <ProtectedString name="Source"><![CDATA[
@@ -1682,7 +1837,7 @@ return Season
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX32">
+        <Item class="ModuleScript" referent="RBX33">
           <Properties>
             <string name="Name">Tools</string>
             <ProtectedString name="Source"><![CDATA[
@@ -1767,7 +1922,7 @@ return Tools
             <bool name="Disabled">false</bool>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="RBX33">
+        <Item class="ModuleScript" referent="RBX34">
           <Properties>
             <string name="Name">Upgrades</string>
             <ProtectedString name="Source"><![CDATA[
@@ -1781,13 +1936,15 @@ return Tools
 	have a real choice about what to buy next instead of one dominant order.
 ]]
 
+local Tools = require(script.Parent.Tools)
+
 local Upgrades = {}
 
 Upgrades.List = {
 	{
 		id = "drill",
-		name = "Drill Power",
-		desc = "Break rock faster. Every level shaves time off each swing.",
+		name = "Pickaxe",
+		desc = "Sharpen the pick. Every level shaves time off each swing, and every few levels it becomes a better pickaxe.",
 		icon = "⛏️",
 		maxLevel = 50,
 		baseCost = 120,
@@ -1797,7 +1954,11 @@ Upgrades.List = {
 			return 1 - (0.955 ^ level)
 		end,
 		format = function(level: number): string
-			return string.format("-%d%% swing time", math.floor((1 - 0.955 ^ level) * 100))
+			return string.format(
+				"%s · -%d%% swing time",
+				Tools.tierFor(level).name,
+				math.floor((1 - 0.955 ^ level) * 100)
+			)
 		end,
 	},
 	{
@@ -1920,6 +2081,18 @@ function Upgrades.isMaxed(id: string, level: number): boolean
 	return upgrade ~= nil and (level or 0) >= upgrade.maxLevel
 end
 
+--- The next pickaxe you have not earned yet, and the level it arrives at.
+--- Returns nil once the last one is in your hands.
+function Upgrades.nextPickaxe(level: number)
+	local current = Tools.tierFor(level)
+	for _, tier in ipairs(Tools.Tiers) do
+		if tier.from > (level or 0) and tier.name ~= current.name then
+			return tier
+		end
+	end
+	return nil
+end
+
 return Upgrades
 
 ]]></ProtectedString>
@@ -1927,7 +2100,7 @@ return Upgrades
           </Properties>
         </Item>
       </Item>
-      <Item class="ModuleScript" referent="RBX34">
+      <Item class="ModuleScript" referent="RBX35">
         <Properties>
           <string name="Name">Format</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2015,7 +2188,7 @@ return Format
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX35">
+      <Item class="ModuleScript" referent="RBX36">
         <Properties>
           <string name="Name">Net</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2251,7 +2424,7 @@ return Net
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX36">
+      <Item class="ModuleScript" referent="RBX37">
         <Properties>
           <string name="Name">Rarity</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2263,6 +2436,24 @@ return Net
 	weight is multiplied by luck^(steps above Common * 0.6), so luck is worth
 	dramatically more at the top of the table than the bottom. That is what
 	makes a Luck Potion feel different from a Cash Potion.
+
+	Where the roll happens changed once the ore became visible in the rock.
+	A node decides what it is when it spawns, at luck 1 — the wall has no idea
+	who is going to swing at it, and a shared node cannot roll on one player's
+	luck. So luck moved to the swing, as a second chance:
+
+	  1. the node is what you can see: gold vein, diamond, plain dirtstone
+	  2. with probability 1 - 1/luck you also roll the luck-weighted table
+	  3. you keep whichever is rarer — never worse than what you could see
+
+	Two things fall out of that, and both are worth more than the old
+	invisible curve. The world stops lying: a diamond in the wall is a
+	diamond, and running for it is a real decision. And luck becomes an event
+	you watch happen — LUCKY STRIKE, gold turning into something better —
+	instead of a number that quietly bends a table you never see.
+
+	`Rarity.odds` returns the honest result of all three steps, so the codex
+	and the reveal card still print what actually happened.
 ]]
 
 local Ores = require(script.Parent.Config.Ores)
@@ -2310,9 +2501,17 @@ function Rarity.rollTier(pool, luck: number, rng: Random?): string?
 	return candidates[1].id
 end
 
---- Probability of each tier in `pool` at `luck`. Used by the codex UI and
---- by the reveal card, which prints the real odds of what you just pulled.
-function Rarity.odds(pool, luck: number)
+--- Share of swings that get the second, luck-weighted roll. At luck 1 it is
+--- zero and the node is simply what it looks like; it approaches 1 from
+--- below, so the visible ore always keeps some weight.
+function Rarity.luckShare(luck: number): number
+	luck = math.max(luck or 1, 1)
+	return 1 - 1 / luck
+end
+
+--- Tier probabilities for a single weighted roll at `luck`. Internal: this is
+--- one of the three steps, not what a player experiences.
+local function tierOdds(pool, luck: number)
 	luck = math.max(luck or 1, 0.1)
 
 	local total = 0
@@ -2332,20 +2531,84 @@ function Rarity.odds(pool, luck: number)
 	return out
 end
 
---- Roll a full ore: tier, then a uniform pick inside the tier.
-function Rarity.rollOre(depth: number, luck: number, rng: Random?)
+Rarity.tierOdds = tierOdds
+
+--- What a player actually pulls: the node's own tier, kept unless the luck
+--- roll beats it.
+---
+--- max(node, lucky) lands on tier i when the node is i and the lucky roll did
+--- not pass it, or the lucky roll is i and the node was below. Both terms are
+--- exact, so the odds printed on a reveal card are the real ones and not an
+--- approximation of them.
+function Rarity.odds(pool, luck: number)
+	luck = math.max(luck or 1, 0.1)
+	local base = tierOdds(pool, 1)
+	if luck <= 1 then
+		return base
+	end
+
+	local lucky = tierOdds(pool, luck)
+	local share = Rarity.luckShare(luck)
+
+	local out = {}
+	local belowNode = 0 -- P(node tier < i), walking the ladder upward
+	local upToLucky = 0 -- P(lucky roll <= i)
+	for _, tier in ipairs(Ores.Tiers) do
+		local b = base[tier.id]
+		if b then
+			local l = lucky[tier.id] or 0
+			upToLucky += l
+			out[tier.id] = (1 - share) * b + share * (b * upToLucky + l * belowNode)
+			belowNode += b
+		end
+	end
+	return out
+end
+
+--- Roll what a node is when it spawns: no luck, because nobody owns it yet.
+function Rarity.rollNodeOre(depth: number, rng: Random?)
 	local pool = Ores.poolAt(depth)
-	local tierId = Rarity.rollTier(pool, luck, rng)
+	local tierId = Rarity.rollTier(pool, 1, rng)
 	if not tierId then
 		return nil
 	end
 
 	local options = pool[tierId]
 	local random = rng or Random.new()
-	local ore = options[random:NextInteger(1, #options)]
+	return options[random:NextInteger(1, #options)]
+end
 
+--- The swing. Returns the ore you get, its real probability, and whether luck
+--- is what got it for you.
+function Rarity.resolve(nodeOre, depth: number, luck: number, rng: Random?)
+	local pool = Ores.poolAt(depth)
 	local odds = Rarity.odds(pool, luck)
-	return ore, odds[tierId] or 0
+	local result = nodeOre
+	local upgraded = false
+
+	luck = math.max(luck or 1, 0.1)
+	local random = rng or Random.new()
+	if luck > 1 and random:NextNumber() < Rarity.luckShare(luck) then
+		local tierId = Rarity.rollTier(pool, luck, random)
+		if tierId and Ores.TierIndex[tierId] > Ores.TierIndex[nodeOre.tier] then
+			local options = pool[tierId]
+			result = options[random:NextInteger(1, #options)]
+			upgraded = true
+		end
+	end
+
+	return result, odds[result.tier] or 0, upgraded
+end
+
+--- Roll an ore end to end, as if a node had spawned and been struck at once.
+--- Nothing in the game does that any more; the balance harness does.
+function Rarity.rollOre(depth: number, luck: number, rng: Random?)
+	local nodeOre = Rarity.rollNodeOre(depth, rng)
+	if not nodeOre then
+		return nil
+	end
+	local ore, probability = Rarity.resolve(nodeOre, depth, luck, rng)
+	return ore, probability
 end
 
 return Rarity
@@ -2354,7 +2617,7 @@ return Rarity
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX37">
+      <Item class="ModuleScript" referent="RBX38">
         <Properties>
           <string name="Name">Signal</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2412,15 +2675,15 @@ return Signal
       </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="RBX65">
+  <Item class="ServerScriptService" referent="RBX66">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Folder" referent="RBX39">
+    <Item class="Folder" referent="RBX40">
       <Properties>
         <string name="Name">Server</string>
       </Properties>
-      <Item class="ModuleScript" referent="RBX40">
+      <Item class="ModuleScript" referent="RBX41">
         <Properties>
           <string name="Name">Ads</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2584,7 +2847,7 @@ return Ads
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX41">
+      <Item class="ModuleScript" referent="RBX42">
         <Properties>
           <string name="Name">AntiCheat</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2680,7 +2943,7 @@ return AntiCheat
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="Script" referent="RBX42">
+      <Item class="Script" referent="RBX43">
         <Properties>
           <string name="Name">Bootstrap</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2767,7 +3030,7 @@ end
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX43">
+      <Item class="ModuleScript" referent="RBX44">
         <Properties>
           <string name="Name">Cargo</string>
           <ProtectedString name="Source"><![CDATA[
@@ -2918,7 +3181,7 @@ return Cargo
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX44">
+      <Item class="ModuleScript" referent="RBX45">
         <Properties>
           <string name="Name">Contracts</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3201,7 +3464,7 @@ return Contracts
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX45">
+      <Item class="ModuleScript" referent="RBX46">
         <Properties>
           <string name="Name">Cosmetics</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3229,6 +3492,7 @@ local Ores = require(Shared.Config.Ores)
 local Mutations = require(Shared.Config.Mutations)
 local Net = require(Shared.Net)
 local RebirthConfig = require(Shared.Config.Rebirth)
+local Ranks = require(Shared.Config.Ranks)
 
 local Data = require(script.Parent.Data)
 local Economy = require(script.Parent.Economy)
@@ -3363,11 +3627,14 @@ local function applyNameplate(character: Model, profile, player: Player)
 	rank.Size = UDim2.new(1, 0, 0.3, 0)
 	rank.Position = UDim2.new(0, 0, 1, 0)
 	rank.BackgroundTransparency = 1
-	rank.Font = Enum.Font.GothamMedium
+	-- Rank leads the line, because it is the one thing on this plate that
+	-- means the same to everyone who reads it. Rebirth and title come after.
+	local rankConfig = Ranks.at(profile.stats.bankedTotal or 0)
+	rank.Font = Enum.Font.GothamBold
 	rank.Text = profile.rebirths > 0
-		and `R{profile.rebirths} · {RebirthConfig.title(profile.rebirths)}`
-		or RebirthConfig.title(0)
-	rank.TextColor3 = Color3.fromRGB(150, 150, 175)
+		and `{rankConfig.icon} {string.upper(rankConfig.name)} · R{profile.rebirths} · {RebirthConfig.title(profile.rebirths)}`
+		or `{rankConfig.icon} {string.upper(rankConfig.name)} · {RebirthConfig.title(0)}`
+	rank.TextColor3 = Ranks.color(rankConfig.id)
 	rank.TextScaled = true
 	rank.TextStrokeTransparency = 0.5
 	rank.Parent = plate
@@ -3520,7 +3787,7 @@ return Cosmetics
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX46">
+      <Item class="ModuleScript" referent="RBX47">
         <Properties>
           <string name="Name">Crew</string>
           <ProtectedString name="Source"><![CDATA[
@@ -3912,7 +4179,7 @@ return Crew
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX47">
+      <Item class="ModuleScript" referent="RBX48">
         <Properties>
           <string name="Name">Data</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4312,7 +4579,7 @@ return Data
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX48">
+      <Item class="ModuleScript" referent="RBX49">
         <Properties>
           <string name="Name">Drones</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4486,7 +4753,7 @@ return Drones
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX49">
+      <Item class="ModuleScript" referent="RBX50">
         <Properties>
           <string name="Name">Economy</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4763,7 +5030,7 @@ return Economy
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX50">
+      <Item class="ModuleScript" referent="RBX51">
         <Properties>
           <string name="Name">Feedback</string>
           <ProtectedString name="Source"><![CDATA[
@@ -4824,7 +5091,7 @@ return Feedback
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX51">
+      <Item class="ModuleScript" referent="RBX52">
         <Properties>
           <string name="Name">Hazards</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5049,7 +5316,7 @@ return Hazards
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX52">
+      <Item class="ModuleScript" referent="RBX53">
         <Properties>
           <string name="Name">Leaderboards</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5070,6 +5337,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config.Game)
 local Format = require(Shared.Format)
 local Net = require(Shared.Net)
+local Ranks = require(Shared.Config.Ranks)
 
 local Data = require(script.Parent.Data)
 
@@ -5080,6 +5348,15 @@ local cashStore = Config.UseDataStores and DataStoreService:GetOrderedDataStore(
 
 local cache = { depth = {}, banked = {}, fetchedAt = 0 }
 local lastWrite: { [number]: { depth: number, banked: number } } = {}
+
+--- What each player has banked since joining THIS server.
+---
+--- The global boards are all-time and they move once a week; on a Tuesday
+--- evening nobody on the server is on them and nobody ever will be. This one
+--- resets when the server does, so the person standing next to you is on it,
+--- and beating them is a thing you can do in the next twenty minutes. That is
+--- the board players actually race.
+local live: { [number]: number } = {}
 
 local function nameFor(userId: number): string
 	local player = Players:GetPlayerByUserId(userId)
@@ -5123,7 +5400,9 @@ end
 
 --- Called after a successful deposit. Only writes when the player actually
 --- beat their own recorded value.
-function Leaderboards.submit(player: Player, _payout: number)
+function Leaderboards.submit(player: Player, payout: number)
+	live[player.UserId] = (live[player.UserId] or 0) + math.max(payout or 0, 0)
+
 	local profile = Data.get(player)
 	if not profile or not Config.UseDataStores then
 		return
@@ -5151,11 +5430,11 @@ function Leaderboards.submit(player: Player, _payout: number)
 	lastWrite[player.UserId] = previous
 end
 
-local function buildBoard()
+local function buildWall(name: string, cframe: CFrame, heading: string, headingColor: Color3)
 	local anchor = Instance.new("Part")
-	anchor.Name = "LeaderboardWall"
+	anchor.Name = name
 	anchor.Size = Vector3.new(40, 24, 2)
-	anchor.CFrame = CFrame.new(-52, 12, 76) * CFrame.Angles(0, math.rad(-35), 0)
+	anchor.CFrame = cframe
 	anchor.Anchored = true
 	anchor.Color = Color3.fromRGB(24, 24, 30)
 	anchor.Material = Enum.Material.Metal
@@ -5176,8 +5455,8 @@ local function buildBoard()
 	title.Size = UDim2.new(1, 0, 0, 70)
 	title.BackgroundTransparency = 1
 	title.Font = Enum.Font.GothamBlack
-	title.Text = "DEEPEST DIVES"
-	title.TextColor3 = Color3.fromRGB(120, 220, 255)
+	title.Text = heading
+	title.TextColor3 = headingColor
 	title.TextScaled = true
 	title.Parent = frame
 
@@ -5193,6 +5472,54 @@ local function buildBoard()
 	layout.Parent = list
 
 	return list
+end
+
+local function liveRows()
+	local rows = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		local profile = Data.get(player)
+		table.insert(rows, {
+			userId = player.UserId,
+			name = player.DisplayName,
+			value = live[player.UserId] or 0,
+			rank = 0,
+			badge = Ranks.label(profile and profile.stats.bankedTotal or 0),
+			rankId = Ranks.at(profile and profile.stats.bankedTotal or 0).id,
+		})
+	end
+	table.sort(rows, function(a, b)
+		if a.value == b.value then
+			return a.name < b.name
+		end
+		return a.value > b.value
+	end)
+	for index, row in ipairs(rows) do
+		row.rank = index
+	end
+	return rows
+end
+
+local function renderLive(list: Frame)
+	for _, child in ipairs(list:GetChildren()) do
+		if child:IsA("TextLabel") then
+			child:Destroy()
+		end
+	end
+
+	for index, row in ipairs(liveRows()) do
+		if index > 10 then
+			break
+		end
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, 0, 0, 34)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.GothamBold
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.Text = string.format("%d.  %s %s  —  %s", row.rank, row.badge, row.name, Format.short(row.value))
+		label.TextColor3 = index == 1 and Color3.fromRGB(255, 210, 90) or Ranks.color(row.rankId)
+		label.TextScaled = true
+		label.Parent = list
+	end
 end
 
 local function renderBoard(list: Frame)
@@ -5243,6 +5570,11 @@ local function setupLeaderstats(player: Player)
 	depth.Value = "0m"
 	depth.Parent = stats
 
+	local rank = Instance.new("StringValue")
+	rank.Name = "Rank"
+	rank.Value = Ranks.label(0)
+	rank.Parent = stats
+
 	stats.Parent = player
 
 	task.spawn(function()
@@ -5252,6 +5584,7 @@ local function setupLeaderstats(player: Player)
 			if profile then
 				cash.Value = Format.short(profile.cash)
 				depth.Value = Format.depth(session and session.depth or 0)
+				rank.Value = Ranks.label(profile.stats.bankedTotal or 0)
 			end
 			task.wait(3)
 		end
@@ -5265,22 +5598,44 @@ function Leaderboards.start()
 	Players.PlayerAdded:Connect(setupLeaderstats)
 
 	Net.handle("GetBoards", function()
-		return { depth = cache.depth, banked = cache.banked }
+		return { depth = cache.depth, banked = cache.banked, server = liveRows() }
 	end)
 
 	task.spawn(function()
 		-- The world builds first; give it a beat before parenting to it.
 		task.wait(2)
-		local list = buildBoard()
+		local global = buildWall(
+			"LeaderboardWall",
+			CFrame.new(-52, 12, 76) * CFrame.Angles(0, math.rad(-35), 0),
+			"DEEPEST DIVES",
+			Color3.fromRGB(120, 220, 255)
+		)
+		local server = buildWall(
+			"LiveBoardWall",
+			CFrame.new(52, 12, 76) * CFrame.Angles(0, math.rad(35), 0),
+			"THIS SERVER · TODAY",
+			Color3.fromRGB(255, 205, 90)
+		)
+
+		-- The live board refreshes far faster than the global one, and costs
+		-- nothing to: it reads players who are already in memory, while the
+		-- global board is a DataStore call on a budget.
+		local sinceGlobal = math.huge
 		while true do
-			refresh()
-			renderBoard(list)
-			task.wait(Config.LeaderboardRefresh)
+			if sinceGlobal >= Config.LeaderboardRefresh then
+				refresh()
+				renderBoard(global)
+				sinceGlobal = 0
+			end
+			renderLive(server)
+			task.wait(3)
+			sinceGlobal += 3
 		end
 	end)
 
 	Players.PlayerRemoving:Connect(function(player)
 		lastWrite[player.UserId] = nil
+		live[player.UserId] = nil
 	end)
 end
 
@@ -5290,7 +5645,7 @@ return Leaderboards
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX53">
+      <Item class="ModuleScript" referent="RBX54">
         <Properties>
           <string name="Name">Mining</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5414,15 +5769,19 @@ local function award(player: Player, node)
 	-- not in any drop table, it is granted by attendance.
 	local seasonEntry = Season.tryDrop(player, depth)
 
-	local ore, probability, mutation
+	local ore, probability, mutation, luckyStrike
 	if seasonEntry then
 		ore = Ores.ById[seasonEntry.oreId]
 		probability = SeasonConfig.OreChance
 	else
-		ore, probability = Rarity.rollOre(depth, luck, rng)
-		if not ore then
+		-- The node already decided what it is, and the player could see it on
+		-- the way over. Luck is the second chance on top, and it can only
+		-- improve the result — so the wall never lies about what is in it.
+		local visible = node.ore
+		if not visible then
 			return
 		end
+		ore, probability, luckyStrike = Rarity.resolve(visible, depth, luck, rng)
 		mutation = Mutations.roll(luck, riftActive, rng)
 	end
 
@@ -5510,17 +5869,19 @@ local function award(player: Player, node)
 		value = value,
 		name = displayName,
 		mutation = entry.mutation,
+		lucky = luckyStrike or nil,
 		position = node.part.Position,
 	})
 
-	if tierIndex >= REVEAL_FROM_TIER or mutation or isNew then
+	if tierIndex >= REVEAL_FROM_TIER or mutation or isNew or luckyStrike then
 		Feedback.reveal(player, {
-			title = isNew and "NEW DISCOVERY" or "RARE PULL",
+			title = isNew and "NEW DISCOVERY" or (luckyStrike and "LUCKY STRIKE" or "RARE PULL"),
 			name = displayName,
 			tier = ore.tier,
 			mutation = entry.mutation,
 			value = value,
 			odds = probability,
+			lucky = luckyStrike or nil,
 			kind = "ore",
 		})
 	end
@@ -5643,7 +6004,7 @@ return Mining
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX54">
+      <Item class="ModuleScript" referent="RBX55">
         <Properties>
           <string name="Name">Monetization</string>
           <ProtectedString name="Source"><![CDATA[
@@ -5870,7 +6231,7 @@ return Monetization
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX55">
+      <Item class="ModuleScript" referent="RBX56">
         <Properties>
           <string name="Name">Quests</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6193,7 +6554,7 @@ return Quests
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX56">
+      <Item class="ModuleScript" referent="RBX57">
         <Properties>
           <string name="Name">Rebirth</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6287,7 +6648,7 @@ return Rebirth
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX57">
+      <Item class="ModuleScript" referent="RBX58">
         <Properties>
           <string name="Name">Rewards</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6395,7 +6756,7 @@ return Rewards
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX58">
+      <Item class="ModuleScript" referent="RBX59">
         <Properties>
           <string name="Name">Rift</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6562,7 +6923,7 @@ return Rift
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX59">
+      <Item class="ModuleScript" referent="RBX60">
         <Properties>
           <string name="Name">Season</string>
           <ProtectedString name="Source"><![CDATA[
@@ -6754,7 +7115,7 @@ return Season
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX60">
+      <Item class="ModuleScript" referent="RBX61">
         <Properties>
           <string name="Name">Steal</string>
           <ProtectedString name="Source"><![CDATA[
@@ -7142,7 +7503,7 @@ return Steal
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX61">
+      <Item class="ModuleScript" referent="RBX62">
         <Properties>
           <string name="Name">Surface</string>
           <ProtectedString name="Source"><![CDATA[
@@ -7164,6 +7525,7 @@ local Players = game:GetService("Players")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config.Game)
 local Format = require(Shared.Format)
+local Ranks = require(Shared.Config.Ranks)
 local Net = require(Shared.Net)
 
 local Cargo = require(script.Parent.Cargo)
@@ -7224,6 +7586,7 @@ function Surface.deposit(player: Player)
 
 	Economy.addCash(player, payout)
 
+	local rankBefore = select(2, Ranks.at(profile.stats.bankedTotal))
 	profile.stats.bankedTotal += payout
 	profile.stats.bestSingleBank = math.max(profile.stats.bestSingleBank, payout)
 	session.cleanBanks = (session.cleanBanks or 0) + 1
@@ -7258,6 +7621,26 @@ function Surface.deposit(player: Player)
 			or `Banked. x{string.format("%.2f", multiplier)} multiplier.`,
 		kind = "cash",
 	})
+
+	-- Rank up. Lifetime banked is the only figure that never falls, so this
+	-- fires perhaps ten times in a player's whole history — which is exactly
+	-- why it gets the reveal card and a line to the whole server rather than
+	-- a toast nobody reads.
+	local rank, rankAfter = Ranks.at(profile.stats.bankedTotal)
+	if rankAfter > rankBefore then
+		Feedback.reveal(player, {
+			title = "RANK UP",
+			name = `{rank.icon} {string.upper(rank.name)}`,
+			body = `Lifetime banked {Format.short(profile.stats.bankedTotal)}. Everyone can see it over your head.`,
+			kind = "rank",
+		})
+		Feedback.announce(
+			`{rank.icon} RANK UP`,
+			`{player.DisplayName} reached {rank.name}.`,
+			rank.color
+		)
+		require(script.Parent.Cosmetics).apply(player)
+	end
 
 	local ok, err = pcall(function()
 		require(script.Parent.Leaderboards).submit(player, payout)
@@ -7413,7 +7796,7 @@ return Surface
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX62">
+      <Item class="ModuleScript" referent="RBX63">
         <Properties>
           <string name="Name">Tools</string>
           <ProtectedString name="Source"><![CDATA[
@@ -7582,7 +7965,7 @@ return Tools
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX63">
+      <Item class="ModuleScript" referent="RBX64">
         <Properties>
           <string name="Name">Upgrades</string>
           <ProtectedString name="Source"><![CDATA[
@@ -7664,7 +8047,7 @@ return Upgrades
           <bool name="Disabled">false</bool>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="RBX64">
+      <Item class="ModuleScript" referent="RBX65">
         <Properties>
           <string name="Name">World</string>
           <ProtectedString name="Source"><![CDATA[
@@ -7697,6 +8080,8 @@ local AudioConfig = require(Shared.Config.Audio)
 local Config = require(Shared.Config.Game)
 local HazardConfig = require(Shared.Config.Hazards)
 local Layers = require(Shared.Config.Layers)
+local Ores = require(Shared.Config.Ores)
+local Rarity = require(Shared.Rarity)
 
 local World = {}
 
@@ -7773,6 +8158,143 @@ end
 
 -- Ore nodes ----------------------------------------------------------------
 
+--- How each `look` from Ores.Appearance renders. `spike` stretches the vein
+--- pieces: metal seams lie flat in the rock, crystals stab out of it.
+local LOOKS = {
+	metal = { material = Enum.Material.Metal, transparency = 0, reflectance = 0.35, spike = 1.1, sparkle = false },
+	gem = { material = Enum.Material.Glass, transparency = 0.18, reflectance = 0.3, spike = 1.9, sparkle = true },
+	crystal = { material = Enum.Material.Neon, transparency = 0.05, reflectance = 0, spike = 2.4, sparkle = true },
+	stone = { material = Enum.Material.Slate, transparency = 0, reflectance = 0, spike = 0.9, sparkle = false },
+	void = { material = Enum.Material.Neon, transparency = 0.4, reflectance = 0, spike = 1.6, sparkle = true },
+}
+
+local BEACON_FROM_TIER = 4 -- Epic and up get a light column you can see from a shelf away
+local LABEL_FROM_TIER = 3 -- Rare and up name themselves when you get close
+
+local function oreColor(oreId: string): Color3
+	local rgb = Ores.appearance(oreId).color
+	return Color3.fromRGB(rgb[1], rgb[2], rgb[3])
+end
+
+--- Build everything that depends on WHICH ore this node is. Called on spawn
+--- and again on every respawn, because a node that always regrows the same
+--- diamond is a diamond farm, not a mine.
+local function dressNode(part: BasePart, ore, layer, depth: number)
+	for _, child in ipairs(part:GetChildren()) do
+		child:Destroy()
+	end
+
+	local appearance = Ores.appearance(ore.id)
+	local look = LOOKS[appearance.look] or LOOKS.gem
+	local tierIndex = Ores.TierIndex[ore.tier] or 1
+	local tier = Ores.Tiers[tierIndex]
+	local vein = oreColor(ore.id)
+	local size = part.Size.X
+
+	part.Color = layerColor(layer):Lerp(vein, 0.12)
+	part:SetAttribute("Ore", ore.id)
+	part:SetAttribute("Tier", ore.tier)
+
+	-- The seam itself. Enough pieces to read as a vein, few enough that a
+	-- shelf of six nodes is not a hundred parts.
+	for piece = 1, rng:NextInteger(3, 5) do
+		local thickness = size * rng:NextNumber(0.16, 0.3)
+		local offset = Vector3.new(
+			rng:NextNumber(-size * 0.42, size * 0.42),
+			rng:NextNumber(-size * 0.42, size * 0.42),
+			rng:NextNumber(-size * 0.42, size * 0.42)
+		)
+		local shard = makePart(
+			"Vein" .. piece,
+			Vector3.new(thickness, thickness * look.spike * rng:NextNumber(0.8, 1.5), thickness),
+			CFrame.new(part.Position + offset)
+				* CFrame.Angles(rng:NextNumber(0, 6), rng:NextNumber(0, 6), rng:NextNumber(0, 6)),
+			vein,
+			look.material
+		)
+		shard.CanCollide = false
+		shard.Transparency = look.transparency
+		shard.Reflectance = look.reflectance
+		shard.Parent = part
+	end
+
+	local light = Instance.new("PointLight")
+	light.Name = "Glow"
+	light.Range = 10 + tierIndex * 2.5
+	light.Brightness = 0.5 + tier.glow * 2.4 + math.min(depth / 1800, 1)
+	light.Color = vein
+	light.Parent = part
+
+	if look.sparkle then
+		local emitter = Instance.new("ParticleEmitter")
+		emitter.Name = "Sparkle"
+		emitter.Color = ColorSequence.new(vein)
+		emitter.Size = NumberSequence.new(0.28)
+		emitter.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.3, 0.1),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		emitter.Lifetime = NumberRange.new(0.8, 1.6)
+		emitter.Rate = 2 + tierIndex * 2
+		emitter.Speed = NumberRange.new(0.4, 1.2)
+		emitter.SpreadAngle = Vector2.new(180, 180)
+		emitter.LightEmission = 1
+		emitter.Parent = part
+	end
+
+	-- Rare and up say what they are. Below that the colour is enough, and a
+	-- shelf of six labelled dirt clods is noise.
+	if tierIndex >= LABEL_FROM_TIER then
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "Label"
+		billboard.Size = UDim2.new(0, 190, 0, 46)
+		billboard.StudsOffsetWorldSpace = Vector3.new(0, size * 0.9 + 2, 0)
+		billboard.AlwaysOnTop = false
+		billboard.MaxDistance = 120
+		billboard.Parent = part
+
+		local name = Instance.new("TextLabel")
+		name.Size = UDim2.new(1, 0, 0.6, 0)
+		name.BackgroundTransparency = 1
+		name.Font = Enum.Font.GothamBlack
+		name.Text = ore.name
+		name.TextColor3 = vein
+		name.TextStrokeTransparency = 0.3
+		name.TextScaled = true
+		name.Parent = billboard
+
+		local rank = Instance.new("TextLabel")
+		rank.Size = UDim2.new(1, 0, 0.4, 0)
+		rank.Position = UDim2.new(0, 0, 0.6, 0)
+		rank.BackgroundTransparency = 1
+		rank.Font = Enum.Font.GothamBold
+		rank.Text = string.upper(ore.tier)
+		rank.TextColor3 = Color3.fromRGB(tier.color[1], tier.color[2], tier.color[3])
+		rank.TextStrokeTransparency = 0.5
+		rank.TextScaled = true
+		rank.Parent = billboard
+	end
+
+	-- Epic and up throw a column of light up the shaft. This is the single
+	-- biggest reason to keep descending instead of clearing one shelf: you
+	-- can see, from where you are standing, that something down there is
+	-- worth the drop.
+	if tierIndex >= BEACON_FROM_TIER then
+		local beacon = makePart(
+			"Beacon",
+			Vector3.new(size * 0.45, 110 + tierIndex * 28, size * 0.45),
+			CFrame.new(part.Position + Vector3.new(0, 55 + tierIndex * 14, 0)),
+			vein,
+			Enum.Material.Neon
+		)
+		beacon.CanCollide = false
+		beacon.Transparency = 0.86
+		beacon.CastShadow = false
+		beacon.Parent = part
+	end
+end
+
 local function spawnNode(parent: Instance, position: Vector3, depth: number, layer)
 	local id = uid("node")
 	local size = rng:NextNumber(3.2, 5.4)
@@ -7781,8 +8303,8 @@ local function spawnNode(parent: Instance, position: Vector3, depth: number, lay
 		"OreNode",
 		Vector3.new(size, size, size),
 		CFrame.new(position) * CFrame.Angles(rng:NextNumber(0, 6), rng:NextNumber(0, 6), rng:NextNumber(0, 6)),
-		layerColor(layer):Lerp(Color3.fromRGB(255, 255, 255), 0.18),
-		Enum.Material.Slate
+		layerColor(layer),
+		Enum.Material.Rock
 	)
 	-- Solid, because walking through a boulder is the most obviously broken
 	-- thing a mining game can do. Mined-out nodes go non-solid in
@@ -7792,38 +8314,16 @@ local function spawnNode(parent: Instance, position: Vector3, depth: number, lay
 	part:SetAttribute("Depth", math.floor(depth))
 	part.Parent = parent
 
-	-- A faint glow so nodes read as targets at a glance, brighter the deeper
-	-- you are (where the ambient light is nearly gone).
-	local light = Instance.new("PointLight")
-	light.Range = 12
-	light.Brightness = 0.6 + math.min(depth / 1500, 1.4)
-	light.Color = layerColor(layer):Lerp(Color3.fromRGB(255, 220, 150), 0.5)
-	light.Parent = part
-
-	-- Shards around the main block. A single cube reads as a placeholder; a
-	-- cluster reads as a vein someone has to dig out. They carry no NodeId, so
-	-- targeting and mining still see exactly one node.
-	for shard = 1, rng:NextInteger(2, 4) do
-		local shardSize = size * rng:NextNumber(0.3, 0.55)
-		local offset = Vector3.new(
-			rng:NextNumber(-size * 0.6, size * 0.6),
-			rng:NextNumber(-size * 0.5, size * 0.5),
-			rng:NextNumber(-size * 0.6, size * 0.6)
-		)
-		local piece = makePart(
-			"Shard" .. shard,
-			Vector3.new(shardSize, shardSize * rng:NextNumber(1.1, 2.2), shardSize),
-			CFrame.new(position + offset)
-				* CFrame.Angles(rng:NextNumber(0, 6), rng:NextNumber(0, 6), rng:NextNumber(0, 6)),
-			part.Color:Lerp(Color3.fromRGB(255, 255, 255), 0.25),
-			Enum.Material.Glass
-		)
-		piece.CanCollide = false
-		piece.Transparency = 0.15
-		piece.Parent = part
+	-- What this node IS, decided now and shown in the rock. The roll carries
+	-- no luck: the wall does not know who will swing at it, and a node two
+	-- players can see cannot be rolled on one player's stats. Luck moved to
+	-- the swing instead — see Shared/Rarity.luau.
+	local ore = Rarity.rollNodeOre(depth, rng)
+	if ore then
+		dressNode(part, ore, layer, depth)
 	end
 
-	nodes[id] = { id = id, part = part, depth = depth, alive = true }
+	nodes[id] = { id = id, part = part, depth = depth, layer = layer, ore = ore, alive = ore ~= nil }
 	return id
 end
 
@@ -7835,8 +8335,13 @@ function World.getNode(nodeId: string)
 	return nil
 end
 
---- Break a node: hide it, then bring it back. We never destroy and recreate
---- because the id has to stay stable for the client's target lock.
+--- Break a node: hide it, then bring it back as something else.
+---
+--- We never destroy and recreate the part, because the id has to stay stable
+--- for the client's target lock. The dressing is rebuilt from a fresh roll,
+--- which matters more now that the ore is visible: a node that regrew the
+--- same diamond every nine seconds would be a diamond farm, and the first
+--- player to find one would never move again.
 function World.consumeNode(nodeId: string)
 	local node = nodes[nodeId]
 	if not node or not node.alive then
@@ -7848,32 +8353,30 @@ function World.consumeNode(nodeId: string)
 	if part.Parent then
 		part.Transparency = 1
 		part.CanCollide = false
-		for _, piece in ipairs(part:GetChildren()) do
-			if piece:IsA("BasePart") then
-				piece.Transparency = 1
+		for _, child in ipairs(part:GetChildren()) do
+			if child:IsA("BasePart") then
+				child.Transparency = 1
+			elseif child:IsA("PointLight") or child:IsA("ParticleEmitter") then
+				child.Enabled = false
+			elseif child:IsA("BillboardGui") then
+				child.Enabled = false
 			end
-		end
-		local light = part:FindFirstChildOfClass("PointLight")
-		if light then
-			light.Enabled = false
 		end
 	end
 
 	task.delay(Config.NodeRespawn, function()
-		if node.part.Parent then
-			node.alive = true
-			node.part.Transparency = 0
-			node.part.CanCollide = true
-			for _, piece in ipairs(node.part:GetChildren()) do
-				if piece:IsA("BasePart") then
-					piece.Transparency = 0.15
-				end
-			end
-			local light = node.part:FindFirstChildOfClass("PointLight")
-			if light then
-				light.Enabled = true
-			end
+		if not node.part.Parent then
+			return
 		end
+		local ore = Rarity.rollNodeOre(node.depth, rng)
+		if not ore then
+			return
+		end
+		node.ore = ore
+		node.alive = true
+		node.part.Transparency = 0
+		node.part.CanCollide = true
+		dressNode(node.part, ore, node.layer, node.depth)
 	end)
 end
 
@@ -8197,6 +8700,52 @@ local function buildStalactites(parent: Instance, chunkIndex: number, layer)
 	end
 end
 
+--- Decorative crystal clusters growing out of the wall.
+---
+--- Nothing to mine here — they carry no NodeId and targeting ignores them.
+--- They exist because a 3,000m shaft of rock and six ore nodes per shelf
+--- reads as unfinished, and because light coming out of the wall is what
+--- makes a cave feel like a place rather than a tube. They take their colour
+--- from the layer, so each stratum looks like somewhere else.
+local function buildCrystals(parent: Instance, chunkIndex: number, layer)
+	local baseY = -chunkIndex * CHUNK_HEIGHT
+	local accent = layerColor(layer):Lerp(Color3.fromRGB(120, 210, 255), 0.65)
+
+	for _ = 1, 7 do
+		local angle = rng:NextNumber(0, math.pi * 2)
+		local y = baseY - rng:NextNumber(6, CHUNK_HEIGHT - 6)
+		local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		local root = out * (SHAFT_RADIUS - 2)
+
+		local anchorShard: BasePart? = nil
+		for shard = 1, rng:NextInteger(2, 4) do
+			local length = rng:NextNumber(2.5, 6.5)
+			local jitter = Vector3.new(rng:NextNumber(-3, 3), rng:NextNumber(-3, 3), rng:NextNumber(-3, 3))
+			local crystal = makePart(
+				"WallCrystal" .. shard,
+				Vector3.new(rng:NextNumber(0.5, 1.1), length, rng:NextNumber(0.5, 1.1)),
+				CFrame.new(Vector3.new(root.X, y, root.Z) + jitter)
+					* CFrame.Angles(rng:NextNumber(-1.2, 1.2), rng:NextNumber(0, 6), rng:NextNumber(-1.2, 1.2)),
+				accent,
+				Enum.Material.Neon
+			)
+			crystal.CanCollide = false
+			crystal.CastShadow = false
+			crystal.Transparency = 0.25
+			crystal.Parent = parent
+			anchorShard = anchorShard or crystal
+		end
+
+		if anchorShard then
+			local glow = Instance.new("PointLight")
+			glow.Range = 16
+			glow.Brightness = 0.9
+			glow.Color = accent
+			glow.Parent = anchorShard
+		end
+	end
+end
+
 local function buildChunk(chunkIndex: number)
 	if chunks[chunkIndex] then
 		return
@@ -8229,6 +8778,7 @@ local function buildChunk(chunkIndex: number)
 
 	buildSupports(folder, chunkIndex)
 	buildStalactites(folder, chunkIndex, layer)
+	buildCrystals(folder, chunkIndex, layer)
 
 	local hazardsWanted = HazardConfig.densityFor(layer)
 	local hazardsPlaced = 0
@@ -8724,7 +9274,7 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="RBX66">
+  <Item class="StarterPlayer" referent="RBX67">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
@@ -8775,6 +9325,9 @@ local Atmosphere = {}
 local layers: { [string]: Sound } = {}
 local tension: Sound
 local colorCorrection: ColorCorrectionEffect
+local bloom: BloomEffect
+local depthOfField: DepthOfFieldEffect
+local sunRays: SunRaysEffect
 local haze
 
 local tensionTarget = 0
@@ -8843,9 +9396,48 @@ local function buildAudio()
 end
 
 local function buildLighting()
+	-- Future is what makes the ore look like ore. It is the only lighting
+	-- technology with real shadows from point lights and specular response to
+	-- materials, and this whole game is point lights inside rock: a gold seam
+	-- under Voxel is a yellow box, under Future it has a highlight that moves
+	-- as you walk past it.
+	Lighting.Technology = Enum.Technology.Future
+	Lighting.GlobalShadows = true
+	Lighting.EnvironmentDiffuseScale = 0.35
+	Lighting.EnvironmentSpecularScale = 0.6
+
 	colorCorrection = Lighting:FindFirstChild("DeepRushGrade") or Instance.new("ColorCorrectionEffect")
 	colorCorrection.Name = "DeepRushGrade"
 	colorCorrection.Parent = Lighting
+
+	-- Threshold deliberately high. Bloom at a low threshold smears the whole
+	-- screen and reads as a cheap filter; up here only genuinely bright
+	-- things glow, which in this game means neon ore, lift pads and the
+	-- vault. The glow then means something.
+	bloom = Lighting:FindFirstChild("DeepRushBloom") or Instance.new("BloomEffect")
+	bloom.Name = "DeepRushBloom"
+	bloom.Intensity = 0.9
+	bloom.Size = 22
+	bloom.Threshold = 1.35
+	bloom.Parent = Lighting
+
+	-- Focus sits just past mining range, so the rock in your hands is sharp
+	-- and the shaft below you falls away. It is also the cheapest way to make
+	-- a 3,000m hole read as deep rather than tall.
+	depthOfField = Lighting:FindFirstChild("DeepRushDof") or Instance.new("DepthOfFieldEffect")
+	depthOfField.Name = "DeepRushDof"
+	depthOfField.FarIntensity = 0.35
+	depthOfField.FocusDistance = 28
+	depthOfField.InFocusRadius = 42
+	depthOfField.NearIntensity = 0
+	depthOfField.Parent = Lighting
+
+	-- Surface only: it fades out with the sunlight as you descend.
+	sunRays = Lighting:FindFirstChild("DeepRushSun") or Instance.new("SunRaysEffect")
+	sunRays.Name = "DeepRushSun"
+	sunRays.Intensity = 0.16
+	sunRays.Spread = 0.9
+	sunRays.Parent = Lighting
 
 	haze = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
 	haze.Density = 0.3
@@ -8880,6 +9472,14 @@ local function step(delta: number)
 		blend
 	)
 	haze.Density = lerp(haze.Density, 0.3 + descent * 0.32, blend)
+
+	-- The post stack follows the same descent curve as the colour grade: the
+	-- deeper you are the more the light you carry is the only light there is,
+	-- so bloom climbs, the far field blurs out, and the sun stops existing.
+	bloom.Intensity = lerp(bloom.Intensity, 0.9 + descent * 1.5, blend)
+	depthOfField.FarIntensity = lerp(depthOfField.FarIntensity, 0.35 + descent * 0.35, blend)
+	depthOfField.InFocusRadius = lerp(depthOfField.InFocusRadius, 42 - descent * 20, blend)
+	sunRays.Intensity = lerp(sunRays.Intensity, math.max(0, 0.16 * (1 - depth / 220)), blend)
 
 	-- Ambience.
 	for _, band in ipairs(AudioConfig.Ambience) do
@@ -9431,11 +10031,67 @@ local function burst(position: Vector3, color: Color3, count: number)
 	particles.SpreadAngle = Vector2.new(180, 180)
 	particles.Rate = 0
 	particles.Acceleration = Vector3.new(0, -40, 0)
+	particles.LightEmission = 1
+	particles.LightInfluence = 0
 	particles.Parent = attachment
 	particles:Emit(count)
 
+	-- A single frame of real light where the rock broke. Cheap, and it is
+	-- what makes the break read as an impact rather than a sprite.
+	local flash = Instance.new("PointLight")
+	flash.Color = color
+	flash.Brightness = 6
+	flash.Range = 26
+	flash.Parent = emitterPart
+	TweenService:Create(flash, TweenInfo.new(0.35), { Brightness = 0 }):Play()
+
 	Debris:AddItem(emitterPart, 1.5)
 end
+
+--- An expanding ring of light. Reserved for things worth turning around for:
+--- a rare pull, a rank up. Everything cheaper uses burst alone.
+local function shockwave(position: Vector3, color: Color3, size: number)
+	local ring = Instance.new("Part")
+	ring.Shape = Enum.PartType.Ball
+	ring.Size = Vector3.new(2, 2, 2)
+	ring.Position = position
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CastShadow = false
+	ring.Material = Enum.Material.Neon
+	ring.Color = color
+	ring.Transparency = 0.35
+	ring.Parent = workspace
+
+	TweenService:Create(ring, TweenInfo.new(0.55, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+		Size = Vector3.new(size, size, size),
+		Transparency = 1,
+	}):Play()
+
+	Debris:AddItem(ring, 0.8)
+end
+
+Effects.shockwave = shockwave
+
+--- A tint pulse over the whole screen, on its own grade so it never fights
+--- with the depth colour grade Atmosphere is lerping every frame.
+local flashGrade: ColorCorrectionEffect
+local function flash(color: Color3, strength: number)
+	if not flashGrade then
+		flashGrade = Instance.new("ColorCorrectionEffect")
+		flashGrade.Name = "DeepRushFlash"
+		flashGrade.Brightness = 0
+		flashGrade.Parent = game:GetService("Lighting")
+	end
+
+	flashGrade.TintColor = color
+	flashGrade.Brightness = strength
+	TweenService:Create(flashGrade, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Brightness = 0,
+	}):Play()
+end
+
+Effects.flash = flash
 
 --- The floating "+1.2K" that sells the whole game.
 local function popNumber(position: Vector3, text: string, color: Color3, scale: number)
@@ -9475,18 +10131,38 @@ Effects.popNumber = popNumber
 local handlers = {}
 
 handlers.mined = function(payload)
-	local color = Ores.color(payload.tier)
 	local tier = Ores.tier(payload.tier)
+	local color = Ores.color(payload.tier)
 
 	if payload.position then
 		burst(payload.position, color, 14 + math.floor(tier.shake * 20))
 		popNumber(payload.position, "+" .. Format.short(payload.value), color, 1 + tier.shake * 0.5)
+
+		-- Epic and up get a ring you can see from the other side of the
+		-- shaft, which is also how other players learn that something good
+		-- happens down there.
+		if tier.shake >= 0.4 then
+			shockwave(payload.position, color, 16 + tier.shake * 14)
+		end
 	end
 
 	Effects.sound("hit", 0.45, 0.9 + math.random() * 0.25)
 	if tier.shake > 0 then
 		Effects.shake(tier.shake * 1.6, 0.25 + tier.shake * 0.2)
 		Effects.sound("ping", 0.5, 1 + tier.shake * 0.3)
+		flash(color, math.min(tier.shake, 1) * 0.12)
+	end
+
+	-- Luck beating the vein is its own moment, separate from how rare the
+	-- result was: a Rare that luck produced should feel different from a Rare
+	-- that was simply lying there.
+	if payload.lucky then
+		Effects.sound("ping", 0.6, 1.6)
+		Effects.shake(1.1, 0.28)
+		flash(Color3.fromRGB(255, 240, 180), 0.16)
+		if payload.position then
+			shockwave(payload.position, Color3.fromRGB(255, 235, 160), 22)
+		end
 	end
 end
 
@@ -9622,6 +10298,10 @@ local Config = require(Shared.Config.Game)
 local Format = require(Shared.Format)
 local Layers = require(Shared.Config.Layers)
 local Net = require(Shared.Net)
+local Ores = require(Shared.Config.Ores)
+local Ranks = require(Shared.Config.Ranks)
+local ToolConfig = require(Shared.Config.Tools)
+local UpgradeConfig = require(Shared.Config.Upgrades)
 local RebirthConfig = require(Shared.Config.Rebirth)
 
 local Mining = require(script.Parent.Mining)
@@ -9659,7 +10339,7 @@ end
 local function buildTopLeft(parent)
 	local holder = Ui.frame({
 		parent = parent,
-		size = UDim2.fromOffset(230, 96),
+		size = UDim2.fromOffset(240, 142),
 		position = UDim2.fromOffset(16, 16),
 		color = theme.panel,
 		transparency = 0.15,
@@ -9669,34 +10349,69 @@ local function buildTopLeft(parent)
 
 	widgets.cash = Ui.text({
 		parent = holder,
-		size = UDim2.new(1, 0, 0, 40),
+		size = UDim2.new(1, 0, 0, 38),
 		text = "💰 0",
 		color = theme.gold,
 		align = Enum.TextXAlignment.Left,
 		font = Enum.Font.GothamBlack,
 	})
 
-	widgets.title = Ui.text({
+	-- Rank sits directly under the money, because it is the other number
+	-- players compare. It is the one line in this panel that another player
+	-- can also see, over your head.
+	widgets.rank = Ui.text({
 		parent = holder,
 		size = UDim2.new(1, 0, 0, 20),
-		position = UDim2.fromOffset(0, 42),
+		position = UDim2.fromOffset(0, 38),
+		text = "◆ UNRANKED",
+		color = theme.muted,
+		align = Enum.TextXAlignment.Left,
+		font = Enum.Font.GothamBlack,
+		scaled = false,
+		textSize = 16,
+	})
+
+	widgets.pick = Ui.text({
+		parent = holder,
+		size = UDim2.new(1, 0, 0, 18),
+		position = UDim2.fromOffset(0, 60),
+		text = "⛏️ Rusted Pick",
+		color = theme.text,
+		align = Enum.TextXAlignment.Left,
+		scaled = false,
+		textSize = 14,
+	})
+
+	widgets.title = Ui.text({
+		parent = holder,
+		size = UDim2.new(1, 0, 0, 18),
+		position = UDim2.fromOffset(0, 80),
 		text = "Surface Rat",
 		color = theme.muted,
 		align = Enum.TextXAlignment.Left,
 		scaled = false,
-		textSize = 15,
+		textSize = 14,
 	})
 
 	local barHolder, barFill, barLabel = Ui.bar({
 		parent = holder,
 		size = UDim2.new(1, 0, 0, 16),
-		position = UDim2.fromOffset(0, 62),
+		position = UDim2.fromOffset(0, 102),
 		color = theme.cyan,
 		text = "LV 1",
 		textSize = 12,
 	})
 	widgets.xpFill = barFill
 	widgets.xpLabel = barLabel
+
+	widgets.rankBar = select(2, Ui.bar({
+		parent = holder,
+		size = UDim2.new(1, 0, 0, 8),
+		position = UDim2.fromOffset(0, 122),
+		color = theme.gold,
+		text = "",
+		textSize = 9,
+	}))
 end
 
 local function buildTopCenter(parent)
@@ -10060,6 +10775,20 @@ local function renderState()
 	widgets.title.Text = RebirthConfig.title(data.rebirths or 0)
 		.. (data.rebirths > 0 and `  ·  R{data.rebirths}` or "")
 
+	-- Rank comes from lifetime banked, which the server already pushes for
+	-- the stats panel, so the badge and its bar cost no extra traffic.
+	local banked = (data.stats and data.stats.bankedTotal) or 0
+	local rank = Ranks.at(banked)
+	local upcoming = Ranks.next(banked)
+	widgets.rank.Text = `{rank.icon} {string.upper(rank.name)}`
+	widgets.rank.TextColor3 = Ranks.color(rank.id)
+	widgets.rankBar.Size = UDim2.fromScale(Ranks.progress(banked), 1)
+	widgets.rankBar.BackgroundColor3 = upcoming and Ranks.color(upcoming.id) or Ranks.color(rank.id)
+
+	local drill = (data.upgrades and data.upgrades.drill) or 0
+	local swing = math.max(Config.MinMineTime, Config.BaseMineTime * (1 - UpgradeConfig.value("drill", drill)))
+	widgets.pick.Text = `⛏️ {ToolConfig.tierFor(drill).name}  ·  {string.format("%.2f", swing)}s`
+
 	local needed = math.floor(Config.BaseXpToLevel * (Config.LevelCurve ^ ((data.level or 1) - 1)))
 	widgets.xpFill.Size = UDim2.fromScale(math.clamp((data.xp or 0) / needed, 0, 1), 1)
 	widgets.xpLabel.Text = `LV {data.level or 1}`
@@ -10178,9 +10907,16 @@ local function renderContextual()
 	widgets.swingHolder.Visible = progress > 0
 	widgets.swingFill.Size = UDim2.fromScale(progress, 1)
 
-	if Mining.target() then
-		widgets.reticle.Text = progress > 0 and "MINING..." or "◈ HOLD TO MINE"
-		widgets.reticle.TextColor3 = theme.gold
+	-- The reticle names what you are aiming at. The node already shows its
+	-- ore in the rock; this is the confirmation, in words, that the blue
+	-- glitter over there really is a diamond and not a quartz.
+	local aim = Mining.target()
+	if aim then
+		local ore = Ores.ById[aim:GetAttribute("Ore") or ""]
+		local tier = Ores.tier(aim:GetAttribute("Tier") or "Common")
+		widgets.reticle.Text = progress > 0 and "MINING..."
+			or (ore and `◈ {ore.name}  ·  {string.upper(ore.tier)}` or "◈ HOLD TO MINE")
+		widgets.reticle.TextColor3 = Color3.fromRGB(tier.color[1], tier.color[2], tier.color[3])
 	else
 		widgets.reticle.Text = ""
 	end
@@ -10293,12 +11029,13 @@ local card: Frame
 local shown = false
 
 local RULES = {
-	{ icon = "⛏️", title = "HOLD TO MINE", body = "Look at a rock and hold. The highlighted one is the one you get." },
+	{ icon = "⛏️", title = "THE ROCK SHOWS WHAT IS IN IT", body = "Gold, silver, diamond — each one has its own colour and glow in the wall. Look at one and hold to mine it." },
 	{ icon = "⬇️", title = "DEEPER PAYS MORE", body = "Every metre multiplies what the rock is worth. 1,400m ore is not 1,400m of walking — it is a different game." },
 	{ icon = "💰", title = "BANK IT OR LOSE IT", body = "Cargo is not yours until you ride a lift up and deposit it at the vault." },
 	{ icon = "⚠️", title = "A FULL HOLD MAKES YOU A TARGET", body = "Past 60% you glow, and other miners can snatch from you. Bank early and nobody can touch you." },
 	{ icon = "☣️", title = "WALK AROUND THE GLOWING ZONES", body = "Gas, vents and frost are visible and named. The pulsing ones have a rhythm you can walk through." },
-	{ icon = "▲", title = "LIFTS ARE THE ONLY WAY UP", body = "Falling is free and fast. Climbing back is the part you pay for — plan the trip." },
+	{ icon = "▲", title = "LIFTS ARE THE ONLY WAY UP", body = "Falling is free and fast. Climbing back is the part you pay for — plan the trip. Stuck? Stand still and hold Emergency Ascent." },
+	{ icon = "◈", title = "RANK IS FOREVER", body = "Everything you ever bank counts toward your rank, and it never goes down. It is written over your head for everyone to read." },
 }
 
 local function buildCard(parent)
@@ -10333,7 +11070,7 @@ local function buildCard(parent)
 		parent = holder,
 		size = UDim2.new(1, -40, 0, 46),
 		position = UDim2.fromOffset(28, 52),
-		text = "SIX THINGS AND YOU'RE READY",
+		text = "SEVEN THINGS AND YOU'RE READY",
 		color = theme.text,
 		align = Enum.TextXAlignment.Left,
 		font = Enum.Font.GothamBlack,
@@ -10541,6 +11278,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Ores = require(Shared.Config.Ores)
 local Config = require(Shared.Config.Game)
 local Net = require(Shared.Net)
 
@@ -10623,6 +11361,15 @@ local function tick()
 	if highlight then
 		highlight.Adornee = target
 		highlight.Enabled = target ~= nil
+		-- Tinted to the tier the node is showing, so the outline confirms
+		-- what you were already looking at rather than washing it out.
+		if target then
+			local tier = Ores.tier(target:GetAttribute("Tier") or "Common")
+			local color = Color3.fromRGB(tier.color[1], tier.color[2], tier.color[3])
+			highlight.FillColor = color
+			highlight.OutlineColor = color:Lerp(Color3.fromRGB(255, 255, 255), 0.55)
+			highlight.FillTransparency = 0.82 - math.min(tier.glow, 1) * 0.18
+		end
 	end
 
 	local autoMine = State.data.gamepasses and State.data.gamepasses.autodrill
@@ -10858,6 +11605,12 @@ local function showReveal(payload)
 	})
 
 	local subtitle = payload.tier and string.upper(payload.tier) or ""
+	if payload.lucky then
+		-- Luck is a second roll on top of what the node was showing, so when
+		-- it fires the card says so. An invisible curve nobody can point at
+		-- is the one thing a rarity game must not have.
+		subtitle = "⚡ LUCK BEAT THE VEIN  ·  " .. subtitle
+	end
 	if payload.value then
 		subtitle ..= `  ·  {Format.short(payload.value)}`
 	end
@@ -10898,6 +11651,10 @@ local function showReveal(payload)
 
 	Effects.sound("reveal", 0.7, 1)
 	Effects.shake(1.4, 0.3)
+	-- The card is the moment; the screen should agree with it. Rank ups get
+	-- the hardest pulse in the game, because they happen about ten times in a
+	-- player's entire history.
+	Effects.flash(payload.kind == "rank" and theme.gold or (mutationColor or tierColor), payload.kind == "rank" and 0.3 or 0.18)
 
 	task.delay(3.2, function()
 		if card.Parent then
@@ -11209,6 +11966,7 @@ local Net = require(Shared.Net)
 local Ores = require(Shared.Config.Ores)
 local ProductConfig = require(Shared.Config.Products)
 local RebirthConfig = require(Shared.Config.Rebirth)
+local Ranks = require(Shared.Config.Ranks)
 local UpgradeConfig = require(Shared.Config.Upgrades)
 
 local State = require(script.Parent.State)
@@ -11363,7 +12121,17 @@ local function renderShop()
 		row({
 			icon = upgrade.icon,
 			title = `{upgrade.name}  ·  Lv {level}/{upgrade.maxLevel}`,
-			body = `{upgrade.desc}\nNow: {upgrade.format(level)}`,
+			body = (function()
+				local body = `{upgrade.desc}\nNow: {upgrade.format(level)}`
+				-- The pickaxe is the one upgrade with a visible reward, so the
+				-- card says which one is coming and when. A number that will
+				-- change your model in nine levels is worth saving for.
+				local upcoming = upgrade.id == "drill" and UpgradeConfig.nextPickaxe(level) or nil
+				if upcoming then
+					body ..= `\nNext pickaxe: {upcoming.name} at Lv {upcoming.from}`
+				end
+				return body
+			end)(),
 			progress = level / upgrade.maxLevel,
 			accent = maxed and theme.green or theme.panelLight,
 			action = maxed and "MAXED" or Format.short(cost),
@@ -11571,9 +12339,39 @@ local function renderDrones()
 end
 
 local function renderBoards()
-	header("GLOBAL — updates every 90 seconds")
+	local boards = Net.invoke("GetBoards") or { depth = {}, banked = {}, server = {} }
 
-	local boards = Net.invoke("GetBoards") or { depth = {}, banked = {} }
+	-- This server first, and on purpose. The all-time boards are a wall of
+	-- strangers with numbers nobody here will reach today; the people on this
+	-- one are in the shaft right now and can be overtaken before you log off.
+	header("THIS SERVER — banked since the server started")
+	for _, entry in ipairs(boards.server or {}) do
+		row({
+			height = 58,
+			icon = entry.rank == 1 and "🥇" or (entry.rank == 2 and "🥈" or (entry.rank == 3 and "🥉" or "▫️")),
+			title = `#{entry.rank}  {entry.badge or ""} {entry.name}`,
+			body = "Banked here: " .. Format.short(entry.value),
+			accent = entry.rank == 1 and theme.gold or theme.panelLight,
+		})
+	end
+
+	header("YOUR RANK")
+	do
+		local banked = (State.data.stats or {}).bankedTotal or 0
+		local rank = Ranks.at(banked)
+		local upcoming = Ranks.next(banked)
+		row({
+			height = 58,
+			icon = rank.icon,
+			title = `{string.upper(rank.name)}  ·  {Format.short(banked)} banked for life`,
+			body = upcoming
+					and `Next: {upcoming.name} at {Format.short(upcoming.at)}  ·  {math.floor(Ranks.progress(banked) * 100)}%`
+				or "Top of the ladder. There is nothing above this.",
+			accent = Ranks.color(rank.id),
+		})
+	end
+
+	header("GLOBAL — updates every 90 seconds")
 
 	if #(boards.depth or {}) == 0 then
 		row({ icon = "🕳️", title = "No records yet", body = "Be the first name on this wall." })

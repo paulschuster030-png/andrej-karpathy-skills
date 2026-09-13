@@ -287,7 +287,102 @@ wiederkommt.
 
 ---
 
+## Dritte Runde (13. September 2026): Sichtbarkeit von Seltenheit
+
+Diese Runde ging einer Frage nach: **warum explodieren gerade die Spiele, die
+explodieren?** Nicht welche oben stehen, sondern was sie mechanisch gemeinsam
+haben.
+
+### Befund 8 — Seltenheit muss man sehen können
+
+Das Muster über *Steal a Brainrot*, *Grow a Garden 2*, *Pet Simulator 99*,
+*Adopt Me!* und die RNG-Welle (*Sol's RNG*) hinweg ist immer dasselbe: der
+Kern ist eine Seltenheitsleiter, und **die Seltenheit ist sichtbar** — an der
+Figur, im Inventar, über dem Kopf, in der Welt. Sammelspiele laufen darauf,
+dass Spieler sehen können, was andere haben; ohne das ist ein seltener Fund
+eine private Zahl.
+
+DEEP RUSH hatte die Leiter (8 Stufen, 32 Erze) und zeigte sie an genau einer
+Stelle: der Karte *nach* dem Abbau. Der Stein selbst war ein grauer Würfel.
+Man konnte nicht auf eine Wand schauen und wissen, wo es sich lohnt.
+
+**Was daraus wurde:** Ein Knoten würfelt sein Erz jetzt beim Entstehen, nicht
+beim Schlag. Gold hat eine goldene Ader in Metall, Diamant wächst als
+Glaskristall aus dem Fels, Nullstone frisst Licht. Ab *Rare* steht der Name
+darüber, ab *Epic* schießt eine Lichtsäule den Schacht hoch. Das ändert das
+Spiel von „schlag auf irgendwas" zu „lauf da hin".
+
+### Befund 9 — Offene Quoten erhöhen die Zufriedenheit
+
+Belegt, nicht vermutet: Als Overwatch detaillierte Wahrscheinlichkeitstabellen
+veröffentlichte, stieg die Spielerzufriedenheit um 23 %. Moderne Studios
+veröffentlichen inzwischen exakte Prozentwerte, und die RNG-Spiele auf Roblox
+machen die Quote (*1 in 100.000.000*) zum eigentlichen Produkt.
+
+DEEP RUSH zeigte die echte Quote schon auf der Reveal-Karte. Neu ist, dass
+sie auch dann stimmt, wenn Glück im Spiel war: Luck ist jetzt ein zweiter
+Wurf *über* dem, was der Stein zeigt, und `Rarity.odds` rechnet die
+Gesamtverteilung exakt aus statt sie zu schätzen. Wenn Glück zuschlägt, sagt
+die Karte es ausdrücklich („⚡ LUCK BEAT THE VEIN").
+
+### Befund 10 — Glücksspiele boomen kurz, Systeme halten lang
+
+Die Analysen sind hier einig und unangenehm deutlich: **luck-based
+experiences** sind extrem gut für kurzfristige Sichtbarkeit und haben hohe
+Churn-Raten und schnelle Ablösezyklen. Was bleibt — Brookhaven, Adopt Me!,
+Blox Fruits, Pet Sim 99 — hält über langfristige Systeme, faire
+Monetarisierung und Community.
+
+**Was daraus wurde:** das Rangsystem. Zehn Stufen auf Lebenszeit-Einzahlungen
+— die einzige Zahl im Spiel, die nie fällt, auch nicht bei Tod, Diebstahl
+oder Rebirth. Kupfer nach ~4 Minuten, die Spitze jenseits von allem, was die
+Upgrade-Leiter kostet. Der Rang steht über dem Kopf, in der Spielerliste und
+auf einem zweiten Board an der Oberfläche.
+
+Ausdrücklich **ohne Vorteil**: kein Rang gibt Cash, Luck, Tempo oder Kapazität.
+Der Balance-Check erzwingt das (`no rank hands out an advantage`). Sobald ein
+Rang etwas auszahlt, ist Zurückliegen nicht mehr etwas, das man aufholen
+will, sondern etwas, das man ungerecht findet.
+
+### Befund 11 — Future-Lighting ist der größte Grafik-Hebel
+
+Roblox empfiehlt **Future** inzwischen für alle neuen Projekte: echte Schatten
+von allen Lichtquellen, Specular-Highlights, Umgebungsreflexionen. Es ist
+explizit dafür gebaut, mit PBR-Materialien zusammenzuarbeiten. Und: Bloom soll
+einen **hohen Threshold** haben, sonst wird alles matschig und das Spiel sieht
+aus wie durch Vaseline.
+
+Ein Spiel, das zu 90 % aus Punktlichtern in Fels besteht, gewinnt daran mehr
+als fast jedes andere. Unter Voxel ist eine Goldader ein gelber Kasten; unter
+Future hat sie ein Glanzlicht, das mitwandert.
+
+**Was daraus wurde:** `Technology = Future`, Bloom mit Threshold 1.35 (nur
+Neon-Erz, Lifte und der Tresor leuchten), Depth of Field mit Fokus knapp
+hinter Abbaureichweite, Sonnenstrahlen, die mit der Tiefe verschwinden — und
+der ganze Post-Stack folgt derselben Tiefenkurve wie die Farbkorrektur.
+
+---
+
 ## Quellen
+
+**Dritte Runde (13. September 2026):**
+
+- Roblox-Charts und Genre-Analysen zu den aktuell größten Titeln
+  ([dualshockers](https://www.dualshockers.com/best-roblox-games-to-play-in-2026/),
+  [studiokrew](https://studiokrew.com/blog/top-games-on-roblox-and-analysis-2026/))
+- *Steal a Brainrot* — Tycoon-Progression + Diebstahl + Rebirth, erstes
+  Roblox-Erlebnis über 25 Mio. gleichzeitige Nutzer
+  ([Wikipedia](https://en.wikipedia.org/wiki/Steal_a_Brainrot))
+- *Grow a Garden 2* (Juni 2026) — PVP-Diebstahl bei Nacht, Gilden mit
+  Wochenbelohnungen ([Wikipedia](https://en.wikipedia.org/wiki/Grow_a_Garden))
+- Wahrscheinlichkeits-Mechaniken und Quotentransparenz
+  ([GameTyrant](https://gametyrant.com/news/probability-mechanics-in-game-design-2026),
+  [KitsBlox zu RNG-Spielen](https://kitsblox.com/blog/how-to-make-an-rng-game-roblox))
+- Future-Lighting und PBR
+  ([Roblox Creator Hub](https://create.roblox.com/docs/art/modeling/surface-appearance),
+  [Lighting-Technology-Guide](https://roblox-studio-lighting-technology.pages.dev/),
+  [Simplified Media](https://simplified.media/guides/roblox-lighting-atmosphere))
+
 
 - [Optimizing Discovery: How Great Games Reach Millions of Players on Roblox](https://about.roblox.com/newsroom/2026/06/optimizing-discovery-great-games-reach-millions-players-roblox) — Roblox Newsroom, Juni 2026
 - [Boost Your Discovery with the Improved Recommended For You Algorithm](https://devforum.roblox.com/t/boost-your-discovery-with-the-improved-recommended-for-you-algorithm-and-analytics-for-creators/3587441) — Roblox DevForum (die sechs Signale)
