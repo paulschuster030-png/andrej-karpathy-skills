@@ -33,6 +33,9 @@ local Atmosphere = {}
 local layers: { [string]: Sound } = {}
 local tension: Sound
 local colorCorrection: ColorCorrectionEffect
+local bloom: BloomEffect
+local depthOfField: DepthOfFieldEffect
+local sunRays: SunRaysEffect
 local haze
 
 local tensionTarget = 0
@@ -101,9 +104,48 @@ local function buildAudio()
 end
 
 local function buildLighting()
+	-- Future is what makes the ore look like ore. It is the only lighting
+	-- technology with real shadows from point lights and specular response to
+	-- materials, and this whole game is point lights inside rock: a gold seam
+	-- under Voxel is a yellow box, under Future it has a highlight that moves
+	-- as you walk past it.
+	Lighting.Technology = Enum.Technology.Future
+	Lighting.GlobalShadows = true
+	Lighting.EnvironmentDiffuseScale = 0.35
+	Lighting.EnvironmentSpecularScale = 0.6
+
 	colorCorrection = Lighting:FindFirstChild("DeepRushGrade") or Instance.new("ColorCorrectionEffect")
 	colorCorrection.Name = "DeepRushGrade"
 	colorCorrection.Parent = Lighting
+
+	-- Threshold deliberately high. Bloom at a low threshold smears the whole
+	-- screen and reads as a cheap filter; up here only genuinely bright
+	-- things glow, which in this game means neon ore, lift pads and the
+	-- vault. The glow then means something.
+	bloom = Lighting:FindFirstChild("DeepRushBloom") or Instance.new("BloomEffect")
+	bloom.Name = "DeepRushBloom"
+	bloom.Intensity = 0.9
+	bloom.Size = 22
+	bloom.Threshold = 1.35
+	bloom.Parent = Lighting
+
+	-- Focus sits just past mining range, so the rock in your hands is sharp
+	-- and the shaft below you falls away. It is also the cheapest way to make
+	-- a 3,000m hole read as deep rather than tall.
+	depthOfField = Lighting:FindFirstChild("DeepRushDof") or Instance.new("DepthOfFieldEffect")
+	depthOfField.Name = "DeepRushDof"
+	depthOfField.FarIntensity = 0.35
+	depthOfField.FocusDistance = 28
+	depthOfField.InFocusRadius = 42
+	depthOfField.NearIntensity = 0
+	depthOfField.Parent = Lighting
+
+	-- Surface only: it fades out with the sunlight as you descend.
+	sunRays = Lighting:FindFirstChild("DeepRushSun") or Instance.new("SunRaysEffect")
+	sunRays.Name = "DeepRushSun"
+	sunRays.Intensity = 0.16
+	sunRays.Spread = 0.9
+	sunRays.Parent = Lighting
 
 	haze = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
 	haze.Density = 0.3
@@ -138,6 +180,14 @@ local function step(delta: number)
 		blend
 	)
 	haze.Density = lerp(haze.Density, 0.3 + descent * 0.32, blend)
+
+	-- The post stack follows the same descent curve as the colour grade: the
+	-- deeper you are the more the light you carry is the only light there is,
+	-- so bloom climbs, the far field blurs out, and the sun stops existing.
+	bloom.Intensity = lerp(bloom.Intensity, 0.9 + descent * 1.5, blend)
+	depthOfField.FarIntensity = lerp(depthOfField.FarIntensity, 0.35 + descent * 0.35, blend)
+	depthOfField.InFocusRadius = lerp(depthOfField.InFocusRadius, 42 - descent * 20, blend)
+	sunRays.Intensity = lerp(sunRays.Intensity, math.max(0, 0.16 * (1 - depth / 220)), blend)
 
 	-- Ambience.
 	for _, band in ipairs(AudioConfig.Ambience) do

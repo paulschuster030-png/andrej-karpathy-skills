@@ -37,12 +37,13 @@ local card: Frame
 local shown = false
 
 local RULES = {
-	{ icon = "⛏️", title = "HOLD TO MINE", body = "Look at a rock and hold. The highlighted one is the one you get." },
+	{ icon = "⛏️", title = "THE ROCK SHOWS WHAT IS IN IT", body = "Gold, silver, diamond — each one has its own colour and glow in the wall. Look at one and hold to mine it." },
 	{ icon = "⬇️", title = "DEEPER PAYS MORE", body = "Every metre multiplies what the rock is worth. 1,400m ore is not 1,400m of walking — it is a different game." },
 	{ icon = "💰", title = "BANK IT OR LOSE IT", body = "Cargo is not yours until you ride a lift up and deposit it at the vault." },
 	{ icon = "⚠️", title = "A FULL HOLD MAKES YOU A TARGET", body = "Past 60% you glow, and other miners can snatch from you. Bank early and nobody can touch you." },
 	{ icon = "☣️", title = "WALK AROUND THE GLOWING ZONES", body = "Gas, vents and frost are visible and named. The pulsing ones have a rhythm you can walk through." },
-	{ icon = "▲", title = "LIFTS ARE THE ONLY WAY UP", body = "Falling is free and fast. Climbing back is the part you pay for — plan the trip." },
+	{ icon = "▲", title = "LIFTS ARE THE ONLY WAY UP", body = "Falling is free and fast. Climbing back is the part you pay for — plan the trip. Stuck? Stand still and hold Emergency Ascent." },
+	{ icon = "◈", title = "RANK IS FOREVER", body = "Everything you ever bank counts toward your rank, and it never goes down. It is written over your head for everyone to read." },
 }
 
 local function buildCard(parent)
@@ -77,7 +78,7 @@ local function buildCard(parent)
 		parent = holder,
 		size = UDim2.new(1, -40, 0, 46),
 		position = UDim2.fromOffset(28, 52),
-		text = "SIX THINGS AND YOU'RE READY",
+		text = "SEVEN THINGS AND YOU'RE READY",
 		color = theme.text,
 		align = Enum.TextXAlignment.Left,
 		font = Enum.Font.GothamBlack,

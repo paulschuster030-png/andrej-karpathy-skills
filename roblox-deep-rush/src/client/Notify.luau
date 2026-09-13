@@ -154,6 +154,12 @@ local function showReveal(payload)
 	})
 
 	local subtitle = payload.tier and string.upper(payload.tier) or ""
+	if payload.lucky then
+		-- Luck is a second roll on top of what the node was showing, so when
+		-- it fires the card says so. An invisible curve nobody can point at
+		-- is the one thing a rarity game must not have.
+		subtitle = "⚡ LUCK BEAT THE VEIN  ·  " .. subtitle
+	end
 	if payload.value then
 		subtitle ..= `  ·  {Format.short(payload.value)}`
 	end
@@ -194,6 +200,10 @@ local function showReveal(payload)
 
 	Effects.sound("reveal", 0.7, 1)
 	Effects.shake(1.4, 0.3)
+	-- The card is the moment; the screen should agree with it. Rank ups get
+	-- the hardest pulse in the game, because they happen about ten times in a
+	-- player's entire history.
+	Effects.flash(payload.kind == "rank" and theme.gold or (mutationColor or tierColor), payload.kind == "rank" and 0.3 or 0.18)
 
 	task.delay(3.2, function()
 		if card.Parent then

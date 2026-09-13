@@ -83,11 +83,67 @@ local function burst(position: Vector3, color: Color3, count: number)
 	particles.SpreadAngle = Vector2.new(180, 180)
 	particles.Rate = 0
 	particles.Acceleration = Vector3.new(0, -40, 0)
+	particles.LightEmission = 1
+	particles.LightInfluence = 0
 	particles.Parent = attachment
 	particles:Emit(count)
 
+	-- A single frame of real light where the rock broke. Cheap, and it is
+	-- what makes the break read as an impact rather than a sprite.
+	local flash = Instance.new("PointLight")
+	flash.Color = color
+	flash.Brightness = 6
+	flash.Range = 26
+	flash.Parent = emitterPart
+	TweenService:Create(flash, TweenInfo.new(0.35), { Brightness = 0 }):Play()
+
 	Debris:AddItem(emitterPart, 1.5)
 end
+
+--- An expanding ring of light. Reserved for things worth turning around for:
+--- a rare pull, a rank up. Everything cheaper uses burst alone.
+local function shockwave(position: Vector3, color: Color3, size: number)
+	local ring = Instance.new("Part")
+	ring.Shape = Enum.PartType.Ball
+	ring.Size = Vector3.new(2, 2, 2)
+	ring.Position = position
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CastShadow = false
+	ring.Material = Enum.Material.Neon
+	ring.Color = color
+	ring.Transparency = 0.35
+	ring.Parent = workspace
+
+	TweenService:Create(ring, TweenInfo.new(0.55, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+		Size = Vector3.new(size, size, size),
+		Transparency = 1,
+	}):Play()
+
+	Debris:AddItem(ring, 0.8)
+end
+
+Effects.shockwave = shockwave
+
+--- A tint pulse over the whole screen, on its own grade so it never fights
+--- with the depth colour grade Atmosphere is lerping every frame.
+local flashGrade: ColorCorrectionEffect
+local function flash(color: Color3, strength: number)
+	if not flashGrade then
+		flashGrade = Instance.new("ColorCorrectionEffect")
+		flashGrade.Name = "DeepRushFlash"
+		flashGrade.Brightness = 0
+		flashGrade.Parent = game:GetService("Lighting")
+	end
+
+	flashGrade.TintColor = color
+	flashGrade.Brightness = strength
+	TweenService:Create(flashGrade, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Brightness = 0,
+	}):Play()
+end
+
+Effects.flash = flash
 
 --- The floating "+1.2K" that sells the whole game.
 local function popNumber(position: Vector3, text: string, color: Color3, scale: number)
@@ -127,18 +183,38 @@ Effects.popNumber = popNumber
 local handlers = {}
 
 handlers.mined = function(payload)
-	local color = Ores.color(payload.tier)
 	local tier = Ores.tier(payload.tier)
+	local color = Ores.color(payload.tier)
 
 	if payload.position then
 		burst(payload.position, color, 14 + math.floor(tier.shake * 20))
 		popNumber(payload.position, "+" .. Format.short(payload.value), color, 1 + tier.shake * 0.5)
+
+		-- Epic and up get a ring you can see from the other side of the
+		-- shaft, which is also how other players learn that something good
+		-- happens down there.
+		if tier.shake >= 0.4 then
+			shockwave(payload.position, color, 16 + tier.shake * 14)
+		end
 	end
 
 	Effects.sound("hit", 0.45, 0.9 + math.random() * 0.25)
 	if tier.shake > 0 then
 		Effects.shake(tier.shake * 1.6, 0.25 + tier.shake * 0.2)
 		Effects.sound("ping", 0.5, 1 + tier.shake * 0.3)
+		flash(color, math.min(tier.shake, 1) * 0.12)
+	end
+
+	-- Luck beating the vein is its own moment, separate from how rare the
+	-- result was: a Rare that luck produced should feel different from a Rare
+	-- that was simply lying there.
+	if payload.lucky then
+		Effects.sound("ping", 0.6, 1.6)
+		Effects.shake(1.1, 0.28)
+		flash(Color3.fromRGB(255, 240, 180), 0.16)
+		if payload.position then
+			shockwave(payload.position, Color3.fromRGB(255, 235, 160), 22)
+		end
 	end
 end
 
