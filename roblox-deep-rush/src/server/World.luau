@@ -274,6 +274,78 @@ local function spawnNode(parent: Instance, position: Vector3, depth: number, lay
 	return id
 end
 
+--- A chop landing. `progress` is 0..1 through the swing.
+---
+--- The rock kicks back, the vein pieces go with it, and chips come off.
+--- Without this the only thing that moved during mining was a progress bar,
+--- and the rock simply blinked out at the end — which is why the whole action
+--- read as a menu rather than as work.
+---
+--- Everything is driven from a stored rest pose rather than from wherever the
+--- part currently is, so four chops in a row cannot walk a rock out of the
+--- wall. The vein shards are positioned absolutely rather than welded — they
+--- are anchored decoration — so they have to be moved by the same delta or
+--- the rock jumps out from behind its own gold.
+function World.chipNode(nodeId: string, progress: number)
+	local node = nodes[nodeId]
+	if not node or not node.alive or not node.part.Parent then
+		return
+	end
+
+	local part = node.part
+	if not node.rest then
+		node.rest = part.CFrame
+		node.veinRest = {}
+		for _, child in ipairs(part:GetChildren()) do
+			if child:IsA("BasePart") then
+				node.veinRest[child] = child.CFrame
+			end
+		end
+	end
+
+	-- Deeper into the swing the rock gives more ground, so the last chop is
+	-- visibly the one that breaks it.
+	local give = 0.3 + progress * 0.7
+	local offset = CFrame.new(
+		rng:NextNumber(-0.5, 0.5) * give,
+		-0.45 * give,
+		rng:NextNumber(-0.5, 0.5) * give
+	) * CFrame.Angles(rng:NextNumber(-0.09, 0.09) * give, rng:NextNumber(-0.12, 0.12) * give, 0)
+
+	local settle = TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+
+	part.CFrame = node.rest * offset
+	TweenService:Create(part, settle, { CFrame = node.rest }):Play()
+
+	for child, rest in pairs(node.veinRest) do
+		if child.Parent then
+			child.CFrame = rest * offset
+			TweenService:Create(child, settle, { CFrame = rest }):Play()
+		end
+	end
+
+	local sparkle = part:FindFirstChild("Sparkle")
+	if sparkle then
+		sparkle:Emit(6 + math.floor(progress * 10))
+	end
+
+	local chips = part:FindFirstChild("Chips")
+	if not chips then
+		chips = Instance.new("ParticleEmitter")
+		chips.Name = "Chips"
+		chips.Color = ColorSequence.new(part.Color)
+		chips.Size = NumberSequence.new(0.34)
+		chips.Lifetime = NumberRange.new(0.3, 0.7)
+		chips.Speed = NumberRange.new(6, 14)
+		chips.SpreadAngle = Vector2.new(180, 180)
+		chips.Acceleration = Vector3.new(0, -60, 0)
+		chips.Rate = 0
+		chips.LightEmission = 0.4
+		chips.Parent = part
+	end
+	chips:Emit(8 + math.floor(progress * 12))
+end
+
 function World.getNode(nodeId: string)
 	local node = nodes[nodeId]
 	if node and node.alive and node.part.Parent then
@@ -321,6 +393,14 @@ function World.consumeNode(nodeId: string)
 		end
 		node.ore = ore
 		node.alive = true
+		-- New dressing, new children: the old rest pose refers to parts that
+		-- no longer exist, and the body must start from where it belongs
+		-- rather than wherever the last chop left it mid-tween.
+		if node.rest then
+			node.part.CFrame = node.rest
+		end
+		node.rest = nil
+		node.veinRest = nil
 		node.part.Transparency = 0
 		node.part.CanCollide = true
 		dressNode(node.part, ore, node.layer, node.depth)
@@ -371,6 +451,28 @@ local function buildLiftPad(parent: Instance, cframe: CFrame)
 	)
 	pad:SetAttribute("LiftPad", true)
 	pad.Parent = parent
+
+	-- A column of green light running up the shaft. The label only reads at
+	-- 260 studs and only if you are looking at it; this you see from anywhere
+	-- in the chunk, which is the difference between "there is a way up" and
+	-- "I could not find one".
+	local column = makePart(
+		"LiftBeacon",
+		Vector3.new(3.2, 150, 3.2),
+		cframe * CFrame.new(0, 78, 0),
+		Color3.fromRGB(90, 255, 180),
+		Enum.Material.Neon
+	)
+	column.CanCollide = false
+	column.CastShadow = false
+	column.Transparency = 0.82
+	column.Parent = pad
+
+	local glow = Instance.new("PointLight")
+	glow.Color = Color3.fromRGB(120, 255, 200)
+	glow.Range = 34
+	glow.Brightness = 3
+	glow.Parent = pad
 
 	attachLoop(pad, "liftMotor", 0.3, 90)
 
@@ -693,6 +795,54 @@ local function buildCrystals(parent: Instance, chunkIndex: number, layer)
 	end
 end
 
+--- Lamps bolted to the shaft wall, every chunk, all the way down.
+---
+--- The strata carry their own ambient light and the ore lights itself, but
+--- between the two there were long stretches lit by nothing at all. These
+--- are what make the shaft read as a mine somebody built rather than a hole
+--- that happens to have things in it — and they are the reason you can see
+--- the far wall from a shelf.
+local function buildLamps(parent: Instance, chunkIndex: number, layer)
+	local baseY = -chunkIndex * CHUNK_HEIGHT
+	local warm = Color3.fromRGB(255, 206, 140)
+
+	for index = 1, 6 do
+		local angle = (index / 6) * math.pi * 2 + chunkIndex * 0.4
+		local y = baseY - (index / 6) * CHUNK_HEIGHT
+		local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		local at = out * (SHAFT_RADIUS - 3)
+
+		local bracket = makePart(
+			"LampBracket",
+			Vector3.new(1.2, 1.2, 3),
+			CFrame.lookAt(Vector3.new(at.X, y, at.Z), Vector3.new(0, y, 0)),
+			Color3.fromRGB(52, 50, 56),
+			Enum.Material.Metal
+		)
+		bracket.CanCollide = false
+		bracket.Parent = parent
+
+		local bulb = makePart(
+			"LampBulb",
+			Vector3.new(2.2, 0.8, 2.2),
+			CFrame.new(bracket.Position) * CFrame.new(0, -1, 0),
+			warm,
+			Enum.Material.Neon
+		)
+		bulb.CanCollide = false
+		bulb.CastShadow = false
+		bulb.Parent = parent
+
+		local light = Instance.new("PointLight")
+		light.Color = warm
+		-- Deep lamps burn harder: down there they are most of the light there
+		-- is, and the layer ambient has fallen away.
+		light.Range = 46 + math.min(chunkIndex, 20) * 0.8
+		light.Brightness = 2.2 + math.min(chunkIndex / 14, 1.6)
+		light.Parent = bulb
+	end
+end
+
 local function buildChunk(chunkIndex: number)
 	if chunks[chunkIndex] then
 		return
@@ -726,6 +876,7 @@ local function buildChunk(chunkIndex: number)
 	buildSupports(folder, chunkIndex)
 	buildStalactites(folder, chunkIndex, layer)
 	buildCrystals(folder, chunkIndex, layer)
+	buildLamps(folder, chunkIndex, layer)
 
 	local hazardsWanted = HazardConfig.densityFor(layer)
 	local hazardsPlaced = 0

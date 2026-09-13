@@ -5,6 +5,13 @@
 	A layer is a promise and a threat: better ore, worse conditions. The
 	`gate` field is what turns rebirth into a door rather than a number —
 	you physically cannot survive the Singularity until you have earned it.
+
+	On `ambient` and `fog`: these were tuned for atmosphere and they were too
+	dark to play in. Below about 700m you could not see a shelf until you had
+	landed on it, and an unlit mining game is not moody, it is broken. Both
+	are roughly doubled now. The descent still darkens — the surface is still
+	three times brighter than the Singularity — it just stays legible, and
+	the ore's own light is what you steer by.
 ]]
 
 local Layers = {}
@@ -16,8 +23,8 @@ Layers.List = {
 		minDepth = 0,
 		maxDepth = 40,
 		rock = { 106, 84, 62 },
-		fog = 220,
-		ambient = { 70, 70, 78 },
+		fog = 320,
+		ambient = { 118, 116, 126 },
 		oxygenDrain = 0, -- surface air, no timer pressure while learning
 		hazard = nil,
 		valueMultiplier = 1.0,
@@ -30,8 +37,8 @@ Layers.List = {
 		minDepth = 40,
 		maxDepth = 120,
 		rock = { 150, 146, 132 },
-		fog = 190,
-		ambient = { 58, 58, 66 },
+		fog = 290,
+		ambient = { 108, 106, 116 },
 		oxygenDrain = 0.4,
 		hazard = { kind = "cavein", chance = 0.05, damage = 12 },
 		valueMultiplier = 1.15,
@@ -44,8 +51,8 @@ Layers.List = {
 		minDepth = 120,
 		maxDepth = 260,
 		rock = { 122, 98, 88 },
-		fog = 150,
-		ambient = { 48, 44, 52 },
+		fog = 250,
+		ambient = { 100, 92, 100 },
 		oxygenDrain = 0.8,
 		hazard = { kind = "cavein", chance = 0.09, damage = 18 },
 		valueMultiplier = 1.4,
@@ -58,8 +65,8 @@ Layers.List = {
 		minDepth = 260,
 		maxDepth = 450,
 		rock = { 92, 104, 148 },
-		fog = 120,
-		ambient = { 40, 44, 70 },
+		fog = 215,
+		ambient = { 92, 98, 132 },
 		oxygenDrain = 1.2,
 		hazard = { kind = "gas", chance = 0.12, damage = 14 },
 		valueMultiplier = 1.9,
@@ -72,8 +79,8 @@ Layers.List = {
 		minDepth = 450,
 		maxDepth = 700,
 		rock = { 78, 40, 34 },
-		fog = 95,
-		ambient = { 62, 30, 24 },
+		fog = 190,
+		ambient = { 124, 74, 62 },
 		oxygenDrain = 1.8,
 		hazard = { kind = "heat", chance = 0.16, damage = 20 },
 		valueMultiplier = 2.6,
@@ -86,8 +93,8 @@ Layers.List = {
 		minDepth = 700,
 		maxDepth = 1000,
 		rock = { 150, 186, 208 },
-		fog = 80,
-		ambient = { 40, 58, 74 },
+		fog = 175,
+		ambient = { 92, 116, 138 },
 		oxygenDrain = 2.4,
 		hazard = { kind = "freeze", chance = 0.18, damage = 22 },
 		valueMultiplier = 3.6,
@@ -100,8 +107,8 @@ Layers.List = {
 		minDepth = 1000,
 		maxDepth = 1400,
 		rock = { 44, 40, 48 },
-		fog = 55,
-		ambient = { 20, 18, 24 },
+		fog = 150,
+		ambient = { 68, 64, 76 },
 		oxygenDrain = 3.2,
 		hazard = { kind = "hollow", chance = 0.22, damage = 30 },
 		valueMultiplier = 5.2,
@@ -114,8 +121,8 @@ Layers.List = {
 		minDepth = 1400,
 		maxDepth = 2000,
 		rock = { 26, 24, 38 },
-		fog = 40,
-		ambient = { 14, 12, 24 },
+		fog = 130,
+		ambient = { 58, 54, 76 },
 		oxygenDrain = 4.2,
 		hazard = { kind = "pressure", chance = 0.26, damage = 38 },
 		valueMultiplier = 7.5,
@@ -128,8 +135,8 @@ Layers.List = {
 		minDepth = 2000,
 		maxDepth = 3000,
 		rock = { 12, 10, 16 },
-		fog = 26,
-		ambient = { 8, 6, 14 },
+		fog = 115,
+		ambient = { 50, 46, 68 },
 		oxygenDrain = 5.5,
 		hazard = { kind = "collapse", chance = 0.32, damage = 55 },
 		valueMultiplier = 12.0,

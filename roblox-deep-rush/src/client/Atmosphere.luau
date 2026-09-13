@@ -169,12 +169,16 @@ local function step(delta: number)
 
 	local rock = Color3.fromRGB(layer.rock[1], layer.rock[2], layer.rock[3])
 	Lighting.FogColor = Lighting.FogColor:Lerp(rock:Lerp(Color3.fromRGB(0, 0, 0), 0.72), blend)
-	Lighting.Brightness = lerp(Lighting.Brightness, math.max(0.35, 2 - depth / 700), blend)
+	-- Floor at 1.2, not 0.35. The old floor arrived at 700m and left the
+	-- bottom two thirds of the game lit only by whatever the player was
+	-- standing next to.
+	Lighting.Brightness = lerp(Lighting.Brightness, math.max(1.2, 2.4 - depth / 900), blend)
 
 	-- The deep is desaturated and cold; the surface is not.
 	local descent = math.clamp(depth / 1800, 0, 1)
 	colorCorrection.Saturation = lerp(colorCorrection.Saturation, -0.12 - descent * 0.28, blend)
-	colorCorrection.Contrast = lerp(colorCorrection.Contrast, 0.08 + descent * 0.22, blend)
+	colorCorrection.Contrast = lerp(colorCorrection.Contrast, 0.08 + descent * 0.12, blend)
+	colorCorrection.Brightness = lerp(colorCorrection.Brightness, 0.02 + descent * 0.06, blend)
 	colorCorrection.TintColor = colorCorrection.TintColor:Lerp(
 		Color3.fromRGB(255, 250, 240):Lerp(Color3.fromRGB(170, 190, 235), descent),
 		blend
