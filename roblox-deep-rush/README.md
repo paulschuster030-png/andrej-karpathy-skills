@@ -150,6 +150,8 @@ tools/
   robloxstub.luau    genug Roblox-API, um den Server ohne Roblox laufen zu lassen
   make-audio.py      erzeugt die Sounds in audio/
   audio-check.py     misst, ob die Loops wirklich nahtlos sind
+  api-check.py       prüft jede Eigenschaft gegen Roblox' echten API-Dump
+  api-dump.json      Roblox' API-Beschreibung, auf das Nötige eingedampft
 
 audio/
   *.ogg              9 fertige Sounds zum Hochladen (siehe audio/README.md)
@@ -183,7 +185,18 @@ python3 tools/sim-check.py /pfad/zu/luau
 
 # Sind die Audio-Loops nahtlos?
 python3 tools/audio-check.py
+
+# Existiert jede Eigenschaft, die der Code setzt, in echtem Roblox?
+python3 tools/api-check.py
 ```
+
+**`api-check.py` schließt die Lücke, die alle anderen hatten.** Der Simulator
+stubbt Roblox — und ein Stub ist eine Lua-Tabelle, die *jede* Eigenschaft
+annimmt. Echtes Roblox nicht: Eine Eigenschaft, die es nicht gibt oder die die
+Engine für sich reserviert, wirft zur Laufzeit. Weil jeder `start()` in einem
+`pcall` steckt, wurde daraus ein `warn()`, das niemand sieht. Der Check liest
+Roblox' eigenen API-Dump und prüft jede Zuweisung, jedes `Instance.new` und
+jedes `Enum.X.Y` dagegen.
 
 **`sim-check.py` ist der wichtigste davon.** Er stubbt die Roblox-API so weit,
 dass die echten Server-Module wirklich laufen: ein Spieler tritt bei, stellt
@@ -200,7 +213,7 @@ nicht simuliert.
 "das erste Rebirth dauert 15–90 Minuten", "Co-Play steht nie auf dem
 Onboarding-Pfad".
 
-Die Prüfungen haben bisher zehn echte Fehler gefunden, die sonst live gegangen
+Die Prüfungen haben bisher zwölf echte Fehler gefunden, die sonst live gegangen
 wären:
 
 - `Format.short` hat runde Zahlen um den Faktor 10 verkleinert
@@ -230,6 +243,14 @@ wären:
 - **Die Spitzhacke ließ tote Motoren zurück.** `equip` löschte die alte Hacke,
   aber nicht ihren `Motor6D`. Seit die Hacke bei jedem Drill-Level neu gebaut
   wird, wären das bis zu 50 tote Motoren an einer Hand.
+- **`Lighting.Technology` darf kein Skript setzen.** Roblox reserviert die
+  Eigenschaft für sich (`RobloxScriptSecurity`) — die Zuweisung wirft, und
+  damit starb die gesamte Atmosphäre-Steuerung: kein Licht, kein Nebel, kein
+  Ton nach Tiefe. Kompilierte sauber, lief im Simulator sauber, konnte in
+  einem echten Platz nie funktionieren. `Future` steht jetzt in der
+  Place-Datei, wo es erlaubt ist.
+- **Zwei Enum-Werte gab es nicht.** `Enum.AdFormat.Rewarded` heißt
+  `RewardedVideo`, `Enum.ShowAdResult.Succeeded` heißt `ShowCompleted`.
 
 ---
 
