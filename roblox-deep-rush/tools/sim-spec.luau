@@ -82,6 +82,12 @@ placeholder.Parent = workspace
 
 local bootOk, bootErr = pcall(function()
 	for _, name in ipairs(SERVICES) do
+		-- Named, because "attempt to call a nil value" on the line below is
+		-- true and useless. An edit that deletes a service's start() should
+		-- say which one.
+		if type(SERVER[name]) ~= "table" or type(SERVER[name].start) ~= "function" then
+			error(`{name} has no start()`, 0)
+		end
 		SERVER[name].start()
 	end
 end)
@@ -227,6 +233,43 @@ check("you never get less than the wall promised", (function()
 	return worst ~= nil
 end)())
 
+check("chopping a rock leaves it where it was", (function()
+	-- Four chops per swing, each one kicking the rock and tweening it back.
+	-- Driven from the live position rather than a stored rest pose, that walks
+	-- the rock out of the wall — and takes its gold vein with it, or leaves
+	-- the vein behind.
+	local node = nil
+	for _, candidate in ipairs(nodes) do
+		if SERVER.World.getNode(candidate:GetAttribute("NodeId")) then
+			node = candidate
+			break
+		end
+	end
+	if not node then
+		return false
+	end
+
+	local before = node.Position
+	local vein = nil
+	for _, child in ipairs(node:GetChildren()) do
+		if child:IsA("BasePart") and string.sub(child.Name, 1, 4) == "Vein" then
+			vein = child
+			break
+		end
+	end
+	local veinBefore = vein and vein.Position
+
+	for chop = 1, 4 do
+		SERVER.World.chipNode(node:GetAttribute("NodeId"), chop / 4)
+		advance(0.3)
+	end
+
+	local moved = (node.Position - before).Magnitude
+	local veinMoved = vein and (vein.Position - veinBefore).Magnitude or 0
+	print(string.format("       after 4 chops the rock moved %.3f studs, its vein %.3f", moved, veinMoved))
+	return moved < 0.05 and veinMoved < 0.05
+end)())
+
 check("mining out of range does nothing", (function()
 	moveTo(alice, ENV.Vector3.new(9000, 9000, 9000))
 	local before = #SERVER.Data.session(alice).cargo.items
@@ -315,6 +358,11 @@ check("banking past a threshold promotes you", (function()
 end)())
 
 check("the rank is on the player list and over their head", (function()
+	-- leaderstats refreshes on a three-second loop. Reading it straight after
+	-- the promotion passed only because of where the clock happened to be,
+	-- which is not a property of the game.
+	advance(4)
+
 	local stats = alice:FindFirstChild("leaderstats")
 	local entry = stats and stats:FindFirstChild("Rank")
 	if not entry then

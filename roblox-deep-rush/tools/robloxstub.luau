@@ -285,7 +285,12 @@ local ColorSequence = {}
 function ColorSequence.new(value) return { Keypoints = value } end
 
 local TweenInfo = {}
-function TweenInfo.new(...) return { ... } end
+--- Only the duration is kept, because only the duration changes what the
+--- game ends up looking like from a test's point of view. Easing curves are
+--- about the journey; every assertion here is about where things land.
+function TweenInfo.new(time, ...)
+	return { Time = time or 1, rest = { ... } }
+end
 
 -- Enums -------------------------------------------------------------------
 -- Any Enum.Whatever.Value resolves to a stable token, which is all the server
@@ -607,11 +612,34 @@ function Stub.build(sharedTree)
 		function run:IsStudio() return false end
 		return run
 	end)()
+	--- Tweens that actually arrive.
+	---
+	--- Create() used to hand back a Play() that did nothing, so anything the
+	--- game animated into place simply never got there: a rock kicked by a
+	--- pickaxe stayed kicked, and every Completed callback in the codebase
+	--- was dead code the suite could not see. It runs on the virtual clock,
+	--- so a 0.16s settle costs a 0.16s advance and nothing else.
 	services.TweenService = (function()
 		local tween = newInstance("TweenService")
-		function tween:Create()
-			local handle = newInstance("Tween")
-			function handle:Play() end
+		function tween:Create(instance, info, goals)
+			-- A plain table, deliberately not newInstance("Tween"). Every
+			-- stubbed instance carries a generic no-op Play(), and __index
+			-- reaches that before anything written onto the proxy — so a
+			-- Play() defined here would be shadowed by the one that does
+			-- nothing, which is how tweens looked like they ran and did not.
+			local handle = { Completed = makeSignal() }
+			function handle:Play()
+				taskLib.delay(info and info.Time or 0, function()
+					if instance then
+						for key, value in pairs(goals or {}) do
+							instance[key] = value
+						end
+					end
+					handle.Completed:Fire()
+				end)
+			end
+			function handle:Cancel() end
+			function handle:Pause() end
 			return handle
 		end
 		return tween
