@@ -13,17 +13,20 @@ exactly periodic over its buffer, so the end meets the beginning with no click
 and no crossfade — which is very hard to achieve by editing recorded audio and
 free if you generate it.
 
-Usage:  python3 tools/make-audio.py
-Output: audio/*.ogg  plus audio/README.md
+Usage:  python3 tools/make-audio.py [--wav]
+Output: audio/*.ogg plus audio/README.md, and with --wav an uncompressed
+        set in audio/wav/ for when an upload needs the codec ruled out.
 """
 
 import os
+import sys
 
 import numpy as np
 import soundfile as sf
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "audio")
+WAV = os.path.join(OUT, "wav")
 RATE = 44100
 
 # Needs `pip install numpy soundfile`. soundfile bundles libsndfile, which
@@ -317,8 +320,24 @@ PIECES = [
 ]
 
 
+def write_wav(path, signal, rate=RATE):
+    """The same audio, uncompressed.
+
+    Roblox takes .mp3, .ogg, .wav and .flac, and .ogg is the right default:
+    it is a twentieth of the size for audio nobody can tell apart. But when an
+    upload silently does nothing, the first thing worth removing from the
+    equation is the codec, and WAV is the format with the least that can go
+    wrong with it. Run with --wav to get a set.
+    """
+    data = np.clip(normalise(signal), -1, 1).astype("float32")
+    sf.write(path, data, rate, subtype="PCM_16")
+
+
 def main():
+    also_wav = "--wav" in sys.argv
     os.makedirs(OUT, exist_ok=True)
+    if also_wav:
+        os.makedirs(WAV, exist_ok=True)
     rows = []
 
     for name, builder, description, looping in PIECES:
@@ -328,11 +347,19 @@ def main():
         size = os.path.getsize(ogg_path)
         seconds = len(signal) / RATE
         rows.append((name, seconds, size, description, looping))
-        print(f"  {name+'.ogg':26s} {seconds:5.1f}s  {size/1024:6.1f} KB")
+
+        note = ""
+        if also_wav:
+            wav_path = os.path.join(WAV, name + ".wav")
+            write_wav(wav_path, signal)
+            note = f"  (+ {os.path.getsize(wav_path)/1024:6.0f} KB wav)"
+        print(f"  {name+'.ogg':26s} {seconds:5.1f}s  {size/1024:6.1f} KB{note}")
 
     with open(os.path.join(OUT, "README.md"), "w", encoding="utf-8") as handle:
         handle.write(build_readme(rows))
     print(f"\nwrote {len(rows)} files to audio/")
+    if also_wav:
+        print("and an uncompressed set to audio/wav/ (not committed — derived)")
 
 
 def build_readme(rows):
