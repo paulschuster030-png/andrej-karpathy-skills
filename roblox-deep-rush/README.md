@@ -24,6 +24,9 @@ bezahlte Reichweite kauft, ohne Geld zu verbrennen, in
 | **Ranglistensystem** | 10 Ränge auf Lebenszeit-Einzahlungen — die einzige Zahl, die nie fällt. Über dem Kopf, im HUD, in der Spielerliste. Dazu zwei Boards an der Oberfläche: global für immer, und **dieser Server heute**. |
 | **Glück ist ein Ereignis** | Der Stein ist eine Untergrenze. Glück würfelt ein zweites Mal und behält das Bessere — mit Blitz, Schockwelle und „⚡ LUCK BEAT THE VEIN". |
 | **Future-Licht** | Echte Schatten von jedem Punktlicht, Bloom nur auf dem, was wirklich leuchtet, Tiefenschärfe, die den Schacht tief statt hoch aussehen lässt. |
+| **Der Schacht ist beleuchtet** | Sechs Lampen pro Abschnitt an der Wand, tiefer brennen sie heller. Dazu doppelt so viel Grundlicht wie vorher — der Abstieg wird dunkler, aber nie unspielbar. |
+| **Abbauen ist eine Animation** | Bis zu vier Hiebe pro Stein, jeder mit Ausholen, Schlag und Rückfederung. Der Stein federt zurück, die Erzader geht mit, Splitter fliegen — und jeder Hieb klingt. |
+| **Alles in einer Tonart** | Die vier Ambience-Schichten überblenden ineinander; jetzt stehen sie alle auf D-Moll-Pentatonik statt auf zufälligen Frequenzen. Kein Reiben mehr. |
 
 Warum genau diese Dinge: [`TRENDS.md`](TRENDS.md), dritte Runde.
 
@@ -146,7 +149,7 @@ tools/
   balance-spec.luau  60 Design-Zusagen als Assertions
   protocol-check.py  prüft, ob Client und Server dieselben Remotes benutzen
   sim-check.py       startet den echten Server headless
-  sim-spec.luau      43 Laufzeit-Checks: Mining, Bank, Lift, Werkzeug, Rang,
+  sim-spec.luau      44 Laufzeit-Checks: Mining, Bank, Lift, Werkzeug, Rang,
                      Gefahren, Crew, Notaufstieg, Rückweg vom Grund
   robloxstub.luau    genug Roblox-API, um den Server ohne Roblox laufen zu lassen
   make-audio.py      erzeugt die Sounds in audio/

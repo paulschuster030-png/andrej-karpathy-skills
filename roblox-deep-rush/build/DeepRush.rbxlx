@@ -884,6 +884,13 @@ return Hazards
 	A layer is a promise and a threat: better ore, worse conditions. The
 	`gate` field is what turns rebirth into a door rather than a number —
 	you physically cannot survive the Singularity until you have earned it.
+
+	On `ambient` and `fog`: these were tuned for atmosphere and they were too
+	dark to play in. Below about 700m you could not see a shelf until you had
+	landed on it, and an unlit mining game is not moody, it is broken. Both
+	are roughly doubled now. The descent still darkens — the surface is still
+	three times brighter than the Singularity — it just stays legible, and
+	the ore's own light is what you steer by.
 ]]
 
 local Layers = {}
@@ -895,8 +902,8 @@ Layers.List = {
 		minDepth = 0,
 		maxDepth = 40,
 		rock = { 106, 84, 62 },
-		fog = 220,
-		ambient = { 70, 70, 78 },
+		fog = 320,
+		ambient = { 118, 116, 126 },
 		oxygenDrain = 0, -- surface air, no timer pressure while learning
 		hazard = nil,
 		valueMultiplier = 1.0,
@@ -909,8 +916,8 @@ Layers.List = {
 		minDepth = 40,
 		maxDepth = 120,
 		rock = { 150, 146, 132 },
-		fog = 190,
-		ambient = { 58, 58, 66 },
+		fog = 290,
+		ambient = { 108, 106, 116 },
 		oxygenDrain = 0.4,
 		hazard = { kind = "cavein", chance = 0.05, damage = 12 },
 		valueMultiplier = 1.15,
@@ -923,8 +930,8 @@ Layers.List = {
 		minDepth = 120,
 		maxDepth = 260,
 		rock = { 122, 98, 88 },
-		fog = 150,
-		ambient = { 48, 44, 52 },
+		fog = 250,
+		ambient = { 100, 92, 100 },
 		oxygenDrain = 0.8,
 		hazard = { kind = "cavein", chance = 0.09, damage = 18 },
 		valueMultiplier = 1.4,
@@ -937,8 +944,8 @@ Layers.List = {
 		minDepth = 260,
 		maxDepth = 450,
 		rock = { 92, 104, 148 },
-		fog = 120,
-		ambient = { 40, 44, 70 },
+		fog = 215,
+		ambient = { 92, 98, 132 },
 		oxygenDrain = 1.2,
 		hazard = { kind = "gas", chance = 0.12, damage = 14 },
 		valueMultiplier = 1.9,
@@ -951,8 +958,8 @@ Layers.List = {
 		minDepth = 450,
 		maxDepth = 700,
 		rock = { 78, 40, 34 },
-		fog = 95,
-		ambient = { 62, 30, 24 },
+		fog = 190,
+		ambient = { 124, 74, 62 },
 		oxygenDrain = 1.8,
 		hazard = { kind = "heat", chance = 0.16, damage = 20 },
 		valueMultiplier = 2.6,
@@ -965,8 +972,8 @@ Layers.List = {
 		minDepth = 700,
 		maxDepth = 1000,
 		rock = { 150, 186, 208 },
-		fog = 80,
-		ambient = { 40, 58, 74 },
+		fog = 175,
+		ambient = { 92, 116, 138 },
 		oxygenDrain = 2.4,
 		hazard = { kind = "freeze", chance = 0.18, damage = 22 },
 		valueMultiplier = 3.6,
@@ -979,8 +986,8 @@ Layers.List = {
 		minDepth = 1000,
 		maxDepth = 1400,
 		rock = { 44, 40, 48 },
-		fog = 55,
-		ambient = { 20, 18, 24 },
+		fog = 150,
+		ambient = { 68, 64, 76 },
 		oxygenDrain = 3.2,
 		hazard = { kind = "hollow", chance = 0.22, damage = 30 },
 		valueMultiplier = 5.2,
@@ -993,8 +1000,8 @@ Layers.List = {
 		minDepth = 1400,
 		maxDepth = 2000,
 		rock = { 26, 24, 38 },
-		fog = 40,
-		ambient = { 14, 12, 24 },
+		fog = 130,
+		ambient = { 58, 54, 76 },
 		oxygenDrain = 4.2,
 		hazard = { kind = "pressure", chance = 0.26, damage = 38 },
 		valueMultiplier = 7.5,
@@ -1007,8 +1014,8 @@ Layers.List = {
 		minDepth = 2000,
 		maxDepth = 3000,
 		rock = { 12, 10, 16 },
-		fog = 26,
-		ambient = { 8, 6, 14 },
+		fog = 115,
+		ambient = { 50, 46, 68 },
 		oxygenDrain = 5.5,
 		hazard = { kind = "collapse", chance = 0.32, damage = 55 },
 		valueMultiplier = 12.0,
@@ -6092,8 +6099,13 @@ function Mining.begin(player: Player, nodeId: string)
 
 	-- The pickaxe chop is timed to the same duration, so the hit lands when
 	-- the bar fills rather than on its own schedule.
-	require(script.Parent.Tools).swing(player, duration)
-	Feedback.effect(player, "swing", { duration = duration, nodeId = nodeId })
+	local Tools = require(script.Parent.Tools)
+	Tools.swing(player, duration, nodeId)
+	Feedback.effect(player, "swing", {
+		duration = duration,
+		nodeId = nodeId,
+		chops = Tools.chopsFor(duration),
+	})
 end
 
 function Mining.stop(player: Player)
@@ -8092,25 +8104,69 @@ function Tools.equip(player: Player)
 end
 
 --- One chop, timed to the swing the server is already running.
-function Tools.swing(player: Player, duration: number)
+--- Chop, for as long as the swing lasts.
+---
+--- One tween down and one back was a single lazy wave of a stick per rock,
+--- and at a maxed drill it barely moved at all. A swing is now as many chops
+--- as it has room for, each with a wind-up, a fast strike and a recoil — and
+--- each one kicks the rock it lands on, so the rock is part of the animation
+--- rather than a thing that vanishes at the end of it.
+--- How many chops fit in a swing. One per ~0.42s: below that the strikes
+--- blur into a vibration, above it the pick hangs in the air.
+function Tools.chopsFor(duration: number): number
+	return math.clamp(math.round(duration / 0.42), 1, 4)
+end
+
+function Tools.swing(player: Player, duration: number, nodeId: string?)
 	local motor = motors[player]
 	if not motor or not motor.Parent then
 		return
 	end
 
 	local rest = CFrame.new(Config.Grip[1], Config.Grip[2], Config.Grip[3])
-	local raised = rest * CFrame.Angles(math.rad(-Config.SwingAngle * 0.5), 0, 0)
-	local struck = rest * CFrame.Angles(math.rad(Config.SwingAngle * 0.5), 0, 0)
+	local raised = rest * CFrame.Angles(math.rad(-Config.SwingAngle * 0.55), 0, math.rad(-12))
+	local struck = rest * CFrame.Angles(math.rad(Config.SwingAngle * 0.45), 0, math.rad(6))
 
-	local down = math.max(duration * (1 - Config.ReturnFraction), 0.08)
-	local back = math.max(duration * Config.ReturnFraction, 0.06)
+	-- One chop per ~0.42s of swing, so a slow pick lands four and a fast one
+	-- lands one. Below that the strikes blur into a vibration.
+	local chops = Tools.chopsFor(duration)
+	local each = duration / chops
 
-	motor.C0 = raised
-	local chop = TweenService:Create(motor, TweenInfo.new(down, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { C0 = struck })
-	chop:Play()
-	chop.Completed:Once(function()
-		if motor.Parent then
-			TweenService:Create(motor, TweenInfo.new(back, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { C0 = rest }):Play()
+	task.spawn(function()
+		for index = 1, chops do
+			if not motor.Parent then
+				return
+			end
+
+			local lift = each * 0.34
+			local fall = each * 0.30
+			local recover = each - lift - fall
+
+			TweenService:Create(motor, TweenInfo.new(lift, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+				C0 = raised,
+			}):Play()
+			task.wait(lift)
+
+			if not motor.Parent then
+				return
+			end
+			-- The strike is the fast part. Quad In means it accelerates into
+			-- the rock instead of arriving at a constant speed.
+			TweenService:Create(motor, TweenInfo.new(fall, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				C0 = struck,
+			}):Play()
+			task.wait(fall)
+
+			if nodeId then
+				require(script.Parent.World).chipNode(nodeId, index / chops)
+			end
+
+			if motor.Parent then
+				TweenService:Create(motor, TweenInfo.new(math.max(recover, 0.04), Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+					C0 = rest,
+				}):Play()
+			end
+			task.wait(math.max(recover, 0.04))
 		end
 	end)
 end
@@ -8505,6 +8561,78 @@ local function spawnNode(parent: Instance, position: Vector3, depth: number, lay
 	return id
 end
 
+--- A chop landing. `progress` is 0..1 through the swing.
+---
+--- The rock kicks back, the vein pieces go with it, and chips come off.
+--- Without this the only thing that moved during mining was a progress bar,
+--- and the rock simply blinked out at the end — which is why the whole action
+--- read as a menu rather than as work.
+---
+--- Everything is driven from a stored rest pose rather than from wherever the
+--- part currently is, so four chops in a row cannot walk a rock out of the
+--- wall. The vein shards are positioned absolutely rather than welded — they
+--- are anchored decoration — so they have to be moved by the same delta or
+--- the rock jumps out from behind its own gold.
+function World.chipNode(nodeId: string, progress: number)
+	local node = nodes[nodeId]
+	if not node or not node.alive or not node.part.Parent then
+		return
+	end
+
+	local part = node.part
+	if not node.rest then
+		node.rest = part.CFrame
+		node.veinRest = {}
+		for _, child in ipairs(part:GetChildren()) do
+			if child:IsA("BasePart") then
+				node.veinRest[child] = child.CFrame
+			end
+		end
+	end
+
+	-- Deeper into the swing the rock gives more ground, so the last chop is
+	-- visibly the one that breaks it.
+	local give = 0.3 + progress * 0.7
+	local offset = CFrame.new(
+		rng:NextNumber(-0.5, 0.5) * give,
+		-0.45 * give,
+		rng:NextNumber(-0.5, 0.5) * give
+	) * CFrame.Angles(rng:NextNumber(-0.09, 0.09) * give, rng:NextNumber(-0.12, 0.12) * give, 0)
+
+	local settle = TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+
+	part.CFrame = node.rest * offset
+	TweenService:Create(part, settle, { CFrame = node.rest }):Play()
+
+	for child, rest in pairs(node.veinRest) do
+		if child.Parent then
+			child.CFrame = rest * offset
+			TweenService:Create(child, settle, { CFrame = rest }):Play()
+		end
+	end
+
+	local sparkle = part:FindFirstChild("Sparkle")
+	if sparkle then
+		sparkle:Emit(6 + math.floor(progress * 10))
+	end
+
+	local chips = part:FindFirstChild("Chips")
+	if not chips then
+		chips = Instance.new("ParticleEmitter")
+		chips.Name = "Chips"
+		chips.Color = ColorSequence.new(part.Color)
+		chips.Size = NumberSequence.new(0.34)
+		chips.Lifetime = NumberRange.new(0.3, 0.7)
+		chips.Speed = NumberRange.new(6, 14)
+		chips.SpreadAngle = Vector2.new(180, 180)
+		chips.Acceleration = Vector3.new(0, -60, 0)
+		chips.Rate = 0
+		chips.LightEmission = 0.4
+		chips.Parent = part
+	end
+	chips:Emit(8 + math.floor(progress * 12))
+end
+
 function World.getNode(nodeId: string)
 	local node = nodes[nodeId]
 	if node and node.alive and node.part.Parent then
@@ -8552,6 +8680,14 @@ function World.consumeNode(nodeId: string)
 		end
 		node.ore = ore
 		node.alive = true
+		-- New dressing, new children: the old rest pose refers to parts that
+		-- no longer exist, and the body must start from where it belongs
+		-- rather than wherever the last chop left it mid-tween.
+		if node.rest then
+			node.part.CFrame = node.rest
+		end
+		node.rest = nil
+		node.veinRest = nil
 		node.part.Transparency = 0
 		node.part.CanCollide = true
 		dressNode(node.part, ore, node.layer, node.depth)
@@ -8602,6 +8738,28 @@ local function buildLiftPad(parent: Instance, cframe: CFrame)
 	)
 	pad:SetAttribute("LiftPad", true)
 	pad.Parent = parent
+
+	-- A column of green light running up the shaft. The label only reads at
+	-- 260 studs and only if you are looking at it; this you see from anywhere
+	-- in the chunk, which is the difference between "there is a way up" and
+	-- "I could not find one".
+	local column = makePart(
+		"LiftBeacon",
+		Vector3.new(3.2, 150, 3.2),
+		cframe * CFrame.new(0, 78, 0),
+		Color3.fromRGB(90, 255, 180),
+		Enum.Material.Neon
+	)
+	column.CanCollide = false
+	column.CastShadow = false
+	column.Transparency = 0.82
+	column.Parent = pad
+
+	local glow = Instance.new("PointLight")
+	glow.Color = Color3.fromRGB(120, 255, 200)
+	glow.Range = 34
+	glow.Brightness = 3
+	glow.Parent = pad
 
 	attachLoop(pad, "liftMotor", 0.3, 90)
 
@@ -8924,6 +9082,54 @@ local function buildCrystals(parent: Instance, chunkIndex: number, layer)
 	end
 end
 
+--- Lamps bolted to the shaft wall, every chunk, all the way down.
+---
+--- The strata carry their own ambient light and the ore lights itself, but
+--- between the two there were long stretches lit by nothing at all. These
+--- are what make the shaft read as a mine somebody built rather than a hole
+--- that happens to have things in it — and they are the reason you can see
+--- the far wall from a shelf.
+local function buildLamps(parent: Instance, chunkIndex: number, layer)
+	local baseY = -chunkIndex * CHUNK_HEIGHT
+	local warm = Color3.fromRGB(255, 206, 140)
+
+	for index = 1, 6 do
+		local angle = (index / 6) * math.pi * 2 + chunkIndex * 0.4
+		local y = baseY - (index / 6) * CHUNK_HEIGHT
+		local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		local at = out * (SHAFT_RADIUS - 3)
+
+		local bracket = makePart(
+			"LampBracket",
+			Vector3.new(1.2, 1.2, 3),
+			CFrame.lookAt(Vector3.new(at.X, y, at.Z), Vector3.new(0, y, 0)),
+			Color3.fromRGB(52, 50, 56),
+			Enum.Material.Metal
+		)
+		bracket.CanCollide = false
+		bracket.Parent = parent
+
+		local bulb = makePart(
+			"LampBulb",
+			Vector3.new(2.2, 0.8, 2.2),
+			CFrame.new(bracket.Position) * CFrame.new(0, -1, 0),
+			warm,
+			Enum.Material.Neon
+		)
+		bulb.CanCollide = false
+		bulb.CastShadow = false
+		bulb.Parent = parent
+
+		local light = Instance.new("PointLight")
+		light.Color = warm
+		-- Deep lamps burn harder: down there they are most of the light there
+		-- is, and the layer ambient has fallen away.
+		light.Range = 46 + math.min(chunkIndex, 20) * 0.8
+		light.Brightness = 2.2 + math.min(chunkIndex / 14, 1.6)
+		light.Parent = bulb
+	end
+end
+
 local function buildChunk(chunkIndex: number)
 	if chunks[chunkIndex] then
 		return
@@ -8957,6 +9163,7 @@ local function buildChunk(chunkIndex: number)
 	buildSupports(folder, chunkIndex)
 	buildStalactites(folder, chunkIndex, layer)
 	buildCrystals(folder, chunkIndex, layer)
+	buildLamps(folder, chunkIndex, layer)
 
 	local hazardsWanted = HazardConfig.densityFor(layer)
 	local hazardsPlaced = 0
@@ -9674,12 +9881,16 @@ local function step(delta: number)
 
 	local rock = Color3.fromRGB(layer.rock[1], layer.rock[2], layer.rock[3])
 	Lighting.FogColor = Lighting.FogColor:Lerp(rock:Lerp(Color3.fromRGB(0, 0, 0), 0.72), blend)
-	Lighting.Brightness = lerp(Lighting.Brightness, math.max(0.35, 2 - depth / 700), blend)
+	-- Floor at 1.2, not 0.35. The old floor arrived at 700m and left the
+	-- bottom two thirds of the game lit only by whatever the player was
+	-- standing next to.
+	Lighting.Brightness = lerp(Lighting.Brightness, math.max(1.2, 2.4 - depth / 900), blend)
 
 	-- The deep is desaturated and cold; the surface is not.
 	local descent = math.clamp(depth / 1800, 0, 1)
 	colorCorrection.Saturation = lerp(colorCorrection.Saturation, -0.12 - descent * 0.28, blend)
-	colorCorrection.Contrast = lerp(colorCorrection.Contrast, 0.08 + descent * 0.22, blend)
+	colorCorrection.Contrast = lerp(colorCorrection.Contrast, 0.08 + descent * 0.12, blend)
+	colorCorrection.Brightness = lerp(colorCorrection.Brightness, 0.02 + descent * 0.06, blend)
 	colorCorrection.TintColor = colorCorrection.TintColor:Lerp(
 		Color3.fromRGB(255, 250, 240):Lerp(Color3.fromRGB(170, 190, 235), descent),
 		blend
@@ -10377,6 +10588,26 @@ handlers.mined = function(payload)
 			shockwave(payload.position, Color3.fromRGB(255, 235, 160), 22)
 		end
 	end
+end
+
+handlers.swing = function(payload)
+	-- One knock per chop, following the same schedule the server animates to.
+	-- The pickaxe used to swing in silence and then the rock made one noise as
+	-- it vanished, which is backwards: the work should be audible and the
+	-- break should be the payoff.
+	local chops = math.clamp(tonumber(payload and payload.chops) or 1, 1, 4)
+	local duration = tonumber(payload and payload.duration) or 0.5
+	local each = duration / chops
+
+	task.spawn(function()
+		for index = 1, chops do
+			task.wait(each * 0.64)
+			-- Each strike a little lower than the last, so a long swing reads
+			-- as digging in rather than as a loop.
+			Effects.sound("hit", 0.4, 1.08 - index * 0.06 + math.random() * 0.05)
+			task.wait(each * 0.36)
+		end
+	end)
 end
 
 handlers.full = function()
@@ -12038,11 +12269,17 @@ local function update()
 		return
 	end
 
-	local cargoFull = (State.data.cargo.count or 0) >= (State.data.cargo.capacity or 8)
+	-- 60%, not full. Waiting for a full hold meant the arrow to the way out
+	-- only appeared once the player had already stopped being able to mine,
+	-- and "can I even get back up?" is a question people ask well before
+	-- that. Sixty is also where the greed mark makes you a target, so it is
+	-- the moment surfacing starts being the right call anyway.
+	local capacity = State.data.cargo.capacity or 8
+	local loaded = (State.data.cargo.count or 0) >= capacity * 0.6
 	local depth = State.data.depth or 0
 
 	local targetPosition, text
-	if cargoFull and depth > 20 then
+	if loaded and depth > 20 then
 		local lift = nearestLift()
 		if lift then
 			targetPosition, text = lift.Position + Vector3.new(0, 6, 0), "▼ RIDE UP"
