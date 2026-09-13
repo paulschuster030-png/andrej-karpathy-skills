@@ -48,10 +48,11 @@ Warum genau diese Dinge: [`TRENDS.md`](TRENDS.md), dritte Runde.
    API Services = AN** (sonst speichert nichts — siehe Troubleshooting)
 3. Platz auf **Public** stellen
 
-> **Wichtig zum Testen:** DataStores funktionieren nicht im lokalen
-> Studio-Playtest, bevor der Platz einmal veröffentlicht wurde. Bis dahin
-> kannst du in `src/shared/Config/Game.luau` `UseDataStores = false` setzen —
-> dann läuft alles im Speicher und du testest ohne Fehler im Output.
+> **Zum Testen musst du nichts umstellen.** Ohne DataStore-Zugriff (also
+> bevor der Platz veröffentlicht ist) läuft das Spiel automatisch im
+> Speicher: alles spielbar, nichts wird gespeichert, und der Server sagt es
+> einmal im Output. Sobald **Game Settings ▸ Security ▸ Enable Studio Access
+> to API Services** an ist, wird auch im Studio gespeichert.
 
 ---
 
@@ -145,7 +146,7 @@ tools/
   balance-spec.luau  60 Design-Zusagen als Assertions
   protocol-check.py  prüft, ob Client und Server dieselben Remotes benutzen
   sim-check.py       startet den echten Server headless
-  sim-spec.luau      44 Laufzeit-Checks: Mining, Bank, Lift, Werkzeug, Rang,
+  sim-spec.luau      43 Laufzeit-Checks: Mining, Bank, Lift, Werkzeug, Rang,
                      Gefahren, Crew, Notaufstieg, Rückweg vom Grund
   robloxstub.luau    genug Roblox-API, um den Server ohne Roblox laufen zu lassen
   make-audio.py      erzeugt die Sounds in audio/
@@ -213,7 +214,7 @@ nicht simuliert.
 "das erste Rebirth dauert 15–90 Minuten", "Co-Play steht nie auf dem
 Onboarding-Pfad".
 
-Die Prüfungen haben bisher zwölf echte Fehler gefunden, die sonst live gegangen
+Die Prüfungen haben bisher vierzehn echte Fehler gefunden, die sonst live gegangen
 wären:
 
 - `Format.short` hat runde Zahlen um den Faktor 10 verkleinert
@@ -251,6 +252,14 @@ wären:
   Place-Datei, wo es erlaubt ist.
 - **Zwei Enum-Werte gab es nicht.** `Enum.AdFormat.Rewarded` heißt
   `RewardedVideo`, `Enum.ShowAdResult.Succeeded` heißt `ShowCompleted`.
+- **`FallenPartsDestroyHeight` darf auch kein Skript setzen** — nur ein Plugin.
+  Die Zuweisung warf `lacking capability Plugin` und riss den kompletten
+  Weltgenerator mit. Steht jetzt in der Place-Datei.
+- **Ein `GetDataStore()` auf Modulebene hat 23 Dienste getötet.** In Studio
+  wirft der Aufruf, solange der Platz nicht veröffentlicht ist. Weil er beim
+  Laden von `Data` lief, schlug nicht eine Speicherung fehl, sondern das
+  ganze Modul — und mit ihm alles, was `Data` braucht. Jetzt fällt es sauber
+  auf Speicher-Betrieb zurück.
 
 ---
 

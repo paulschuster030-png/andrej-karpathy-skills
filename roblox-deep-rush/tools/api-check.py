@@ -29,8 +29,15 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DUMP = os.path.join(ROOT, "tools", "api-dump.json")
 
-# Security levels a normal game script is allowed to write.
-OPEN = {"None", "PluginSecurity"}
+# Security levels a normal game script is allowed to write. Only "None".
+#
+# PluginSecurity was in this set once, on the assumption that it meant "a
+# plugin may also write it". It means the opposite: ONLY a plugin may. That
+# single wrong entry is why this check passed
+# workspace.FallenPartsDestroyHeight, which threw at runtime with "the
+# current thread cannot write it, lacking capability Plugin" and took the
+# whole world generator down.
+OPEN = {"None"}
 
 # Globals and project helpers whose class we know without tracking them.
 KNOWN_GLOBALS = {
@@ -160,6 +167,39 @@ def check_file(path, properties, enums, by_name):
     return problems
 
 
+OPEN_STORE = re.compile(r":Get(?:Ordered|Global)?DataStore\(")
+
+
+def check_datastore_opens():
+    """Opening a DataStore has to be inside a pcall.
+
+    In Studio, on a place that has not been published or with API access off,
+    GetDataStore throws. Every one of these calls sits at module scope, so the
+    throw does not fail one save — it fails the require, and every service
+    that depends on that module fails with it. That is how a missing save
+    system turned into twenty-three dead services and an empty world.
+    """
+    problems = []
+    for folder, _, names in os.walk(os.path.join(ROOT, "src")):
+        for name in sorted(names):
+            if not name.endswith(".luau"):
+                continue
+            path = os.path.join(folder, name)
+            with open(path, encoding="utf-8") as handle:
+                lines = handle.readlines()
+            for number, line in enumerate(lines, 1):
+                if line.lstrip().startswith("--") or not OPEN_STORE.search(line):
+                    continue
+                window = "".join(lines[max(0, number - 6) : number + 1])
+                if "pcall" not in window:
+                    problems.append(
+                        f"{os.path.relpath(path, ROOT)}:{number}: opening a DataStore"
+                        " outside a pcall — this throws in Studio and takes the"
+                        " whole module with it"
+                    )
+    return problems
+
+
 def main():
     if not os.path.exists(DUMP):
         print("skipped: tools/api-dump.json is not present (see the header of this file)")
@@ -174,6 +214,8 @@ def main():
             if name.endswith(".luau"):
                 files += 1
                 problems += check_file(os.path.join(folder, name), properties, enums, by_name)
+
+    problems += check_datastore_opens()
 
     for problem in problems:
         print(f"  FAIL {problem}")

@@ -2,6 +2,7 @@
   <Item class="Workspace" referent="RBX17">
     <Properties>
       <string name="Name">Workspace</string>
+      <float name="FallenPartsDestroyHeight">-9400</float>
     </Properties>
     <Item class="Folder" referent="RBX0">
       <Properties>
@@ -4344,7 +4345,33 @@ Data.unloading = Signal.new() -- fired (player, profile) before the final save
 local LOCK_STALE_SECONDS = 100
 local LOAD_ATTEMPTS = 5
 
-local store = Config.UseDataStores and DataStoreService:GetDataStore("DeepRushProfiles_v1") or nil
+--- Opening a DataStore is not a safe call.
+---
+--- In Studio, on a place that has never been published or with "Enable Studio
+--- Access to API Services" off, GetDataStore throws. This runs at module
+--- scope, so that throw meant Data failed to load — and since almost every
+--- other service requires Data, all twenty-three of them went with it. The
+--- game did not start, and the reason was a save system nobody needs while
+--- testing locally.
+---
+--- So it degrades instead. No store means profiles live in memory for this
+--- session: everything is playable, nothing persists, and the server says so
+--- once rather than failing.
+local store = nil
+if Config.UseDataStores then
+	local ok, opened = pcall(function()
+		return DataStoreService:GetDataStore("DeepRushProfiles_v1")
+	end)
+	if ok then
+		store = opened
+	else
+		warn(
+			"[DEEP RUSH] No DataStore access, so progress will not be saved this session.\n"
+				.. "  This is normal in Studio before the place is published. To save while testing:\n"
+				.. "  Game Settings > Security > Enable Studio Access to API Services."
+		)
+	end
+end
 local profiles: { [Player]: any } = {}
 local sessions: { [Player]: any } = {}
 local pendingPatches: { [Player]: any } = {}
@@ -5469,8 +5496,22 @@ local Data = require(script.Parent.Data)
 
 local Leaderboards = {}
 
-local depthStore = Config.UseDataStores and DataStoreService:GetOrderedDataStore("DeepRushDepth_v1") or nil
-local cashStore = Config.UseDataStores and DataStoreService:GetOrderedDataStore("DeepRushBanked_v1") or nil
+-- Same story as Data: GetOrderedDataStore throws in Studio without API
+-- access, at module scope, and takes the whole service down with it. Without
+-- them the global boards are empty; the live server board does not use them
+-- at all and works either way.
+local function openBoard(name: string)
+	if not Config.UseDataStores then
+		return nil
+	end
+	local ok, opened = pcall(function()
+		return DataStoreService:GetOrderedDataStore(name)
+	end)
+	return ok and opened or nil
+end
+
+local depthStore = openBoard("DeepRushDepth_v1")
+local cashStore = openBoard("DeepRushBanked_v1")
 
 local cache = { depth = {}, banked = {}, fetchedAt = 0 }
 local lastWrite: { [number]: { depth: number, banked: number } } = {}
@@ -5530,7 +5571,9 @@ function Leaderboards.submit(player: Player, payout: number)
 	live[player.UserId] = (live[player.UserId] or 0) + math.max(payout or 0, 0)
 
 	local profile = Data.get(player)
-	if not profile or not Config.UseDataStores then
+	-- Guarded on the stores themselves, not on the config flag: the flag can
+	-- be true while the stores never opened.
+	if not profile or not depthStore or not cashStore then
 		return
 	end
 
@@ -9384,11 +9427,16 @@ local function streamChunks()
 end
 
 function World.start()
-	-- Roblox destroys anything that falls below FallenPartsDestroyHeight, and
-	-- the default is -500. This shaft bottoms out at -9,000. Left alone, the
-	-- entire lower two thirds of the world — and every player and dropped
-	-- cargo crate in it — would be deleted on arrival.
-	workspace.FallenPartsDestroyHeight = World.yForDepth(MAX_DEPTH_METERS) - 400
+	-- FallenPartsDestroyHeight is NOT set here, and that is not an oversight.
+	-- Roblox only lets a plugin write it, so the assignment threw with
+	-- "lacking capability Plugin" and took the entire world generator with
+	-- it. It is a saved property, so the builder writes -9,400 straight into
+	-- the place file instead; see tools/build-rbxlx.mjs.
+	--
+	-- Why it has to be moved rather than dropped: the default is -500 and this
+	-- shaft bottoms out at -9,000, so at the default the lower two thirds of
+	-- the world — and every player and dropped crate in it — is deleted on
+	-- arrival.
 
 	container = Instance.new("Folder")
 	container.Name = "DeepRushWorld"
