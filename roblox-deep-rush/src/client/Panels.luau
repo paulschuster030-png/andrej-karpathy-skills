@@ -20,6 +20,7 @@ local Net = require(Shared.Net)
 local Ores = require(Shared.Config.Ores)
 local ProductConfig = require(Shared.Config.Products)
 local RebirthConfig = require(Shared.Config.Rebirth)
+local Ranks = require(Shared.Config.Ranks)
 local UpgradeConfig = require(Shared.Config.Upgrades)
 
 local State = require(script.Parent.State)
@@ -174,7 +175,17 @@ local function renderShop()
 		row({
 			icon = upgrade.icon,
 			title = `{upgrade.name}  ·  Lv {level}/{upgrade.maxLevel}`,
-			body = `{upgrade.desc}\nNow: {upgrade.format(level)}`,
+			body = (function()
+				local body = `{upgrade.desc}\nNow: {upgrade.format(level)}`
+				-- The pickaxe is the one upgrade with a visible reward, so the
+				-- card says which one is coming and when. A number that will
+				-- change your model in nine levels is worth saving for.
+				local upcoming = upgrade.id == "drill" and UpgradeConfig.nextPickaxe(level) or nil
+				if upcoming then
+					body ..= `\nNext pickaxe: {upcoming.name} at Lv {upcoming.from}`
+				end
+				return body
+			end)(),
 			progress = level / upgrade.maxLevel,
 			accent = maxed and theme.green or theme.panelLight,
 			action = maxed and "MAXED" or Format.short(cost),
@@ -382,9 +393,39 @@ local function renderDrones()
 end
 
 local function renderBoards()
-	header("GLOBAL — updates every 90 seconds")
+	local boards = Net.invoke("GetBoards") or { depth = {}, banked = {}, server = {} }
 
-	local boards = Net.invoke("GetBoards") or { depth = {}, banked = {} }
+	-- This server first, and on purpose. The all-time boards are a wall of
+	-- strangers with numbers nobody here will reach today; the people on this
+	-- one are in the shaft right now and can be overtaken before you log off.
+	header("THIS SERVER — banked since the server started")
+	for _, entry in ipairs(boards.server or {}) do
+		row({
+			height = 58,
+			icon = entry.rank == 1 and "🥇" or (entry.rank == 2 and "🥈" or (entry.rank == 3 and "🥉" or "▫️")),
+			title = `#{entry.rank}  {entry.badge or ""} {entry.name}`,
+			body = "Banked here: " .. Format.short(entry.value),
+			accent = entry.rank == 1 and theme.gold or theme.panelLight,
+		})
+	end
+
+	header("YOUR RANK")
+	do
+		local banked = (State.data.stats or {}).bankedTotal or 0
+		local rank = Ranks.at(banked)
+		local upcoming = Ranks.next(banked)
+		row({
+			height = 58,
+			icon = rank.icon,
+			title = `{string.upper(rank.name)}  ·  {Format.short(banked)} banked for life`,
+			body = upcoming
+					and `Next: {upcoming.name} at {Format.short(upcoming.at)}  ·  {math.floor(Ranks.progress(banked) * 100)}%`
+				or "Top of the ladder. There is nothing above this.",
+			accent = Ranks.color(rank.id),
+		})
+	end
+
+	header("GLOBAL — updates every 90 seconds")
 
 	if #(boards.depth or {}) == 0 then
 		row({ icon = "🕳️", title = "No records yet", body = "Be the first name on this wall." })

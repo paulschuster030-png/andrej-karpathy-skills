@@ -8,13 +8,15 @@
 	have a real choice about what to buy next instead of one dominant order.
 ]]
 
+local Tools = require(script.Parent.Tools)
+
 local Upgrades = {}
 
 Upgrades.List = {
 	{
 		id = "drill",
-		name = "Drill Power",
-		desc = "Break rock faster. Every level shaves time off each swing.",
+		name = "Pickaxe",
+		desc = "Sharpen the pick. Every level shaves time off each swing, and every few levels it becomes a better pickaxe.",
 		icon = "⛏️",
 		maxLevel = 50,
 		baseCost = 120,
@@ -24,7 +26,11 @@ Upgrades.List = {
 			return 1 - (0.955 ^ level)
 		end,
 		format = function(level: number): string
-			return string.format("-%d%% swing time", math.floor((1 - 0.955 ^ level) * 100))
+			return string.format(
+				"%s · -%d%% swing time",
+				Tools.tierFor(level).name,
+				math.floor((1 - 0.955 ^ level) * 100)
+			)
 		end,
 	},
 	{
@@ -145,6 +151,18 @@ end
 function Upgrades.isMaxed(id: string, level: number): boolean
 	local upgrade = Upgrades.ById[id]
 	return upgrade ~= nil and (level or 0) >= upgrade.maxLevel
+end
+
+--- The next pickaxe you have not earned yet, and the level it arrives at.
+--- Returns nil once the last one is in your hands.
+function Upgrades.nextPickaxe(level: number)
+	local current = Tools.tierFor(level)
+	for _, tier in ipairs(Tools.Tiers) do
+		if tier.from > (level or 0) and tier.name ~= current.name then
+			return tier
+		end
+	end
+	return nil
 end
 
 return Upgrades
