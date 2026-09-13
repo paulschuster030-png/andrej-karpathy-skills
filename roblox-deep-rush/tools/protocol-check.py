@@ -68,9 +68,43 @@ def main() -> int:
     for problem in problems:
         print(f"  FAIL {problem}")
 
+    problems += check_boot_order()
+
     total = len(events) + len(signals) + len(functions)
     print(f"\n{total} remotes checked, {len(problems)} problems")
     return 1 if problems else 0
+
+
+def check_boot_order():
+    """Nobody may spawn before the world is generated.
+
+    This one is static because Bootstrap is a Script, not a module: the
+    simulator drives the services directly and never runs it, so the guard
+    around them is exactly the code no other check can see. Losing it puts a
+    player in an empty sky, which is what it looked like the first time.
+    """
+    path = os.path.join(ROOT, "src", "server", "Bootstrap.server.luau")
+    with open(path, encoding="utf-8") as handle:
+        source = handle.read()
+
+    problems = []
+    off = source.find("Players.CharacterAutoLoads = false")
+    on = source.find("Players.CharacterAutoLoads = true")
+    first_start = source.find("service.start")
+
+    if off < 0 or on < 0:
+        problems.append("Bootstrap no longer holds character spawning until the world is built")
+    elif not (off < first_start < on):
+        problems.append("Bootstrap re-enables spawning before the services have started")
+    else:
+        print("  ok   characters are held back until the world exists")
+
+    if "LoadCharacter" not in source:
+        problems.append("Bootstrap never loads the characters it held back")
+
+    for problem in problems:
+        print(f"  FAIL {problem}")
+    return problems
 
 
 if __name__ == "__main__":

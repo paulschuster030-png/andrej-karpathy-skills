@@ -72,6 +72,14 @@ local SERVICES = {
 	"Ads", "AntiCheat",
 }
 
+-- The place file ships a floor and a spawn in Workspace so Studio has
+-- something to show before any code runs. Stand one up here so the spec can
+-- prove the world takes it away again — it sits over the shaft mouth, and
+-- leaving it would seal the hole the whole game drops through.
+local placeholder = Instance.new("Folder")
+placeholder.Name = "StudioPlaceholder"
+placeholder.Parent = workspace
+
 local bootOk, bootErr = pcall(function()
 	for _, name in ipairs(SERVICES) do
 		SERVER[name].start()
@@ -83,6 +91,10 @@ check("the remote tree is published", net ~= nil)
 advance(2)
 
 print("\n== the world ==")
+
+check("the shipped placeholder floor is cleared away", (function()
+	return workspace:FindFirstChild("StudioPlaceholder") == nil
+end)())
 
 check("the surface built a vault", SERVER.World.vaultPosition ~= nil)
 check("the surface built a spawn", SERVER.World.spawnPosition ~= nil)
@@ -422,6 +434,21 @@ check("emergency ascent cancels when you walk away", (function()
 
 	-- Still underground: the ascent must have aborted.
 	return alice.Character.HumanoidRootPart.Position.Y < -400
+end)())
+
+check("falling out of the world puts you back on the surface", (function()
+	-- Raising FallenPartsDestroyHeight to clear a 3,000m shaft means a player
+	-- who ends up under the geometry falls for ten seconds instead of dying
+	-- and respawning in one. Bedrock should make that impossible; this is the
+	-- net under it, and a net nobody tests is a decoration.
+	local below = SERVER.World.yForDepth(3000) - 600
+	moveTo(alice, ENV.Vector3.new(0, below, 0))
+	advance(3)
+
+	local back = alice.Character.HumanoidRootPart.Position
+	local distance = (back - SERVER.World.spawnPosition).Magnitude
+	print(string.format("       dropped to y=%.0f, back %.1f studs from spawn", below, distance))
+	return distance < 10
 end)())
 
 check("every depth has a lift within falling distance", (function()

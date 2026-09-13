@@ -33,9 +33,13 @@ Warum genau diese Dinge: [`TRENDS.md`](TRENDS.md), dritte Runde.
 
 1. **Roblox Studio öffnen** → `File ▸ Open from File…`
 2. **`build/DeepRush.rbxlx`** auswählen (die Datei liegt fertig im Repo)
-3. **Play (F5)** drücken
+3. **Play (F5)** drücken — das ist der Schritt, der zählt
 
-Das war's. Die Welt wird zur Laufzeit generiert, es gibt nichts zu importieren.
+> **Im Bearbeitungsmodus siehst du nur eine graue Platte mit einem
+> Spawn-Punkt, und das ist richtig so.** Der ganze Schacht — Oberfläche,
+> Tresor, Schienen, Erz, Lifte, Gefahren — wird beim Serverstart erzeugt.
+> Vor **Play** existiert nichts davon, weil es noch niemand gebaut hat.
+> Die Platte verschwindet in der Sekunde, in der die echte Oberfläche steht.
 
 ### Hochladen
 
@@ -141,7 +145,7 @@ tools/
   balance-spec.luau  60 Design-Zusagen als Assertions
   protocol-check.py  prüft, ob Client und Server dieselben Remotes benutzen
   sim-check.py       startet den echten Server headless
-  sim-spec.luau      42 Laufzeit-Checks: Mining, Bank, Lift, Werkzeug, Rang,
+  sim-spec.luau      44 Laufzeit-Checks: Mining, Bank, Lift, Werkzeug, Rang,
                      Gefahren, Crew, Notaufstieg, Rückweg vom Grund
   robloxstub.luau    genug Roblox-API, um den Server ohne Roblox laufen zu lassen
   make-audio.py      erzeugt die Sounds in audio/
@@ -196,7 +200,7 @@ nicht simuliert.
 "das erste Rebirth dauert 15–90 Minuten", "Co-Play steht nie auf dem
 Onboarding-Pfad".
 
-Die Prüfungen haben bisher acht echte Fehler gefunden, die sonst live gegangen
+Die Prüfungen haben bisher zehn echte Fehler gefunden, die sonst live gegangen
 wären:
 
 - `Format.short` hat runde Zahlen um den Faktor 10 verkleinert
@@ -218,6 +222,14 @@ wären:
   Server misst sie jetzt selbst.
 - **Einzahlen konnte stumm bleiben.** Der Leaderboard-Schreibvorgang lag zwischen
   Auszahlung und Rückmeldung; ein Fehler dort hat bezahlt, aber nichts angezeigt.
+- **Man spawnte im Nichts.** Die Welt entsteht zur Laufzeit, der Spieler aber
+  sofort — in Studio treten beide im selben Moment an. Ohne Boden fiel man
+  10 Sekunden lang (siehe Punkt davor: der Löschboden liegt jetzt bei -9.400).
+  Jetzt liegt eine Platte mit Spawn in der Place-Datei, und der Bootstrap hält
+  `CharacterAutoLoads` zurück, bis die Welt steht.
+- **Die Spitzhacke ließ tote Motoren zurück.** `equip` löschte die alte Hacke,
+  aber nicht ihren `Motor6D`. Seit die Hacke bei jedem Drill-Level neu gebaut
+  wird, wären das bis zu 50 tote Motoren an einer Hand.
 
 ---
 
