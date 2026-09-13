@@ -180,11 +180,18 @@ def normalise(signal, peak=0.85):
 
 def write_ogg(path, signal, rate=RATE):
     """
-    Vorbis, mono. Roblox accepts .ogg and .mp3 for upload and nothing else,
-    so a .wav here would be a file you cannot use.
+    Vorbis, mono.
+
+    Written a second at a time rather than in one call, and not for style:
+    handing libsndfile a whole long buffer SEGFAULTS the process. Thirty
+    seconds is fine, sixty kills it — which is why the first three-and-a-half
+    minute music track came out as a zero-length file and the run still
+    reported success. Small buffers avoid it entirely.
     """
     data = np.clip(normalise(signal), -1, 1).astype("float32")
-    sf.write(path, data, rate, format="OGG", subtype="VORBIS")
+    with sf.SoundFile(path, "w", samplerate=rate, channels=1, format="OGG", subtype="VORBIS") as handle:
+        for start in range(0, len(data), rate):
+            handle.write(data[start : start + rate])
 
 
 # --- The pieces ------------------------------------------------------------
@@ -307,6 +314,79 @@ def reveal(seconds=2.4):
     return normalise(taper(out + air, 0.35), 0.9)
 
 
+def chord(rng, degrees, seconds, rate=RATE):
+    """One long, open two-note voicing that rises and falls back to silence.
+
+    It starts and ends at zero, which is what lets `sprinkle` wrap it: a grain
+    that is silent at both ends can straddle the loop point without a seam.
+
+    Dyads rather than triads, and only notes from the scale. A full minor
+    triad states a mood and then keeps stating it for three minutes; two notes
+    a fifth apart state almost nothing, which is the correct amount for music
+    a player is not supposed to notice.
+    """
+    length = int(seconds * rate)
+    t = np.arange(length) / rate
+    out = np.zeros(length)
+
+    for index, degree in enumerate(degrees):
+        pitch = note(degree, 2)
+        voice = (
+            np.sin(2 * np.pi * pitch * t)
+            + np.sin(2 * np.pi * pitch * 2 * t) * 0.34
+            + np.sin(2 * np.pi * pitch * 3 * t) * 0.09
+        )
+        out += voice * (0.7 if index == 0 else 0.5)
+
+    # A long swell either side: eight seconds in, eight seconds out.
+    shape = np.sin(np.pi * np.clip(t / seconds, 0, 1)) ** 1.4
+    return out * shape * 0.16
+
+
+def music(seconds=210):
+    """Three and a half minutes, mostly silence.
+
+    The brief was a track a player hears for the fortieth time without
+    reaching for the mute. That rules out a melody — a tune you can hum is a
+    tune you get sick of — so this is a slow progression of open fifths with
+    long gaps, a sub pulse under it, and the occasional struck note from the
+    same scale the ambience uses.
+
+    Six chords over three and a half minutes means each one is on screen for
+    half a minute, and the loop point comes round rarely enough that nobody
+    is counting.
+    """
+    rng = np.random.default_rng(91)
+    n = int(seconds * RATE)
+    out = np.zeros(n)
+
+    # D - F - G - C - A - D, as fifths. All inside the pentatonic, so nothing
+    # can clash with an ambience layer fading in underneath it.
+    progression = [(0, 3), (1, 4), (2, 0), (4, 2), (3, 1), (0, 3)]
+    span = seconds / len(progression)
+    for index, degrees in enumerate(progression):
+        grain = chord(rng, degrees, span * 1.5)
+        start = int(index * span * RATE)
+        end = start + len(grain)
+        if end <= n:
+            out[start:end] += grain
+        else:
+            split = n - start
+            out[start:] += grain[:split]
+            out[: end - n] += grain[split:]
+
+    # A sub that never leaves, and a bed thin enough to be felt rather than
+    # heard. Both snapped to the loop, so neither can click.
+    sub = drone(seconds, [(note(0), 0.10, 0.004), (note(2), 0.035, 0.006)])
+    air = looping_noise(seconds, lambda f: (f ** -1.9) * np.exp(-f / 700), seed=92)
+
+    # Twelve struck notes in three and a half minutes: one every eighteen
+    # seconds on average, which is sparse enough to read as punctuation.
+    motif = sprinkle(seconds, 12, lambda r: bell(r, [0, 2, 3, 4], octave=3), seed=93)
+
+    return normalise(out + sub + air * 0.45 * breathe(seconds, 26.0, 0.3) + motif * 0.8, 0.62)
+
+
 PIECES = [
     ("ambience-surface", surface, "Ambience: the surface. Wind and distant machinery.", True),
     ("ambience-shallow", shallow, "Ambience: shallow layers. Moving air and dripping.", True),
@@ -317,6 +397,7 @@ PIECES = [
     ("lift-motor", lift, "Positional loop for lift pads.", True),
     ("pick-hit", pick_hit, "One-shot: pickaxe striking rock.", False),
     ("rare-reveal", reveal, "One-shot: a rare pull.", False),
+    ("music", music, "The score. Long, sparse, and quieter the deeper you are.", True),
 ]
 
 
@@ -330,7 +411,7 @@ def write_wav(path, signal, rate=RATE):
     wrong with it. Run with --wav to get a set.
     """
     data = np.clip(normalise(signal), -1, 1).astype("float32")
-    sf.write(path, data, rate, subtype="PCM_16")
+    sf.write(path, data, rate, subtype="PCM_16")  # WAV has no such limit.
 
 
 def main():

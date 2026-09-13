@@ -23,7 +23,7 @@ AUDIO = os.path.join(ROOT, "audio")
 
 LOOPS = [
     "ambience-surface", "ambience-shallow", "ambience-deep", "ambience-abyss",
-    "zone-gas", "zone-vent", "lift-motor",
+    "zone-gas", "zone-vent", "lift-motor", "music",
 ]
 
 ONE_SHOTS = ["pick-hit", "rare-reveal"]
@@ -89,7 +89,7 @@ def check_one_key():
             allowed.add(ROOT_HZ * 2 ** ((step + 12 * octave) / 12))
 
     problems = 0
-    for name in ("ambience-surface", "ambience-shallow", "ambience-deep", "ambience-abyss"):
+    for name in ("ambience-surface", "ambience-shallow", "ambience-deep", "ambience-abyss", "music"):
         path = os.path.join(AUDIO, name + ".ogg")
         if not os.path.exists(path):
             continue

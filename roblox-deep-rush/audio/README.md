@@ -31,7 +31,7 @@ Audio.Custom = {
 | Datei | Länge | Größe | Loop | Wofür |
 |---|---|---|---|---|
 | `ambience-surface.ogg` | 24.0s | 37 KB | ja | Ambience: the surface. Wind and distant machinery. |
-| `ambience-shallow.ogg` | 26.0s | 48 KB | ja | Ambience: shallow layers. Moving air and dripping. |
+| `ambience-shallow.ogg` | 26.0s | 49 KB | ja | Ambience: shallow layers. Moving air and dripping. |
 | `ambience-deep.ogg` | 28.0s | 43 KB | ja | Ambience: deep layers. Pressure and groaning rock. |
 | `ambience-abyss.ogg` | 30.0s | 51 KB | ja | Ambience: the abyss. Sub drone and something wrong. |
 | `zone-gas.ogg` | 8.0s | 33 KB | ja | Positional loop for gas pockets. |
@@ -39,6 +39,7 @@ Audio.Custom = {
 | `lift-motor.ogg` | 6.0s | 14 KB | ja | Positional loop for lift pads. |
 | `pick-hit.ogg` | 0.3s | 4 KB | nein | One-shot: pickaxe striking rock. |
 | `rare-reveal.ogg` | 2.4s | 19 KB | nein | One-shot: a rare pull. |
+| `music.ogg` | 210.0s | 428 KB | ja | The score. Long, sparse, and quieter the deeper you are. |
 
 ## Wie sie im Spiel benutzt werden
 
