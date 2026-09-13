@@ -156,6 +156,7 @@ tools/
   audio-check.py     misst, ob die Loops wirklich nahtlos sind
   api-check.py       prüft jede Eigenschaft gegen Roblox' echten API-Dump
   api-dump.json      Roblox' API-Beschreibung, auf das Nötige eingedampft
+  hud-check.py       rechnet jedes Panel aus und hält die Zielmitte frei
 
 audio/
   *.ogg              9 fertige Sounds zum Hochladen (siehe audio/README.md)
@@ -192,6 +193,9 @@ python3 tools/audio-check.py
 
 # Existiert jede Eigenschaft, die der Code setzt, in echtem Roblox?
 python3 tools/api-check.py
+
+# Verdeckt ein Panel die Bildschirmmitte, wo man zielt?
+python3 tools/hud-check.py
 ```
 
 **`api-check.py` schließt die Lücke, die alle anderen hatten.** Der Simulator

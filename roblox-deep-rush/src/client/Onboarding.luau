@@ -158,11 +158,16 @@ function Onboarding.start()
 	gui.DisplayOrder = 3
 	gui.Parent = player:WaitForChild("PlayerGui")
 
+	-- Left column, under the stats panel — NOT centre screen.
+	--
+	-- It sat at 0.5, directly below the depth readout, which put the one
+	-- panel a new player reads over the one place a mining game needs clear:
+	-- the middle, where the rock you are aiming at is.
 	banner = Ui.frame({
 		parent = gui,
-		size = UDim2.fromOffset(420, 62),
-		position = UDim2.new(0.5, 0, 0, 142),
-		anchor = Vector2.new(0.5, 0),
+		size = UDim2.fromOffset(400, 62),
+		position = UDim2.new(0, 16, 0, 170),
+		anchor = Vector2.new(0, 0),
 		color = theme.panel,
 		transparency = 0.1,
 		visible = false,

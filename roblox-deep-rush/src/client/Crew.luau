@@ -118,12 +118,16 @@ end
 -- UI -----------------------------------------------------------------------
 
 local function buildBar(parent)
-	-- Sits in the bottom-centre stack above the ping row and the cargo bar.
+	-- Bottom-left column, above the ping row and the menu grid.
+	--
+	-- It used to stack up the centre of the screen with the ping row and the
+	-- cargo bar, which on anything shorter than a full-height window reached
+	-- the middle — where you are looking at the rock you want to hit.
 	local bar = Ui.frame({
 		parent = parent,
-		size = UDim2.fromOffset(360, 96),
-		position = UDim2.new(0.5, 0, 1, -140),
-		anchor = Vector2.new(0.5, 1),
+		size = UDim2.fromOffset(340, 96),
+		position = UDim2.new(0, 16, 1, -316),
+		anchor = Vector2.new(0, 1),
 		color = theme.panel,
 		transparency = 0.15,
 	})
@@ -182,9 +186,9 @@ local function buildPingWheel(parent)
 	-- a drag is exactly what you cannot spare while falling.
 	local wheel = Ui.frame({
 		parent = parent,
-		size = UDim2.fromOffset(372, 46),
-		position = UDim2.new(0.5, 0, 1, -86),
-		anchor = Vector2.new(0.5, 1),
+		size = UDim2.fromOffset(340, 46),
+		position = UDim2.new(0, 16, 1, -262),
+		anchor = Vector2.new(0, 1),
 		transparency = 1,
 		radius = false,
 	})
@@ -192,7 +196,7 @@ local function buildPingWheel(parent)
 	local layout = Instance.new("UIListLayout")
 	layout.Padding = UDim.new(0, 6)
 	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 	layout.Parent = wheel
 
 	for _, pingType in ipairs(CrewConfig.PingTypes) do
