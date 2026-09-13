@@ -27,6 +27,8 @@ local AudioConfig = require(Shared.Config.Audio)
 local Config = require(Shared.Config.Game)
 local HazardConfig = require(Shared.Config.Hazards)
 local Layers = require(Shared.Config.Layers)
+local Ores = require(Shared.Config.Ores)
+local Rarity = require(Shared.Rarity)
 
 local World = {}
 
@@ -103,6 +105,143 @@ end
 
 -- Ore nodes ----------------------------------------------------------------
 
+--- How each `look` from Ores.Appearance renders. `spike` stretches the vein
+--- pieces: metal seams lie flat in the rock, crystals stab out of it.
+local LOOKS = {
+	metal = { material = Enum.Material.Metal, transparency = 0, reflectance = 0.35, spike = 1.1, sparkle = false },
+	gem = { material = Enum.Material.Glass, transparency = 0.18, reflectance = 0.3, spike = 1.9, sparkle = true },
+	crystal = { material = Enum.Material.Neon, transparency = 0.05, reflectance = 0, spike = 2.4, sparkle = true },
+	stone = { material = Enum.Material.Slate, transparency = 0, reflectance = 0, spike = 0.9, sparkle = false },
+	void = { material = Enum.Material.Neon, transparency = 0.4, reflectance = 0, spike = 1.6, sparkle = true },
+}
+
+local BEACON_FROM_TIER = 4 -- Epic and up get a light column you can see from a shelf away
+local LABEL_FROM_TIER = 3 -- Rare and up name themselves when you get close
+
+local function oreColor(oreId: string): Color3
+	local rgb = Ores.appearance(oreId).color
+	return Color3.fromRGB(rgb[1], rgb[2], rgb[3])
+end
+
+--- Build everything that depends on WHICH ore this node is. Called on spawn
+--- and again on every respawn, because a node that always regrows the same
+--- diamond is a diamond farm, not a mine.
+local function dressNode(part: BasePart, ore, layer, depth: number)
+	for _, child in ipairs(part:GetChildren()) do
+		child:Destroy()
+	end
+
+	local appearance = Ores.appearance(ore.id)
+	local look = LOOKS[appearance.look] or LOOKS.gem
+	local tierIndex = Ores.TierIndex[ore.tier] or 1
+	local tier = Ores.Tiers[tierIndex]
+	local vein = oreColor(ore.id)
+	local size = part.Size.X
+
+	part.Color = layerColor(layer):Lerp(vein, 0.12)
+	part:SetAttribute("Ore", ore.id)
+	part:SetAttribute("Tier", ore.tier)
+
+	-- The seam itself. Enough pieces to read as a vein, few enough that a
+	-- shelf of six nodes is not a hundred parts.
+	for piece = 1, rng:NextInteger(3, 5) do
+		local thickness = size * rng:NextNumber(0.16, 0.3)
+		local offset = Vector3.new(
+			rng:NextNumber(-size * 0.42, size * 0.42),
+			rng:NextNumber(-size * 0.42, size * 0.42),
+			rng:NextNumber(-size * 0.42, size * 0.42)
+		)
+		local shard = makePart(
+			"Vein" .. piece,
+			Vector3.new(thickness, thickness * look.spike * rng:NextNumber(0.8, 1.5), thickness),
+			CFrame.new(part.Position + offset)
+				* CFrame.Angles(rng:NextNumber(0, 6), rng:NextNumber(0, 6), rng:NextNumber(0, 6)),
+			vein,
+			look.material
+		)
+		shard.CanCollide = false
+		shard.Transparency = look.transparency
+		shard.Reflectance = look.reflectance
+		shard.Parent = part
+	end
+
+	local light = Instance.new("PointLight")
+	light.Name = "Glow"
+	light.Range = 10 + tierIndex * 2.5
+	light.Brightness = 0.5 + tier.glow * 2.4 + math.min(depth / 1800, 1)
+	light.Color = vein
+	light.Parent = part
+
+	if look.sparkle then
+		local emitter = Instance.new("ParticleEmitter")
+		emitter.Name = "Sparkle"
+		emitter.Color = ColorSequence.new(vein)
+		emitter.Size = NumberSequence.new(0.28)
+		emitter.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.3, 0.1),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		emitter.Lifetime = NumberRange.new(0.8, 1.6)
+		emitter.Rate = 2 + tierIndex * 2
+		emitter.Speed = NumberRange.new(0.4, 1.2)
+		emitter.SpreadAngle = Vector2.new(180, 180)
+		emitter.LightEmission = 1
+		emitter.Parent = part
+	end
+
+	-- Rare and up say what they are. Below that the colour is enough, and a
+	-- shelf of six labelled dirt clods is noise.
+	if tierIndex >= LABEL_FROM_TIER then
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "Label"
+		billboard.Size = UDim2.new(0, 190, 0, 46)
+		billboard.StudsOffsetWorldSpace = Vector3.new(0, size * 0.9 + 2, 0)
+		billboard.AlwaysOnTop = false
+		billboard.MaxDistance = 120
+		billboard.Parent = part
+
+		local name = Instance.new("TextLabel")
+		name.Size = UDim2.new(1, 0, 0.6, 0)
+		name.BackgroundTransparency = 1
+		name.Font = Enum.Font.GothamBlack
+		name.Text = ore.name
+		name.TextColor3 = vein
+		name.TextStrokeTransparency = 0.3
+		name.TextScaled = true
+		name.Parent = billboard
+
+		local rank = Instance.new("TextLabel")
+		rank.Size = UDim2.new(1, 0, 0.4, 0)
+		rank.Position = UDim2.new(0, 0, 0.6, 0)
+		rank.BackgroundTransparency = 1
+		rank.Font = Enum.Font.GothamBold
+		rank.Text = string.upper(ore.tier)
+		rank.TextColor3 = Color3.fromRGB(tier.color[1], tier.color[2], tier.color[3])
+		rank.TextStrokeTransparency = 0.5
+		rank.TextScaled = true
+		rank.Parent = billboard
+	end
+
+	-- Epic and up throw a column of light up the shaft. This is the single
+	-- biggest reason to keep descending instead of clearing one shelf: you
+	-- can see, from where you are standing, that something down there is
+	-- worth the drop.
+	if tierIndex >= BEACON_FROM_TIER then
+		local beacon = makePart(
+			"Beacon",
+			Vector3.new(size * 0.45, 110 + tierIndex * 28, size * 0.45),
+			CFrame.new(part.Position + Vector3.new(0, 55 + tierIndex * 14, 0)),
+			vein,
+			Enum.Material.Neon
+		)
+		beacon.CanCollide = false
+		beacon.Transparency = 0.86
+		beacon.CastShadow = false
+		beacon.Parent = part
+	end
+end
+
 local function spawnNode(parent: Instance, position: Vector3, depth: number, layer)
 	local id = uid("node")
 	local size = rng:NextNumber(3.2, 5.4)
@@ -111,8 +250,8 @@ local function spawnNode(parent: Instance, position: Vector3, depth: number, lay
 		"OreNode",
 		Vector3.new(size, size, size),
 		CFrame.new(position) * CFrame.Angles(rng:NextNumber(0, 6), rng:NextNumber(0, 6), rng:NextNumber(0, 6)),
-		layerColor(layer):Lerp(Color3.fromRGB(255, 255, 255), 0.18),
-		Enum.Material.Slate
+		layerColor(layer),
+		Enum.Material.Rock
 	)
 	-- Solid, because walking through a boulder is the most obviously broken
 	-- thing a mining game can do. Mined-out nodes go non-solid in
@@ -122,38 +261,16 @@ local function spawnNode(parent: Instance, position: Vector3, depth: number, lay
 	part:SetAttribute("Depth", math.floor(depth))
 	part.Parent = parent
 
-	-- A faint glow so nodes read as targets at a glance, brighter the deeper
-	-- you are (where the ambient light is nearly gone).
-	local light = Instance.new("PointLight")
-	light.Range = 12
-	light.Brightness = 0.6 + math.min(depth / 1500, 1.4)
-	light.Color = layerColor(layer):Lerp(Color3.fromRGB(255, 220, 150), 0.5)
-	light.Parent = part
-
-	-- Shards around the main block. A single cube reads as a placeholder; a
-	-- cluster reads as a vein someone has to dig out. They carry no NodeId, so
-	-- targeting and mining still see exactly one node.
-	for shard = 1, rng:NextInteger(2, 4) do
-		local shardSize = size * rng:NextNumber(0.3, 0.55)
-		local offset = Vector3.new(
-			rng:NextNumber(-size * 0.6, size * 0.6),
-			rng:NextNumber(-size * 0.5, size * 0.5),
-			rng:NextNumber(-size * 0.6, size * 0.6)
-		)
-		local piece = makePart(
-			"Shard" .. shard,
-			Vector3.new(shardSize, shardSize * rng:NextNumber(1.1, 2.2), shardSize),
-			CFrame.new(position + offset)
-				* CFrame.Angles(rng:NextNumber(0, 6), rng:NextNumber(0, 6), rng:NextNumber(0, 6)),
-			part.Color:Lerp(Color3.fromRGB(255, 255, 255), 0.25),
-			Enum.Material.Glass
-		)
-		piece.CanCollide = false
-		piece.Transparency = 0.15
-		piece.Parent = part
+	-- What this node IS, decided now and shown in the rock. The roll carries
+	-- no luck: the wall does not know who will swing at it, and a node two
+	-- players can see cannot be rolled on one player's stats. Luck moved to
+	-- the swing instead — see Shared/Rarity.luau.
+	local ore = Rarity.rollNodeOre(depth, rng)
+	if ore then
+		dressNode(part, ore, layer, depth)
 	end
 
-	nodes[id] = { id = id, part = part, depth = depth, alive = true }
+	nodes[id] = { id = id, part = part, depth = depth, layer = layer, ore = ore, alive = ore ~= nil }
 	return id
 end
 
@@ -165,8 +282,13 @@ function World.getNode(nodeId: string)
 	return nil
 end
 
---- Break a node: hide it, then bring it back. We never destroy and recreate
---- because the id has to stay stable for the client's target lock.
+--- Break a node: hide it, then bring it back as something else.
+---
+--- We never destroy and recreate the part, because the id has to stay stable
+--- for the client's target lock. The dressing is rebuilt from a fresh roll,
+--- which matters more now that the ore is visible: a node that regrew the
+--- same diamond every nine seconds would be a diamond farm, and the first
+--- player to find one would never move again.
 function World.consumeNode(nodeId: string)
 	local node = nodes[nodeId]
 	if not node or not node.alive then
@@ -178,32 +300,30 @@ function World.consumeNode(nodeId: string)
 	if part.Parent then
 		part.Transparency = 1
 		part.CanCollide = false
-		for _, piece in ipairs(part:GetChildren()) do
-			if piece:IsA("BasePart") then
-				piece.Transparency = 1
+		for _, child in ipairs(part:GetChildren()) do
+			if child:IsA("BasePart") then
+				child.Transparency = 1
+			elseif child:IsA("PointLight") or child:IsA("ParticleEmitter") then
+				child.Enabled = false
+			elseif child:IsA("BillboardGui") then
+				child.Enabled = false
 			end
-		end
-		local light = part:FindFirstChildOfClass("PointLight")
-		if light then
-			light.Enabled = false
 		end
 	end
 
 	task.delay(Config.NodeRespawn, function()
-		if node.part.Parent then
-			node.alive = true
-			node.part.Transparency = 0
-			node.part.CanCollide = true
-			for _, piece in ipairs(node.part:GetChildren()) do
-				if piece:IsA("BasePart") then
-					piece.Transparency = 0.15
-				end
-			end
-			local light = node.part:FindFirstChildOfClass("PointLight")
-			if light then
-				light.Enabled = true
-			end
+		if not node.part.Parent then
+			return
 		end
+		local ore = Rarity.rollNodeOre(node.depth, rng)
+		if not ore then
+			return
+		end
+		node.ore = ore
+		node.alive = true
+		node.part.Transparency = 0
+		node.part.CanCollide = true
+		dressNode(node.part, ore, node.layer, node.depth)
 	end)
 end
 
@@ -527,6 +647,52 @@ local function buildStalactites(parent: Instance, chunkIndex: number, layer)
 	end
 end
 
+--- Decorative crystal clusters growing out of the wall.
+---
+--- Nothing to mine here — they carry no NodeId and targeting ignores them.
+--- They exist because a 3,000m shaft of rock and six ore nodes per shelf
+--- reads as unfinished, and because light coming out of the wall is what
+--- makes a cave feel like a place rather than a tube. They take their colour
+--- from the layer, so each stratum looks like somewhere else.
+local function buildCrystals(parent: Instance, chunkIndex: number, layer)
+	local baseY = -chunkIndex * CHUNK_HEIGHT
+	local accent = layerColor(layer):Lerp(Color3.fromRGB(120, 210, 255), 0.65)
+
+	for _ = 1, 7 do
+		local angle = rng:NextNumber(0, math.pi * 2)
+		local y = baseY - rng:NextNumber(6, CHUNK_HEIGHT - 6)
+		local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		local root = out * (SHAFT_RADIUS - 2)
+
+		local anchorShard: BasePart? = nil
+		for shard = 1, rng:NextInteger(2, 4) do
+			local length = rng:NextNumber(2.5, 6.5)
+			local jitter = Vector3.new(rng:NextNumber(-3, 3), rng:NextNumber(-3, 3), rng:NextNumber(-3, 3))
+			local crystal = makePart(
+				"WallCrystal" .. shard,
+				Vector3.new(rng:NextNumber(0.5, 1.1), length, rng:NextNumber(0.5, 1.1)),
+				CFrame.new(Vector3.new(root.X, y, root.Z) + jitter)
+					* CFrame.Angles(rng:NextNumber(-1.2, 1.2), rng:NextNumber(0, 6), rng:NextNumber(-1.2, 1.2)),
+				accent,
+				Enum.Material.Neon
+			)
+			crystal.CanCollide = false
+			crystal.CastShadow = false
+			crystal.Transparency = 0.25
+			crystal.Parent = parent
+			anchorShard = anchorShard or crystal
+		end
+
+		if anchorShard then
+			local glow = Instance.new("PointLight")
+			glow.Range = 16
+			glow.Brightness = 0.9
+			glow.Color = accent
+			glow.Parent = anchorShard
+		end
+	end
+end
+
 local function buildChunk(chunkIndex: number)
 	if chunks[chunkIndex] then
 		return
@@ -559,6 +725,7 @@ local function buildChunk(chunkIndex: number)
 
 	buildSupports(folder, chunkIndex)
 	buildStalactites(folder, chunkIndex, layer)
+	buildCrystals(folder, chunkIndex, layer)
 
 	local hazardsWanted = HazardConfig.densityFor(layer)
 	local hazardsPlaced = 0

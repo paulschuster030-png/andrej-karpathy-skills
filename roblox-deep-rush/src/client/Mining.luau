@@ -16,6 +16,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Ores = require(Shared.Config.Ores)
 local Config = require(Shared.Config.Game)
 local Net = require(Shared.Net)
 
@@ -98,6 +99,15 @@ local function tick()
 	if highlight then
 		highlight.Adornee = target
 		highlight.Enabled = target ~= nil
+		-- Tinted to the tier the node is showing, so the outline confirms
+		-- what you were already looking at rather than washing it out.
+		if target then
+			local tier = Ores.tier(target:GetAttribute("Tier") or "Common")
+			local color = Color3.fromRGB(tier.color[1], tier.color[2], tier.color[3])
+			highlight.FillColor = color
+			highlight.OutlineColor = color:Lerp(Color3.fromRGB(255, 255, 255), 0.55)
+			highlight.FillTransparency = 0.82 - math.min(tier.glow, 1) * 0.18
+		end
 	end
 
 	local autoMine = State.data.gamepasses and State.data.gamepasses.autodrill

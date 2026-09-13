@@ -21,6 +21,10 @@ local Config = require(Shared.Config.Game)
 local Format = require(Shared.Format)
 local Layers = require(Shared.Config.Layers)
 local Net = require(Shared.Net)
+local Ores = require(Shared.Config.Ores)
+local Ranks = require(Shared.Config.Ranks)
+local ToolConfig = require(Shared.Config.Tools)
+local UpgradeConfig = require(Shared.Config.Upgrades)
 local RebirthConfig = require(Shared.Config.Rebirth)
 
 local Mining = require(script.Parent.Mining)
@@ -58,7 +62,7 @@ end
 local function buildTopLeft(parent)
 	local holder = Ui.frame({
 		parent = parent,
-		size = UDim2.fromOffset(230, 96),
+		size = UDim2.fromOffset(240, 142),
 		position = UDim2.fromOffset(16, 16),
 		color = theme.panel,
 		transparency = 0.15,
@@ -68,34 +72,69 @@ local function buildTopLeft(parent)
 
 	widgets.cash = Ui.text({
 		parent = holder,
-		size = UDim2.new(1, 0, 0, 40),
+		size = UDim2.new(1, 0, 0, 38),
 		text = "💰 0",
 		color = theme.gold,
 		align = Enum.TextXAlignment.Left,
 		font = Enum.Font.GothamBlack,
 	})
 
-	widgets.title = Ui.text({
+	-- Rank sits directly under the money, because it is the other number
+	-- players compare. It is the one line in this panel that another player
+	-- can also see, over your head.
+	widgets.rank = Ui.text({
 		parent = holder,
 		size = UDim2.new(1, 0, 0, 20),
-		position = UDim2.fromOffset(0, 42),
+		position = UDim2.fromOffset(0, 38),
+		text = "◆ UNRANKED",
+		color = theme.muted,
+		align = Enum.TextXAlignment.Left,
+		font = Enum.Font.GothamBlack,
+		scaled = false,
+		textSize = 16,
+	})
+
+	widgets.pick = Ui.text({
+		parent = holder,
+		size = UDim2.new(1, 0, 0, 18),
+		position = UDim2.fromOffset(0, 60),
+		text = "⛏️ Rusted Pick",
+		color = theme.text,
+		align = Enum.TextXAlignment.Left,
+		scaled = false,
+		textSize = 14,
+	})
+
+	widgets.title = Ui.text({
+		parent = holder,
+		size = UDim2.new(1, 0, 0, 18),
+		position = UDim2.fromOffset(0, 80),
 		text = "Surface Rat",
 		color = theme.muted,
 		align = Enum.TextXAlignment.Left,
 		scaled = false,
-		textSize = 15,
+		textSize = 14,
 	})
 
 	local barHolder, barFill, barLabel = Ui.bar({
 		parent = holder,
 		size = UDim2.new(1, 0, 0, 16),
-		position = UDim2.fromOffset(0, 62),
+		position = UDim2.fromOffset(0, 102),
 		color = theme.cyan,
 		text = "LV 1",
 		textSize = 12,
 	})
 	widgets.xpFill = barFill
 	widgets.xpLabel = barLabel
+
+	widgets.rankBar = select(2, Ui.bar({
+		parent = holder,
+		size = UDim2.new(1, 0, 0, 8),
+		position = UDim2.fromOffset(0, 122),
+		color = theme.gold,
+		text = "",
+		textSize = 9,
+	}))
 end
 
 local function buildTopCenter(parent)
@@ -459,6 +498,20 @@ local function renderState()
 	widgets.title.Text = RebirthConfig.title(data.rebirths or 0)
 		.. (data.rebirths > 0 and `  ·  R{data.rebirths}` or "")
 
+	-- Rank comes from lifetime banked, which the server already pushes for
+	-- the stats panel, so the badge and its bar cost no extra traffic.
+	local banked = (data.stats and data.stats.bankedTotal) or 0
+	local rank = Ranks.at(banked)
+	local upcoming = Ranks.next(banked)
+	widgets.rank.Text = `{rank.icon} {string.upper(rank.name)}`
+	widgets.rank.TextColor3 = Ranks.color(rank.id)
+	widgets.rankBar.Size = UDim2.fromScale(Ranks.progress(banked), 1)
+	widgets.rankBar.BackgroundColor3 = upcoming and Ranks.color(upcoming.id) or Ranks.color(rank.id)
+
+	local drill = (data.upgrades and data.upgrades.drill) or 0
+	local swing = math.max(Config.MinMineTime, Config.BaseMineTime * (1 - UpgradeConfig.value("drill", drill)))
+	widgets.pick.Text = `⛏️ {ToolConfig.tierFor(drill).name}  ·  {string.format("%.2f", swing)}s`
+
 	local needed = math.floor(Config.BaseXpToLevel * (Config.LevelCurve ^ ((data.level or 1) - 1)))
 	widgets.xpFill.Size = UDim2.fromScale(math.clamp((data.xp or 0) / needed, 0, 1), 1)
 	widgets.xpLabel.Text = `LV {data.level or 1}`
@@ -577,9 +630,16 @@ local function renderContextual()
 	widgets.swingHolder.Visible = progress > 0
 	widgets.swingFill.Size = UDim2.fromScale(progress, 1)
 
-	if Mining.target() then
-		widgets.reticle.Text = progress > 0 and "MINING..." or "◈ HOLD TO MINE"
-		widgets.reticle.TextColor3 = theme.gold
+	-- The reticle names what you are aiming at. The node already shows its
+	-- ore in the rock; this is the confirmation, in words, that the blue
+	-- glitter over there really is a diamond and not a quartz.
+	local aim = Mining.target()
+	if aim then
+		local ore = Ores.ById[aim:GetAttribute("Ore") or ""]
+		local tier = Ores.tier(aim:GetAttribute("Tier") or "Common")
+		widgets.reticle.Text = progress > 0 and "MINING..."
+			or (ore and `◈ {ore.name}  ·  {string.upper(ore.tier)}` or "◈ HOLD TO MINE")
+		widgets.reticle.TextColor3 = Color3.fromRGB(tier.color[1], tier.color[2], tier.color[3])
 	else
 		widgets.reticle.Text = ""
 	end

@@ -118,15 +118,19 @@ local function award(player: Player, node)
 	-- not in any drop table, it is granted by attendance.
 	local seasonEntry = Season.tryDrop(player, depth)
 
-	local ore, probability, mutation
+	local ore, probability, mutation, luckyStrike
 	if seasonEntry then
 		ore = Ores.ById[seasonEntry.oreId]
 		probability = SeasonConfig.OreChance
 	else
-		ore, probability = Rarity.rollOre(depth, luck, rng)
-		if not ore then
+		-- The node already decided what it is, and the player could see it on
+		-- the way over. Luck is the second chance on top, and it can only
+		-- improve the result — so the wall never lies about what is in it.
+		local visible = node.ore
+		if not visible then
 			return
 		end
+		ore, probability, luckyStrike = Rarity.resolve(visible, depth, luck, rng)
 		mutation = Mutations.roll(luck, riftActive, rng)
 	end
 
@@ -214,17 +218,19 @@ local function award(player: Player, node)
 		value = value,
 		name = displayName,
 		mutation = entry.mutation,
+		lucky = luckyStrike or nil,
 		position = node.part.Position,
 	})
 
-	if tierIndex >= REVEAL_FROM_TIER or mutation or isNew then
+	if tierIndex >= REVEAL_FROM_TIER or mutation or isNew or luckyStrike then
 		Feedback.reveal(player, {
-			title = isNew and "NEW DISCOVERY" or "RARE PULL",
+			title = isNew and "NEW DISCOVERY" or (luckyStrike and "LUCKY STRIKE" or "RARE PULL"),
 			name = displayName,
 			tier = ore.tier,
 			mutation = entry.mutation,
 			value = value,
 			odds = probability,
+			lucky = luckyStrike or nil,
 			kind = "ore",
 		})
 	end

@@ -89,6 +89,68 @@ for _, ore in ipairs(Ores.List) do
 	Ores.ById[ore.id] = ore
 end
 
+-- What each ore looks like in the wall ---------------------------------------
+--
+-- A node decides what it is when it spawns, so the rock can show it. That is
+-- the difference between a shaft of identical grey cubes and a wall where you
+-- spot a gold seam from thirty studs away and change your route for it.
+--
+-- `look` picks the material family, `color` the vein itself:
+--
+--   metal    dull sheen, no transparency — copper, iron, silver, gold
+--   gem      faceted and translucent — quartz, emerald, diamond, ruby
+--   crystal  lit from inside, for the tiers worth shouting about
+--   stone    matte, barely brighter than the rock around it
+--   void     dark body, light that should not be there
+--
+-- An ore missing from this table falls back to its tier colour as a gem,
+-- which is never wrong, only generic.
+Ores.Appearance = {
+	dirtstone = { look = "stone", color = { 124, 104, 86 } },
+	coal = { look = "stone", color = { 42, 42, 50 } },
+	clay = { look = "stone", color = { 172, 122, 94 } },
+	copper = { look = "metal", color = { 214, 120, 60 } },
+	fossil = { look = "stone", color = { 206, 196, 168 } },
+	iron = { look = "metal", color = { 176, 182, 192 } },
+	quartz = { look = "gem", color = { 236, 240, 248 } },
+	silver = { look = "metal", color = { 228, 234, 242 } },
+	gold = { look = "metal", color = { 255, 199, 54 } },
+	cobalt = { look = "metal", color = { 62, 110, 235 } },
+	meteorite = { look = "stone", color = { 98, 88, 106 } },
+	relic = { look = "metal", color = { 208, 176, 104 } },
+	amethyst = { look = "gem", color = { 168, 96, 244 } },
+	emerald = { look = "gem", color = { 42, 222, 132 } },
+	diamond = { look = "gem", color = { 156, 238, 255 } },
+	prism = { look = "crystal", color = { 255, 255, 255 } },
+	obsidian = { look = "stone", color = { 28, 22, 36 } },
+	magmasteel = { look = "metal", color = { 255, 110, 44 } },
+	ruby = { look = "gem", color = { 255, 58, 90 } },
+	ember = { look = "crystal", color = { 255, 140, 32 } },
+	cryonite = { look = "gem", color = { 122, 214, 255 } },
+	glacier = { look = "gem", color = { 186, 240, 255 } },
+	frostcore = { look = "crystal", color = { 150, 255, 255 } },
+	hollowbone = { look = "stone", color = { 226, 220, 200 } },
+	whisper = { look = "crystal", color = { 196, 150, 255 } },
+	nullstone = { look = "void", color = { 34, 28, 46 } },
+	abyssite = { look = "crystal", color = { 0, 226, 190 } },
+	voidglass = { look = "void", color = { 120, 32, 190 } },
+	leviathan = { look = "crystal", color = { 0, 255, 214 } },
+	fragment = { look = "crystal", color = { 255, 255, 255 } },
+	origin = { look = "crystal", color = { 255, 240, 190 } },
+	seasoncore = { look = "crystal", color = { 255, 80, 200 } },
+}
+
+--- The vein colour and material family for an ore.
+function Ores.appearance(oreId: string)
+	local entry = Ores.Appearance[oreId]
+	if entry then
+		return entry
+	end
+	local ore = Ores.ById[oreId]
+	local tier = Ores.Tiers[Ores.TierIndex[ore and ore.tier or "Common"] or 1]
+	return { look = "gem", color = tier.color }
+end
+
 -- Cache the depth->pool lookup: Mining calls this on every swing.
 local poolCache = {}
 
