@@ -43,7 +43,7 @@ Audio.Custom = {
 	pickHit = "", -- audio/pick-hit.ogg
 	rareReveal = "86205815247689", -- audio/rare-reveal.ogg
 
-	music = "", -- audio/music.ogg
+	music = "115263008266354", -- audio/music.ogg
 }
 
 --- The nine files in `audio/`, in upload order. This is what the boot notice
